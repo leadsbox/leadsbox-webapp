@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await client.post(endpoints.logout);
     } catch (error) {
-      // Ignore logout errors
+      console.error('Failed to logout:', error);
     }
     setUser(null);
     toast.info('You have been logged out');
@@ -109,31 +109,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const setOrg = (id: string) => {
-    // Handle org ID changes if needed
-    console.log('Organization ID set to:', id);
-  };
+  const setOrg = (id: string) => setOrgId(id);
 
-  const value: AuthState = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    refreshAuth,
-    setOrg,
-  };
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth }}>{children}</Ctx.Provider>;
 };
 
-// Custom hook to use auth context
-export const useAuth = (): AuthState => {
-  const context = useContext(Ctx);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+export const useAuth = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 };
-
-export default Ctx;

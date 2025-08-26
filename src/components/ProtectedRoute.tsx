@@ -12,22 +12,17 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  requireAuth = true,
-  requiredRole,
-  redirectTo = '/login',
-}) => {
-  const { user, isLoading } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAuth = true, requiredRole, redirectTo = '/login' }) => {
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading...</p>
+      <div className='min-h-screen flex items-center justify-center bg-background'>
+        <div className='text-center space-y-4'>
+          <Loader2 className='h-8 w-8 animate-spin text-primary mx-auto' />
+          <p className='text-muted-foreground'>Loading...</p>
         </div>
       </div>
     );
@@ -35,13 +30,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check authentication requirement
   if (requireAuth && !user) {
-    return (
-      <Navigate 
-        to={redirectTo} 
-        state={{ from: location }} 
-        replace 
-      />
-    );
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
   // Check role requirement
@@ -57,19 +46,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     if (userRoleLevel < requiredRoleLevel) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center space-y-4 max-w-md mx-auto p-6">
-            <div className="h-12 w-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-destructive text-xl">⚠️</span>
+        <div className='min-h-screen flex items-center justify-center bg-background'>
+          <div className='text-center space-y-4 max-w-md mx-auto p-6'>
+            <div className='h-12 w-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto'>
+              <span className='text-destructive text-xl'>⚠️</span>
             </div>
-            <h2 className="text-2xl font-semibold text-foreground">Access Denied</h2>
-            <p className="text-muted-foreground">
-              You don't have permission to access this page. 
+            <h2 className='text-2xl font-semibold text-foreground'>Access Denied</h2>
+            <p className='text-muted-foreground'>
+              You don't have permission to access this page.
               {requiredRole && ` This page requires ${requiredRole} role or higher.`}
             </p>
             <button
               onClick={() => window.history.back()}
-              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary-hover transition-colors"
+              className='mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary-hover transition-colors'
             >
               Go Back
             </button>
@@ -80,9 +69,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If user is authenticated but trying to access auth pages, redirect to dashboard
-  if (!requireAuth && user && 
-      ['/login', '/register', '/'].includes(location.pathname)) {
-    return <Navigate to="/dashboard" replace />;
+  if (!requireAuth && user && ['/login', '/register', '/'].includes(location.pathname)) {
+    return <Navigate to='/dashboard' replace />;
   }
 
   return <>{children}</>;
