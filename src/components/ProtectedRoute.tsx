@@ -18,7 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
   redirectTo = '/login',
 }) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -34,7 +34,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Check authentication requirement
-  if (requireAuth && !isAuthenticated) {
+  if (requireAuth && !user) {
     return (
       <Navigate 
         to={redirectTo} 
@@ -52,7 +52,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       AGENT: 1,
     };
 
-    const userRoleLevel = roleHierarchy[user.role];
+    const userRoleLevel = roleHierarchy[user.role as keyof typeof roleHierarchy] || 0;
     const requiredRoleLevel = roleHierarchy[requiredRole];
 
     if (userRoleLevel < requiredRoleLevel) {
@@ -80,7 +80,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If user is authenticated but trying to access auth pages, redirect to dashboard
-  if (!requireAuth && isAuthenticated && 
+  if (!requireAuth && user && 
       ['/login', '/register', '/'].includes(location.pathname)) {
     return <Navigate to="/dashboard" replace />;
   }

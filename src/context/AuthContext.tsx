@@ -1,20 +1,17 @@
-// Authentication Context for LeadsBox Dashboard
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { toast } from 'react-toastify';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
-import { apiRequest } from '../lib/axios';
-import { endpoints, CACHE_KEYS } from '../api/config';
+import client from '../api/client';
+import { endpoints } from '../api/config';
 
 interface AuthContextType {
   user: AuthUser | null;
-  isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<AuthResponse>;
-  register: (data: RegisterData) => Promise<AuthResponse>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<void>;
+  logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
-  updateUser: (updates: Partial<AuthUser>) => void;
+  setOrg: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,37 +20,23 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isAuthenticated = !!user;
-
-  // Initialize auth state from localStorage
+  // Initialize auth state from server
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem(CACHE_KEYS.token);
-        const savedUser = localStorage.getItem(CACHE_KEYS.user);
-
-        if (token && savedUser) {
-          const userData = JSON.parse(savedUser);
-          setUser(userData);
-          
-          // Optionally verify token with server
-          try {
-            const response = await apiRequest.get(endpoints.profile);
-            if (response.data.success) {
-              setUser(response.data.data);
-              localStorage.setItem(CACHE_KEYS.user, JSON.stringify(response.data.data));
-            }
-          } catch (error) {
-            // Token might be expired, will be handled by axios interceptor
-            console.warn('Failed to verify token on init');
+        const { data } = await client.get(endpoints.profile);
+        if (data?.user) {
+          setUser(data.user);
+          if (data.user.currentOrgId) {
+            // Handle org ID if needed
           }
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.warn('Not authenticated or session expired');
       } finally {
         setIsLoading(false);
       }
@@ -62,30 +45,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const response = await apiRequest.post<{ success: boolean; data: AuthResponse }>(
-        endpoints.login,
-        credentials
-      );
+      const { data } = await client.post<AuthResponse>(endpoints.login, {
+        email,
+        password,
+      });
 
-      if (response.data.success) {
-        const { user: userData, token, refreshToken } = response.data.data;
-
-        // Store auth data
-        localStorage.setItem(CACHE_KEYS.token, token);
-        localStorage.setItem(CACHE_KEYS.refreshToken, refreshToken);
-        localStorage.setItem(CACHE_KEYS.user, JSON.stringify(userData));
-        
-        if (userData.currentOrgId) {
-          localStorage.setItem(CACHE_KEYS.organization, userData.currentOrgId);
-        }
-
-        setUser(userData);
-        toast.success(`Welcome back, ${userData.name}!`);
-        
-        return response.data.data;
+      if (data?.user) {
+        setUser(data.user);
+        toast.success(`Welcome back, ${data.user.name}!`);
       } else {
         throw new Error('Login failed');
       }
@@ -98,30 +68,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (data: RegisterData): Promise<AuthResponse> => {
+  const register = async (email: string, password: string, name?: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const response = await apiRequest.post<{ success: boolean; data: AuthResponse }>(
-        endpoints.register,
-        data
-      );
+      const { data } = await client.post<AuthResponse>(endpoints.register, {
+        email,
+        password,
+        name,
+      });
 
-      if (response.data.success) {
-        const { user: userData, token, refreshToken } = response.data.data;
-
-        // Store auth data
-        localStorage.setItem(CACHE_KEYS.token, token);
-        localStorage.setItem(CACHE_KEYS.refreshToken, refreshToken);
-        localStorage.setItem(CACHE_KEYS.user, JSON.stringify(userData));
-        
-        if (userData.currentOrgId) {
-          localStorage.setItem(CACHE_KEYS.organization, userData.currentOrgId);
-        }
-
-        setUser(userData);
-        toast.success(`Welcome to LeadsBox, ${userData.name}!`);
-        
-        return response.data.data;
+      if (data?.user) {
+        setUser(data.user);
+        toast.success(`Welcome to LeadsBox, ${data.user.name}!`);
       } else {
         throw new Error('Registration failed');
       }
@@ -134,33 +92,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    // Clear localStorage
-    localStorage.removeItem(CACHE_KEYS.token);
-    localStorage.removeItem(CACHE_KEYS.refreshToken);
-    localStorage.removeItem(CACHE_KEYS.user);
-    localStorage.removeItem(CACHE_KEYS.organization);
-    localStorage.removeItem(CACHE_KEYS.preferences);
-
-    // Clear state
-    setUser(null);
-
-    // Optionally notify server
+  const logout = async () => {
     try {
-      apiRequest.post(endpoints.logout);
+      await client.post(endpoints.logout);
     } catch (error) {
       // Ignore logout errors
     }
-
+    setUser(null);
     toast.info('You have been logged out');
   };
 
   const refreshAuth = async (): Promise<void> => {
     try {
-      const response = await apiRequest.get(endpoints.profile);
-      if (response.data.success) {
-        setUser(response.data.data);
-        localStorage.setItem(CACHE_KEYS.user, JSON.stringify(response.data.data));
+      const { data } = await client.get(endpoints.profile);
+      if (data?.user) {
+        setUser(data.user);
       }
     } catch (error) {
       console.error('Failed to refresh auth:', error);
@@ -168,23 +114,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateUser = (updates: Partial<AuthUser>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem(CACHE_KEYS.user, JSON.stringify(updatedUser));
-    }
+  const setOrg = (id: string) => {
+    // Handle org ID changes if needed
+    console.log('Organization ID set to:', id);
   };
 
   const value: AuthContextType = {
     user,
-    isAuthenticated,
     isLoading,
     login,
     register,
     logout,
     refreshAuth,
-    updateUser,
+    setOrg,
   };
 
   return (
