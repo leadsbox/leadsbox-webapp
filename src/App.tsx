@@ -68,7 +68,7 @@ const App = () => (
               <Route 
                 path="settings" 
                 element={
-                  <ProtectedRoute requiredRole="OWNER">
+                  <ProtectedRoute >
                     <SettingsPage />
                   </ProtectedRoute>
                 } 
