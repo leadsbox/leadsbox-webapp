@@ -51,7 +51,7 @@ export interface Message {
   sender: 'LEAD' | 'AGENT' | 'SYSTEM';
   senderId?: string;
   attachments?: Attachment[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string>;
   createdAt: string;
   isRead: boolean;
 }
