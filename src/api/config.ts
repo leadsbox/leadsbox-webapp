@@ -2,6 +2,8 @@
 
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
+export const ORG_HEADER = 'x-org-id';
+
 // API Endpoints
 export const endpoints = {
   // Auth
@@ -9,7 +11,14 @@ export const endpoints = {
   register: '/auth/register',
   refresh: '/auth/refresh',
   logout: '/auth/logout',
-  verifyEmail: '/auth/verify-email',
+  me: '/auth/me',
+  verifyEmail: '/auth/email/verify',
+  
+  // OAuth & Social Auth
+  google: {
+    login: '/auth/google',
+    callback: '/auth/google/callback',
+  },
   
   // User & Organization
   profile: '/user/profile',
