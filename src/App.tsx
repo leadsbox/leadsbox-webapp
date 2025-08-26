@@ -53,15 +53,26 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Dashboard Routes - No Protection */}
-            <Route path="/dashboard" element={<DashboardLayout />}>
+            {/* Protected Dashboard Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }>
               <Route index element={<InboxPage />} />
               <Route path="inbox" element={<InboxPage />} />
               <Route path="leads" element={<LeadsPage />} />
               <Route path="pipeline" element={<PipelinePage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
+              <Route 
+                path="settings" 
+                element={
+                  <ProtectedRoute requiredRole="OWNER">
+                    <SettingsPage />
+                  </ProtectedRoute>
+                } 
+              />
             </Route>
 
             {/* Catch-all route */}
