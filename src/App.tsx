@@ -49,12 +49,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             
-            {/* Protected Dashboard Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
+            {/* Dashboard Routes - No Protection */}
+            <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<InboxPage />} />
               <Route path="inbox" element={<InboxPage />} />
               <Route path="leads" element={<LeadsPage />} />
