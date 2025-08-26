@@ -28,11 +28,17 @@ export const setOrgId = (id?: string) => {
 // Create axios instance with base URL
 const client = axios.create({
   baseURL: API_BASE,
-  withCredentials: true,
+  withCredentials: true, // This is crucial for sending cookies with cross-origin requests
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+});
+
+// Ensure credentials are sent with all requests
+client.interceptors.request.use(config => {
+  config.withCredentials = true;
+  return config;
 });
 
 // Request interceptor for auth token and org ID

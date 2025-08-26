@@ -1,52 +1,47 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { toast } from 'react-toastify';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
-import client from '../api/client';
+import client, { setAccessToken, setOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 
-interface AuthContextType {
+type AuthState = {
   user: AuthUser | null;
-  isLoading: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   setOrg: (id: string) => void;
-}
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
+const Ctx = createContext<AuthState | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setloading] = useState(true);
 
-  // Initialize auth state from server
   useEffect(() => {
-    const initAuth = async () => {
+    (async () => {
       try {
-        const { data } = await client.get(endpoints.profile);
+        const { data } = await client.get(endpoints.me);
+
         if (data?.user) {
           setUser(data.user);
-          if (data.user.currentOrgId) {
-            // Handle org ID if needed
-          }
+          if (data.user.orgId) setOrgId(data.user.orgId);
+          if (data.accessToken) setAccessToken(data.accessToken);
+        } else {
+          setUser(null);
         }
-      } catch (error) {
-        console.warn('Not authenticated or session expired');
+      } catch {
+        setUser(null);
       } finally {
-        setIsLoading(false);
+        setloading(false);
       }
-    };
-
-    initAuth();
+    })();
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
-    setIsLoading(true);
+    setloading(true);
     try {
       const { data } = await client.post<AuthResponse>(endpoints.login, {
         email,
@@ -64,12 +59,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.error(message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
   const register = async (email: string, password: string, name?: string): Promise<void> => {
-    setIsLoading(true);
+    setloading(true);
     try {
       const { data } = await client.post<AuthResponse>(endpoints.register, {
         email,
@@ -88,7 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.error(message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -119,9 +114,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('Organization ID set to:', id);
   };
 
-  const value: AuthContextType = {
+  const value: AuthState = {
     user,
-    isLoading,
+    loading,
     login,
     register,
     logout,
@@ -129,20 +124,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setOrg,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
 
 // Custom hook to use auth context
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
+export const useAuth = (): AuthState => {
+  const context = useContext(Ctx);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
-export default AuthContext;
+export default Ctx;

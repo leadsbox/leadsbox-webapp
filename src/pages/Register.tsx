@@ -34,6 +34,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const handleGoogleRedirect = () => {
+    // No need for a callback URL - the backend will handle the redirect
     window.location.href = `${API_BASE}${endpoints.google.login}`;
   };
 
@@ -67,16 +68,18 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      await register({
-        name: `${firstName} ${lastName}`.trim(),
+      // The register function now expects email, password, and optional name as separate parameters
+      await register(
         email,
         password,
-        organizationName
-      });
+        `${firstName} ${lastName}`.trim()
+      );
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error) {
-      toast.error('Failed to create account');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
+      toast.error(errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
