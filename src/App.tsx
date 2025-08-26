@@ -16,6 +16,8 @@ import DashboardLayout from "./components/DashboardLayout";
 // Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 // Dashboard Pages
 import InboxPage from "./features/inbox/InboxPage";
@@ -48,6 +50,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             
             {/* Dashboard Routes - No Protection */}
             <Route path="/dashboard" element={<DashboardLayout />}>
