@@ -63,8 +63,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
 
         {/* Logo */}
         <Link to='/dashboard' className='flex items-center space-x-2'>
-          <div className='w-8 h-8 bg-gradient-to-br from-primary to-primary-hover rounded-lg flex items-center justify-center'>
-            <span className='text-primary-foreground font-bold text-sm'>L</span>
+          <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
+            <img 
+              src='/leadsboxlogo.svg' 
+              alt='LeadsBox Logo' 
+              className='w-full h-full object-contain' 
+            />
           </div>
           <span className='font-semibold text-lg text-foreground hidden sm:block'>{formattedDisplayName}</span>
         </Link>
