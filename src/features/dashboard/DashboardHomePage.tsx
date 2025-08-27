@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Receipt, Users, TrendingUp, MessageSquare, CheckSquare, Calendar, DollarSign, Activity } from 'lucide-react';
+import { Plus, FileText, Receipt, Users, TrendingUp, MessageSquare, CheckSquare, Calendar, DollarSign, Activity, Globe, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { mockAnalytics, getTodayTasks, getOverdueTasks, mockLeads } from '@/data/mockData';
+import { mockAnalytics, getTodayTasks, getOverdueTasks, mockLeads, mockOrganization } from '@/data/mockData';
+import { IntegrationBadge } from '@/components/ui/integrationbadge';
 
 const quickActions = [
   {
@@ -54,6 +55,10 @@ export default function DashboardHomePage() {
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
+  // NEW: simple derived flags (swap with real API later)
+  const whatsappConnected = !!mockOrganization?.settings?.integrations?.whatsapp?.webhook;
+  const telegramConnected = !!mockOrganization?.settings?.integrations?.telegram?.botToken;
+
   return (
     <div className='p-6 space-y-6'>
       {/* Header */}
@@ -61,6 +66,11 @@ export default function DashboardHomePage() {
         <div>
           <h1 className='text-3xl font-bold tracking-tight'>Dashboard</h1>
           <p className='text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
+
+          <div className='mt-2 flex items-center gap-2'>
+            <IntegrationBadge icon={Globe} label='WhatsApp' connected={whatsappConnected} to='/dashboard/settings?tab=integrations' />
+            <IntegrationBadge icon={Send} label='Telegram' connected={telegramConnected} to='/dashboard/settings?tab=integrations' />
+          </div>
         </div>
 
         {/* Quick Actions */}
