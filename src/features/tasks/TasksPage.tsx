@@ -39,8 +39,9 @@ import { Task } from '../../types';
 import { formatDistanceToNow, format, isToday, isPast } from 'date-fns';
 
 const TasksPage: React.FC = () => {
+  type TabValue = 'overdue' | 'today' | 'upcoming' | 'all';
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'overdue' | 'today' | 'upcoming' | 'all'>('overdue');
+  const [activeTab, setActiveTab] = useState<TabValue>('overdue');
   
   const overdueTasks = getOverdueTasks();
   const todayTasks = getTodayTasks();
@@ -226,7 +227,7 @@ const TasksPage: React.FC = () => {
       </div>
 
       {/* Task Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+      <Tabs value={activeTab} onValueChange={(value: TabValue) => setActiveTab(value)}>
         <TabsList>
           <TabsTrigger value="overdue" className="flex items-center space-x-2">
             <AlertTriangle className="h-3 w-3" />

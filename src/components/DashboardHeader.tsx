@@ -81,11 +81,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           <DropdownMenuTrigger asChild>
             <Button variant='ghost' className='gap-2 px-3'>
               <Link to='/dashboard' className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                <img 
-                  src='/leadsboxlogo.svg' 
-                  alt='Workspace' 
-                  className='w-full h-full object-contain' 
-                />
+              <CustomAvatar src={userAvatar} name={formattedDisplayName} size='md' className='border-2 border-background' />
               </Link>
               <div className='text-left hidden sm:block'>
                 <p className='text-sm font-medium'>{formattedDisplayName}</p>

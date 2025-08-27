@@ -142,7 +142,7 @@ const LeadsPage: React.FC = () => {
           />
         </div>
 
-        <Tabs value={stageFilter} onValueChange={(value) => setStageFilter(value as any)}>
+        <Tabs value={stageFilter} onValueChange={(value: Stage | 'ALL') => setStageFilter(value)}>
           <TabsList>
             <TabsTrigger value="ALL">All</TabsTrigger>
             <TabsTrigger value="NEW">New</TabsTrigger>
