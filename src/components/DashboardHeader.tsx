@@ -171,14 +171,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={userAvatar} alt={displayName} />
-                  <AvatarFallback>{userInitial}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{displayName}</span>
-              </div>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={userAvatar} alt={displayName} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {userInitial}
+                </AvatarFallback>
+              </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
