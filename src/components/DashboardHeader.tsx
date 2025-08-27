@@ -41,6 +41,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { user, logout } = useAuth();
   const location = useLocation();
 
+  // Get user's first initial or 'U' if no name is available
+  const userInitial = user?.name?.[0]?.toUpperCase() || 'U';
+  // Use the avatar from Google if available, otherwise use the default avatar
+  const userAvatar = user?.avatar || '';
+  // Get the user's display name, falling back to email if name is not available
+  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+
   const navigationItems = [
     { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: 12 },
     { path: '/dashboard/leads', label: 'Leads', icon: Users },
@@ -164,13 +171,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={user?.avatar} alt={user?.name} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
+            <Button variant="ghost" className="relative">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={userAvatar} alt={displayName} />
+                  <AvatarFallback>{userInitial}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{displayName}</span>
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
