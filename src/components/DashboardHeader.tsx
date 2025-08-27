@@ -124,9 +124,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         </DropdownMenu>
 
         {/* Current page indicator */}
-        <div className='hidden md:flex items-center ml-4 border-l border-border pl-4 h-8'>
+        {/* <div className='hidden md:flex items-center ml-4 border-l border-border pl-4 h-8'>
           <h1 className='text-lg font-semibold text-foreground'>{currentPage?.label || 'Dashboard'}</h1>
-        </div>
+        </div> */}
       </div>
 
       {/* Center section - Search */}
