@@ -62,7 +62,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         </Button>
 
         {/* Logo */}
-        <Link to='/dashboard' className='flex items-center space-x-2'>
+        {/* <Link to='/dashboard' className='flex items-center space-x-2'>
           <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
             <img 
               src='/leadsboxlogo.svg' 
@@ -71,13 +71,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
             />
           </div>
           <span className='font-semibold text-lg text-foreground hidden sm:block'>{formattedDisplayName}</span>
-        </Link>
+        </Link> */}
 
         {/* Current page indicator */}
-        <div className='hidden md:flex items-center space-x-2 text-sm text-muted-foreground'>
-          <span>/</span>
-          <span className='text-foreground font-medium'>{currentPage?.label || 'Dashboard'}</span>
-        </div>
+        {/* <div className='hidden md:flex items-center'>
+          <h1 className='text-xl font-bold text-foreground'>{currentPage?.label || 'Dashboard'}</h1>
+        </div> */}
       </div>
 
       {/* Center section - Search */}
