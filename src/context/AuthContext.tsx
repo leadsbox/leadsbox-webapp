@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (data?.user) {
         setUser(data.user);
-        toast.success(`Welcome back, ${data.user.name}!`);
+        toast.success(`Welcome back, ${data.user.username}!`);
       } else {
         throw new Error('Login failed');
       }
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (data?.user) {
         setUser(data.user);
-        toast.success(`Welcome to LeadsBox, ${data.user.name}!`);
+        toast.success(`Welcome to LeadsBox, ${data.user.username}!`);
       } else {
         throw new Error('Registration failed');
       }

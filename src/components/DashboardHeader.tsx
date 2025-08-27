@@ -39,14 +39,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   sidebarOpen = true,
 }) => {
   const { user, logout } = useAuth();
+  console.log(user)
   const location = useLocation();
 
   // Get user's first initial or 'U' if no name is available
-  const userInitial = user?.name?.[0]?.toUpperCase() || 'U';
+  const userInitial = user?.username?.[0]?.toUpperCase() || 'U';
   // Use the avatar from Google if available, otherwise use the default avatar
-  const userAvatar = user?.avatar || '';
+  const userAvatar = user?.profileImage || '';
   // Get the user's display name, falling back to email if name is not available
-  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+  const displayName = user?.username || user?.email?.split('@')[0] || 'User';
 
   const navigationItems = [
     { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: 12 },
@@ -183,7 +184,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                <p className="text-sm font-medium leading-none">{user?.username}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email}
                 </p>

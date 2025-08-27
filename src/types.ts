@@ -2,10 +2,10 @@
 
 export interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
   orgId?: string;
-  avatar?: string;
+  profileImage?: string;
   role: 'OWNER' | 'MANAGER' | 'AGENT';
   createdAt: string;
   updatedAt: string;
