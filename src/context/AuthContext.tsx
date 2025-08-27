@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     (async () => {
       // Only try to fetch user if we have a token stored
       const token = localStorage.getItem('lb_access_token');
-      
+
       if (!token) {
         setUser(null);
         setloading(false);
