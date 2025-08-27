@@ -80,7 +80,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant='ghost' className='gap-2 px-3'>
-              <Link to='/dashboard' className='w-8 h-8 p-1 bg-current rounded-sm flex items-center justify-center'>
+              <Link to='/dashboard' className='w-8 h-8 p-1 rounded-sm flex items-center justify-center'>
                 {/* <CustomAvatar src={userAvatar} name={formattedDisplayName} size='md' className='w-full' /> */}
                 <img src={userAvatar} alt={formattedDisplayName} className='w-full h-full object-contain' />
               </Link>
@@ -97,7 +97,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
             <DropdownMenuItem asChild className='p-0'>
               <Link to='/dashboard' className='flex-1 flex items-center justify-between p-2'>
                 <div className='flex items-center gap-2'>
-                  <div className='w-8 h-8 bg-current p-1 rounded-sm flex items-center justify-center'>
+                  <div className='w-8 h-8 p-1 rounded-sm flex items-center justify-center'>
                     <img src={userAvatar} alt={formattedDisplayName} className='w-full h-full object-contain' />
                   </div>
                   <div>
