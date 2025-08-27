@@ -25,7 +25,7 @@ import LeadsPage from "./features/leads/LeadsPage";
 import PipelinePage from "./features/pipeline/PipelinePage";
 import TasksPage from "./features/tasks/TasksPage";
 import AnalyticsPage from "./features/analytics/AnalyticsPage";
-import SettingsPage from "./features/settings/SettingsPageSimple";
+import SettingsPage from "./features/settings/SettingsPage";
 import DashboardHomePage from "./features/dashboard/DashboardHomePage";
 
 const queryClient = new QueryClient();
