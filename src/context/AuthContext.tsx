@@ -103,6 +103,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await client.post(endpoints.logout);
       localStorage.removeItem('lb_access_token');
+      localStorage.removeItem('lb_org_id');
     } catch (error) {
       console.error('Failed to logout:', error);
     }
