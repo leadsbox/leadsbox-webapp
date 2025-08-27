@@ -1,3 +1,4 @@
+
 // Settings Page Component for LeadsBox Dashboard
 
 import React, { useState } from 'react';
@@ -58,6 +59,7 @@ import {
 } from '../../components/ui/alert-dialog';
 import { mockUsers, mockOrganization } from '../../data/mockData';
 import { User } from '../../types';
+import { ThemeSettings } from './components/ThemeSettings';
 
 const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('integrations');
@@ -107,14 +109,20 @@ const SettingsPage: React.FC = () => {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
+
+        {/* Appearance Settings */}
+        <TabsContent value="appearance">
+          <ThemeSettings />
+        </TabsContent>
 
         {/* Organization Settings */}
         <TabsContent value="organization" className="space-y-6">

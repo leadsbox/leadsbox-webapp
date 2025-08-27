@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Context Providers
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -32,56 +34,58 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="dark"
-        />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* Protected Dashboard Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<DashboardHomePage />} />
-              <Route path="inbox" element={<InboxPage />} />
-              <Route path="leads" element={<LeadsPage />} />
-              <Route path="pipeline" element={<PipelinePage />} />
-              <Route path="tasks" element={<TasksPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route 
-                path="settings" 
-                element={
-                  <ProtectedRoute >
-                    <SettingsPage />
-                  </ProtectedRoute>
-                } 
-              />
-            </Route>
+    <ThemeProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+          />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* Protected Dashboard Routes */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<DashboardHomePage />} />
+                <Route path="inbox" element={<InboxPage />} />
+                <Route path="leads" element={<LeadsPage />} />
+                <Route path="pipeline" element={<PipelinePage />} />
+                <Route path="tasks" element={<TasksPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
+                <Route 
+                  path="settings" 
+                  element={
+                    <ProtectedRoute >
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+              </Route>
 
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
