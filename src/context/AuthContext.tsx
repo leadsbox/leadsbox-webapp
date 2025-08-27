@@ -22,6 +22,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     (async () => {
+      // Only try to fetch user if we have a token stored
+      const token = localStorage.getItem('lb_access_token');
+      
+      if (!token) {
+        setUser(null);
+        setloading(false);
+        return;
+      }
+
       try {
         const { data } = await client.get(endpoints.me);
 
@@ -34,6 +43,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch {
         setUser(null);
+        // Clear invalid token
+        localStorage.removeItem('lb_access_token');
+        localStorage.removeItem('lb_org_id');
       } finally {
         setloading(false);
       }

@@ -109,8 +109,11 @@ client.interceptors.response.use(
         // Clear auth state on refresh failure
         setAccessToken('');
         setOrgId('');
-        // Redirect to login or handle as needed
-        window.location.href = '/login';
+        // Only redirect if not already on login/register pages
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
