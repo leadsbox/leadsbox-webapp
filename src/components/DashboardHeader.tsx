@@ -2,7 +2,22 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Settings, LogOut, User, Search, Menu, MessageSquare, Users, BarChart3, CheckSquare, Zap, ChevronDown, Check, PlusCircle } from 'lucide-react';
+import {
+  Bell,
+  Settings,
+  LogOut,
+  User,
+  Search,
+  Menu,
+  MessageSquare,
+  Users,
+  BarChart3,
+  CheckSquare,
+  Zap,
+  ChevronDown,
+  Check,
+  PlusCircle,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -30,7 +45,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
   const formatName = (name: string) => {
     return name
       .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
 
@@ -64,47 +79,45 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         {/* Workspace Switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2 px-3">
-              <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
+            <Button variant='ghost' className='gap-2 px-3'>
+              <Link to='/dashboard' className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
                 <img 
                   src='/leadsboxlogo.svg' 
                   alt='Workspace' 
                   className='w-full h-full object-contain' 
                 />
-              </div>
+              </Link>
               <div className='text-left hidden sm:block'>
                 <p className='text-sm font-medium'>{formattedDisplayName}</p>
                 <p className='text-xs text-muted-foreground'>{user?.email}</p>
               </div>
-              <ChevronDown className="h-4 w-4 opacity-50" />
+              <ChevronDown className='h-4 w-4 opacity-50' />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="start">
+          <DropdownMenuContent className='w-56' align='start'>
             <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                  <img 
-                    src='/leadsboxlogo.svg' 
-                    alt='Workspace' 
-                    className='w-full h-full object-contain' 
-                  />
+            <DropdownMenuItem asChild className='p-0'>
+              <Link to='/dashboard' className='flex-1 flex items-center justify-between p-2'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
+                    <img src='/leadsboxlogo.svg' alt='Workspace' className='w-full h-full object-contain' />
+                  </div>
+                  <div>
+                    <p className='text-sm font-medium'>{formattedDisplayName}</p>
+                    <p className='text-xs text-muted-foreground'>Personal Workspace</p>
+                  </div>
                 </div>
-                <div>
-                  <p className='text-sm font-medium'>{formattedDisplayName}</p>
-                  <p className='text-xs text-muted-foreground'>Personal Workspace</p>
-                </div>
-              </div>
-              <Check className="h-4 w-4 text-primary" />
+                <Check className='h-4 w-4 text-primary' />
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className='mr-2 h-4 w-4' />
               <span>Create New Workspace</span>
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
+              <Settings className='mr-2 h-4 w-4' />
               <span>Workspace Settings</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
