@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Settings, LogOut, User, Search, Menu, MessageSquare, Users, BarChart3, CheckSquare, Zap } from 'lucide-react';
+import { Bell, Settings, LogOut, User, Search, Menu, MessageSquare, Users, BarChart3, CheckSquare, Zap, ChevronDown, Check, PlusCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -61,22 +61,59 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           <Menu className='h-5 w-5' />
         </Button>
 
-        {/* Logo */}
-        {/* <Link to='/dashboard' className='flex items-center space-x-2'>
-          <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-            <img 
-              src='/leadsboxlogo.svg' 
-              alt='LeadsBox Logo' 
-              className='w-full h-full object-contain' 
-            />
-          </div>
-          <span className='font-semibold text-lg text-foreground hidden sm:block'>{formattedDisplayName}</span>
-        </Link> */}
+        {/* Workspace Switcher */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="gap-2 px-3">
+              <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
+                <img 
+                  src='/leadsboxlogo.svg' 
+                  alt='Workspace' 
+                  className='w-full h-full object-contain' 
+                />
+              </div>
+              <div className='text-left hidden sm:block'>
+                <p className='text-sm font-medium'>{formattedDisplayName}</p>
+                <p className='text-xs text-muted-foreground'>{user?.email}</p>
+              </div>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="start">
+            <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
+                  <img 
+                    src='/leadsboxlogo.svg' 
+                    alt='Workspace' 
+                    className='w-full h-full object-contain' 
+                  />
+                </div>
+                <div>
+                  <p className='text-sm font-medium'>{formattedDisplayName}</p>
+                  <p className='text-xs text-muted-foreground'>Personal Workspace</p>
+                </div>
+              </div>
+              <Check className="h-4 w-4 text-primary" />
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              <span>Create New Workspace</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Workspace Settings</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Current page indicator */}
-        {/* <div className='hidden md:flex items-center'>
-          <h1 className='text-xl font-bold text-foreground'>{currentPage?.label || 'Dashboard'}</h1>
-        </div> */}
+        <div className='hidden md:flex items-center ml-4 border-l border-border pl-4 h-8'>
+          <h1 className='text-lg font-semibold text-foreground'>{currentPage?.label || 'Dashboard'}</h1>
+        </div>
       </div>
 
       {/* Center section - Search */}
