@@ -19,8 +19,9 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleGoogleRedirect = () => {
-    // No need for a callback URL - the backend will handle the redirect
-    window.location.href = `${API_BASE}${endpoints.google.login}`;
+    // Include the current origin as the redirect_uri
+    const redirectUri = encodeURIComponent(window.location.origin);
+    window.location.href = `${API_BASE}${endpoints.google.login}?redirect_uri=${redirectUri}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

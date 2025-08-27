@@ -21,8 +21,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setloading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    const checkAuth = async () => {
       try {
+        // Check if we're coming back from OAuth
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        if (token) {
+          // We have a token from OAuth, store it
+          setAccessToken(token);
+          // Remove token from URL to prevent issues
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Get user data
         const { data } = await client.get(endpoints.me);
 
         if (data?.user) {
@@ -32,15 +44,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
           setUser(null);
         }
-      } catch {
+      } catch (error) {
+        console.error('Auth check failed:', error);
         setUser(null);
-        // Clear invalid token
+        // Clear invalid tokens
         localStorage.removeItem('lb_access_token');
         localStorage.removeItem('lb_org_id');
       } finally {
         setloading(false);
       }
-    })();
+    };
+
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
