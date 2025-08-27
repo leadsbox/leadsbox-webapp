@@ -60,7 +60,7 @@ import { mockUsers, mockOrganization } from '../../data/mockData';
 import { User } from '../../types';
 
 const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('organization');
+  const [activeTab, setActiveTab] = useState('integrations');
   const [organization, setOrganization] = useState(mockOrganization);
   const [members, setMembers] = useState(mockUsers);
   const [tags, setTags] = useState(['hot-lead', 'enterprise', 'startup', 'demo-requested', 'negotiation', 'follow-up']);
@@ -108,12 +108,12 @@ const SettingsPage: React.FC = () => {
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
         </TabsList>
 
         {/* Organization Settings */}
