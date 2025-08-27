@@ -26,6 +26,7 @@ import PipelinePage from "./features/pipeline/PipelinePage";
 import TasksPage from "./features/tasks/TasksPage";
 import AnalyticsPage from "./features/analytics/AnalyticsPage";
 import SettingsPage from "./features/settings/SettingsPage";
+import DashboardHomePage from "./features/dashboard/DashboardHomePage";
 
 const queryClient = new QueryClient();
 
@@ -59,7 +60,7 @@ const App = () => (
                 <DashboardLayout />
               </ProtectedRoute>
             }>
-              <Route index element={<InboxPage />} />
+              <Route index element={<DashboardHomePage />} />
               <Route path="inbox" element={<InboxPage />} />
               <Route path="leads" element={<LeadsPage />} />
               <Route path="pipeline" element={<PipelinePage />} />

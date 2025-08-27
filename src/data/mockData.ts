@@ -15,8 +15,10 @@ import {
 export const mockUsers: User[] = [
   {
     id: '1',
+    username: 'johnsmith',
     name: 'John Smith',
     email: 'john@leadsbox.com',
+    profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
     role: 'OWNER',
     createdAt: '2024-01-01T00:00:00Z',
@@ -24,8 +26,10 @@ export const mockUsers: User[] = [
   },
   {
     id: '2',
+    username: 'sarahjohnson',
     name: 'Sarah Johnson',
     email: 'sarah@leadsbox.com',
+    profileImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
     role: 'MANAGER',
     createdAt: '2024-01-02T00:00:00Z',
@@ -33,8 +37,10 @@ export const mockUsers: User[] = [
   },
   {
     id: '3',
+    username: 'mikewilson',
     name: 'Mike Wilson',
     email: 'mike@leadsbox.com',
+    profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
     role: 'AGENT',
     createdAt: '2024-01-03T00:00:00Z',

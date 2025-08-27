@@ -3,9 +3,11 @@
 export interface User {
   id: string;
   username: string;
+  name?: string;
   email: string;
   orgId?: string;
   profileImage?: string;
+  avatar?: string;
   role: 'OWNER' | 'MANAGER' | 'AGENT';
   createdAt: string;
   updatedAt: string;
