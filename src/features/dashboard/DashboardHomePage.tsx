@@ -60,12 +60,12 @@ export default function DashboardHomePage() {
   const telegramConnected = !!mockOrganization?.settings?.integrations?.telegram?.botToken;
 
   return (
-    <div className='p-6 space-y-6'>
+    <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4'>
         <div>
-          <h1 className='text-3xl font-bold tracking-tight'>Dashboard</h1>
-          <p className='text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
+          <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Dashboard</h1>
+          <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
 
           <div className='mt-2 flex items-center gap-2'>
             <IntegrationBadge icon={Globe} label='WhatsApp' connected={whatsappConnected} to='/dashboard/settings?tab=integrations' />
@@ -76,7 +76,7 @@ export default function DashboardHomePage() {
         {/* Quick Actions */}
         <div className='flex flex-wrap gap-2'>
           {quickActions.map((action) => (
-            <Button key={action.title} asChild className={`${action.color} text-white border-0 hover:shadow-lg transition-all duration-200`}>
+            <Button key={action.title} asChild aria-label={action.title} className={`${action.color} text-white border-0 hover:shadow-lg transition-all duration-200`}> 
               <Link to={action.href} className='flex items-center gap-2'>
                 <action.icon className='h-4 w-4' />
                 <span className='hidden sm:inline'>{action.title}</span>
@@ -87,7 +87,7 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Overview Cards */}
-      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
         <Card className='transition-all duration-200 hover:shadow-md'>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
@@ -146,7 +146,7 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Charts and Recent Activity */}
-      <div className='grid gap-6 lg:grid-cols-2'>
+      <div className='grid gap-4 sm:gap-6 lg:grid-cols-2'>
         {/* Leads Over Time Chart */}
         <Card className='transition-all duration-200 hover:shadow-md'>
           <CardHeader>
@@ -154,7 +154,7 @@ export default function DashboardHomePage() {
             <CardDescription>Daily lead generation for the past week</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className='h-[200px]'>
+            <ChartContainer config={chartConfig} className='h-[160px] sm:h-[200px]'>
               <ResponsiveContainer width='100%' height='100%'>
                 <AreaChart data={analytics.trends.leadsOverTime}>
                   <CartesianGrid strokeDasharray='3 3' />
@@ -175,7 +175,7 @@ export default function DashboardHomePage() {
             <CardDescription>Leads by stage</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className='h-[200px]'>
+            <ChartContainer config={chartConfig} className='h-[160px] sm:h-[200px]'>
               <ResponsiveContainer width='100%' height='100%'>
                 <BarChart data={analytics.trends.conversionsByStage}>
                   <CartesianGrid strokeDasharray='3 3' />
@@ -191,7 +191,7 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Recent Activities and Tasks */}
-      <div className='grid gap-6 lg:grid-cols-3'>
+      <div className='grid gap-4 sm:gap-6 lg:grid-cols-3'>
         {/* Recent Leads */}
         <Card className='transition-all duration-200 hover:shadow-md'>
           <CardHeader className='flex flex-row items-center justify-between space-y-0'>

@@ -69,12 +69,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
   };
 
   return (
-    <header className='dashboard-header h-16 px-4 flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-md'>
+    <header className='dashboard-header sticky top-0 z-30 h-16 px-3 sm:px-4 flex items-center justify-between border-b border-border bg-card/60 backdrop-blur-md supports-[backdrop-filter]:bg-card/60'>
       {/* Left section - Logo and navigation */}
       <div className='flex items-center space-x-4'>
         {/* Sidebar toggle */}
-        <Button variant='ghost' size='icon' onClick={onSidebarToggle} className='md:hidden'>
-          <Menu className='h-5 w-5' />
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={onSidebarToggle}
+          className='md:hidden'
+          aria-label='Open menu'
+          aria-expanded={sidebarOpen}
+          aria-controls='mobile-sidebar'
+        >
+          <Menu className='h-6 w-6' />
         </Button>
 
         {/* Workspace Switcher */}
