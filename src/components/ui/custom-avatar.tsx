@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface CustomAvatarProps {
   src?: string | null;
@@ -14,6 +14,11 @@ export const CustomAvatar: React.FC<CustomAvatarProps> = ({
   className = '',
 }) => {
   const [errored, setErrored] = useState(false);
+  const hasSrc = typeof src === 'string' && src.trim().length > 0;
+
+  useEffect(() => {
+    if (hasSrc) setErrored(false);
+  }, [hasSrc, src]);
   
   const sizeClasses = {
     sm: 'h-8 w-8 text-sm',
@@ -21,7 +26,7 @@ export const CustomAvatar: React.FC<CustomAvatarProps> = ({
     lg: 'h-10 w-10 text-lg',
   };
 
-  const showFallback = !src || errored;
+  const showFallback = !hasSrc || errored;
   const initial = name?.[0]?.toUpperCase() || 'U';
 
   if (showFallback) {
@@ -37,9 +42,14 @@ export const CustomAvatar: React.FC<CustomAvatarProps> = ({
 
   return (
     <img
-      src={src}
+      key={src || 'avatar'}
+      src={hasSrc ? src! : undefined}
       alt={name || 'User avatar'}
       className={`${sizeClasses[size]} ${className} rounded-full object-cover ring-1 ring-border`}
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
+      loading="lazy"
+      decoding="async"
       onError={() => setErrored(true)}
     />
   );

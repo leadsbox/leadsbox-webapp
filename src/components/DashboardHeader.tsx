@@ -82,22 +82,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           <DropdownMenuTrigger asChild>
             <Button variant='ghost' className='gap-2 px-3'>
               <Link to='/dashboard' className='w-8 h-8 rounded-full overflow-hidden flex-shrink-0'>
-                {userAvatar ? (
-                  <img 
-                    src={userAvatar} 
-                    alt={formattedDisplayName} 
-                    className='w-full h-full object-cover'
-                    onError={(e) => {
-                      // If image fails to load, fall back to the CustomAvatar
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                ) : null}
                 <CustomAvatar 
+                  src={userAvatar || undefined}
                   name={formattedDisplayName} 
                   size='md' 
-                  className={`w-full h-full ${userAvatar ? 'hidden' : ''}`} 
+                  className='w-full h-full' 
                 />
               </Link>
               <div className='text-left hidden sm:block'>
@@ -114,7 +103,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
               <Link to='/dashboard' className='flex-1 flex items-center justify-between p-2'>
                 <div className='flex items-center gap-2'>
                   <div className='w-8 h-8 p-1 rounded-sm flex items-center justify-center'>
-                    <img src={userAvatar} alt={formattedDisplayName} className='w-full h-full object-contain' />
+                    <CustomAvatar
+                      src={userAvatar || undefined}
+                      name={formattedDisplayName}
+                      size='sm'
+                      className='w-full h-full'
+                    />
                   </div>
                   <div>
                     <p className='text-sm font-medium'>{formattedDisplayName}</p>
