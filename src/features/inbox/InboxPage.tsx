@@ -1,7 +1,7 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock, Menu, X } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -33,6 +33,21 @@ const InboxPage: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [mobileThreadsOpen]);
+
+  // Allow the global header hamburger to control the inbox threads drawer on mobile
+  useEffect(() => {
+    const toggle = () => setMobileThreadsOpen((v) => !v);
+    const open = () => setMobileThreadsOpen(true);
+    const close = () => setMobileThreadsOpen(false);
+    window.addEventListener('lb:toggle-inbox-threads', toggle);
+    window.addEventListener('lb:open-inbox-threads', open);
+    window.addEventListener('lb:close-inbox-threads', close);
+    return () => {
+      window.removeEventListener('lb:toggle-inbox-threads', toggle);
+      window.removeEventListener('lb:open-inbox-threads', open);
+      window.removeEventListener('lb:close-inbox-threads', close);
+    };
+  }, []);
 
   const filteredThreads = mockThreads.filter(thread => {
     const matchesSearch = thread.lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -223,19 +238,9 @@ const InboxPage: React.FC = () => {
         {selectedThread ? (
           <>
             {/* Conversation Header */}
-            <div className="p-3 sm:p-4 border-b border-border bg-card sticky top-16 z-10">
+            <div className="p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  {/* Mobile: open threads */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden"
-                    aria-label="Open threads"
-                    onClick={() => setMobileThreadsOpen(true)}
-                  >
-                    <Menu className="h-5 w-5" />
-                  </Button>
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={selectedThread.lead.name} />
                     <AvatarFallback>
@@ -335,6 +340,7 @@ const InboxPage: React.FC = () => {
 
       {/* Mobile Threads Drawer */}
       <div
+        id="mobile-threads"
         className={`md:hidden fixed inset-0 z-40 ${mobileThreadsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         aria-hidden={!mobileThreadsOpen}
       >

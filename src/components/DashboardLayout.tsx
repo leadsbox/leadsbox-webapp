@@ -73,6 +73,21 @@ export const DashboardLayout: React.FC = () => {
     return () => mq.removeEventListener('change', listener);
   }, []);
 
+  // Allow other components (e.g., header menu on Inbox) to control the global mobile sidebar
+  useEffect(() => {
+    const toggle = () => setMobileOpen((v) => !v);
+    const open = () => setMobileOpen(true);
+    const close = () => setMobileOpen(false);
+    window.addEventListener('lb:toggle-global-sidebar', toggle);
+    window.addEventListener('lb:open-global-sidebar', open);
+    window.addEventListener('lb:close-global-sidebar', close);
+    return () => {
+      window.removeEventListener('lb:toggle-global-sidebar', toggle);
+      window.removeEventListener('lb:open-global-sidebar', open);
+      window.removeEventListener('lb:close-global-sidebar', close);
+    };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('lb_sidebar_collapsed', JSON.stringify(sidebarCollapsed));

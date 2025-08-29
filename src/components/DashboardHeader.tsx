@@ -76,11 +76,19 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         <Button
           variant='ghost'
           size='icon'
-          onClick={onSidebarToggle}
+          onClick={() => {
+            const isInbox = location.pathname.startsWith('/dashboard/inbox');
+            const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+            if (isInbox && isMobile) {
+              window.dispatchEvent(new CustomEvent('lb:toggle-inbox-threads'));
+              return;
+            }
+            onSidebarToggle?.();
+          }}
           className='md:hidden'
           aria-label='Open menu'
           aria-expanded={sidebarOpen}
-          aria-controls='mobile-sidebar'
+          aria-controls={location.pathname.startsWith('/dashboard/inbox') ? 'mobile-threads' : 'mobile-sidebar'}
         >
           <Menu className='h-6 w-6' />
         </Button>
@@ -218,6 +226,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {/* Mobile-only: open global navigation drawer */}
+            <DropdownMenuItem className='md:hidden' onClick={() => window.dispatchEvent(new CustomEvent('lb:toggle-global-sidebar'))}>
+              <Menu className='mr-2 h-4 w-4' />
+              <span>Open Navigation</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className='md:hidden' />
             <DropdownMenuItem asChild>
               <Link to='/dashboard/settings' className='cursor-pointer'>
                 <User className='mr-2 h-4 w-4' />
