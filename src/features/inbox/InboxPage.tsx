@@ -1,7 +1,7 @@
 // Inbox Page Component for LeadsBox Dashboard
 
-import React, { useState } from 'react';
-import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock, Menu, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -25,6 +25,14 @@ const InboxPage: React.FC = () => {
   const [selectedThread, setSelectedThread] = useState<Thread | null>(mockThreads[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'mine' | 'hot'>('all');
+  const [mobileThreadsOpen, setMobileThreadsOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileThreadsOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileThreadsOpen]);
 
   const filteredThreads = mockThreads.filter(thread => {
     const matchesSearch = thread.lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -85,8 +93,8 @@ const InboxPage: React.FC = () => {
 
   return (
     <div className="flex h-full bg-background">
-      {/* Thread List Sidebar */}
-      <div className="w-96 border-r border-border flex flex-col">
+      {/* Thread List Sidebar - Desktop */}
+      <div className="hidden md:flex w-96 border-r border-border flex-col">
         {/* Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-4">
@@ -211,13 +219,23 @@ const InboxPage: React.FC = () => {
       </div>
 
       {/* Message View */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {selectedThread ? (
           <>
             {/* Conversation Header */}
-            <div className="p-4 border-b border-border bg-card">
+            <div className="p-3 sm:p-4 border-b border-border bg-card sticky top-16 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
+                  {/* Mobile: open threads */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    aria-label="Open threads"
+                    onClick={() => setMobileThreadsOpen(true)}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={selectedThread.lead.name} />
                     <AvatarFallback>
@@ -252,7 +270,7 @@ const InboxPage: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-auto p-4 space-y-4">
+            <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
               {mockMessages
                 .filter((msg) => msg.threadId === selectedThread.id)
                 .map((message) => (
@@ -290,7 +308,7 @@ const InboxPage: React.FC = () => {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-border">
+            <div className="p-3 sm:p-4 border-t border-border bg-card/50">
               <div className="flex items-center space-x-2">
                 <Input
                   placeholder="Type your message..."
@@ -313,6 +331,108 @@ const InboxPage: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Mobile Threads Drawer */}
+      <div
+        className={`md:hidden fixed inset-0 z-40 ${mobileThreadsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        aria-hidden={!mobileThreadsOpen}
+      >
+        <div
+          className={`absolute inset-0 bg-black/40 transition-opacity ${mobileThreadsOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setMobileThreadsOpen(false)}
+        />
+        <aside
+          className={`absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-card border-r border-border shadow-lg transition-transform duration-300 ease-in-out ${mobileThreadsOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Threads"
+        >
+          {/* Drawer Header */}
+          <div className="p-3 border-b border-border flex items-center justify-between">
+            <h2 className="font-semibold">Inbox</h2>
+            <Button variant="ghost" size="icon" aria-label="Close threads" onClick={() => setMobileThreadsOpen(false)}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          {/* Same content as desktop sidebar */}
+          <div className="p-3 border-b border-border">
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)}>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="unread">Unread</TabsTrigger>
+                <TabsTrigger value="mine">Mine</TabsTrigger>
+                <TabsTrigger value="hot">Hot</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <div className="flex-1 overflow-auto">
+            {filteredThreads.length === 0 ? (
+              <div className="p-6 text-center">
+                <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No conversations found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+              </div>
+            ) : (
+              filteredThreads.map((thread) => (
+                <div
+                  key={thread.id}
+                  onClick={() => { setSelectedThread(thread); setMobileThreadsOpen(false); }}
+                  className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors ${
+                    selectedThread?.id === thread.id ? 'bg-muted border-l-4 border-l-primary' : ''
+                  }`}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="relative">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={thread.lead.name} />
+                        <AvatarFallback>
+                          {thread.lead.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1 text-lg">
+                        {getChannelIcon(thread.channel)}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-medium text-foreground truncate">
+                          {thread.lead.name}
+                        </h3>
+                        <div className="flex items-center space-x-1">
+                          {thread.isUnread && <div className="w-2 h-2 bg-primary rounded-full" />}
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Badge variant="outline" className={getStatusColor(thread.status)}>
+                          {thread.status}
+                        </Badge>
+                        <Badge variant="outline" className={getPriorityColor(thread.priority)}>
+                          {thread.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {thread.lastMessage?.content || 'No messages yet'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );

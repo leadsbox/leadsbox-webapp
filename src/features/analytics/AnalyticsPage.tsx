@@ -81,14 +81,14 @@ const AnalyticsPage: React.FC = () => {
   const pieColors = [colors.primary, colors.secondary, colors.success, colors.danger, colors.purple];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-          <p className="text-muted-foreground">Track your performance and insights</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Analytics</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Track your performance and insights</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -112,7 +112,7 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Overview KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
@@ -199,7 +199,7 @@ const AnalyticsPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="trends" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Leads Over Time */}
             <Card>
               <CardHeader>
@@ -209,7 +209,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={trends.leadsOverTime}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis 
@@ -244,7 +244,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={trends.conversionsByStage}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -265,7 +265,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={trends.responseTimesTrend}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis 
@@ -294,7 +294,7 @@ const AnalyticsPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Top Sources */}
             <Card>
               <CardHeader>
@@ -377,7 +377,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={240}>
                   <RechartsPieChart>
                     <Pie
                       data={performance.channelDistribution}
@@ -407,7 +407,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={performance.channelDistribution}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="label" tick={{ fontSize: 12 }} />

@@ -138,12 +138,12 @@ const TasksPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Tasks</h1>
-          <p className="text-muted-foreground">Manage your tasks and deadlines</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tasks</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage your tasks and deadlines</p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -152,7 +152,7 @@ const TasksPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
@@ -209,8 +209,8 @@ const TasksPage: React.FC = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search tasks..."
@@ -228,7 +228,7 @@ const TasksPage: React.FC = () => {
 
       {/* Task Tabs */}
       <Tabs value={activeTab} onValueChange={(value: TabValue) => setActiveTab(value)}>
-        <TabsList>
+        <TabsList className="flex gap-2 overflow-x-auto">
           <TabsTrigger value="overdue" className="flex items-center space-x-2">
             <AlertTriangle className="h-3 w-3" />
             <span>Overdue ({overdueTasks.length})</span>

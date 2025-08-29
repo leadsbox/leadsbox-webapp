@@ -302,12 +302,12 @@ const PipelinePage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Sales Pipeline</h1>
-          <p className="text-muted-foreground">Track deals through your sales process</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sales Pipeline</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Track deals through your sales process</p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -371,7 +371,7 @@ const PipelinePage: React.FC = () => {
       </div>
 
       {/* Pipeline Board */}
-      <div className="min-h-[600px]">
+      <div className="min-h-[540px] sm:min-h-[600px]">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

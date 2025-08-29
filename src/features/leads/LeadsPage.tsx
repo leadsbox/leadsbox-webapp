@@ -117,12 +117,12 @@ const LeadsPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Leads</h1>
-          <p className="text-muted-foreground">Manage and track your leads</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Leads</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage and track your leads</p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -131,8 +131,8 @@ const LeadsPage: React.FC = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search leads..."
@@ -143,7 +143,7 @@ const LeadsPage: React.FC = () => {
         </div>
 
         <Tabs value={stageFilter} onValueChange={(value: Stage | 'ALL') => setStageFilter(value)}>
-          <TabsList>
+          <TabsList className="flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto">
             <TabsTrigger value="ALL">All</TabsTrigger>
             <TabsTrigger value="NEW">New</TabsTrigger>
             <TabsTrigger value="QUALIFIED">Qualified</TabsTrigger>
@@ -208,8 +208,8 @@ const LeadsPage: React.FC = () => {
         <CardHeader>
           <CardTitle>Leads ({filteredLeads.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="overflow-x-auto">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Lead</TableHead>

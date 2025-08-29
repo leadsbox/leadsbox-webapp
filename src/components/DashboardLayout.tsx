@@ -76,7 +76,9 @@ export const DashboardLayout: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem('lb_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
-    } catch {}
+    } catch (error) {
+      console.error('Failed to save sidebar state to localStorage:', error);
+    }
   }, [sidebarCollapsed]);
 
   // Prevent background scroll when mobile menu is open
