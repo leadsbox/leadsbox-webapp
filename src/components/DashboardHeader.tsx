@@ -76,19 +76,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         <Button
           variant='ghost'
           size='icon'
-          onClick={() => {
-            const isInbox = location.pathname.startsWith('/dashboard/inbox');
-            const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
-            if (isInbox && isMobile) {
-              window.dispatchEvent(new CustomEvent('lb:toggle-inbox-threads'));
-              return;
-            }
-            onSidebarToggle?.();
-          }}
+          onClick={onSidebarToggle}
           className='md:hidden'
           aria-label='Open menu'
           aria-expanded={sidebarOpen}
-          aria-controls={location.pathname.startsWith('/dashboard/inbox') ? 'mobile-threads' : 'mobile-sidebar'}
+          aria-controls='mobile-sidebar'
         >
           <Menu className='h-6 w-6' />
         </Button>

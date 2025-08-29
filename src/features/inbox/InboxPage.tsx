@@ -1,7 +1,7 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock, X } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock, X, ChevronLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -241,6 +241,16 @@ const InboxPage: React.FC = () => {
             <div className="p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
+                  {/* Mobile: back to conversations */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    aria-label="Back to conversations"
+                    onClick={() => setMobileThreadsOpen(true)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={selectedThread.lead.name} />
                     <AvatarFallback>
