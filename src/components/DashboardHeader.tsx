@@ -41,6 +41,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
   const { user, logout } = useAuth();
   console.log(user);
   const location = useLocation();
+  // Get the profile image URL
   const userAvatar = user?.profileImage;
   const formatName = (name: string) => {
     return name
@@ -80,9 +81,24 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant='ghost' className='gap-2 px-3'>
-              <Link to='/dashboard' className='w-8 h-8 p-1 rounded-sm flex items-center justify-center'>
-                {/* <CustomAvatar src={userAvatar} name={formattedDisplayName} size='md' className='w-full' /> */}
-                <img src={userAvatar} alt={formattedDisplayName} className='w-full h-full object-contain' />
+              <Link to='/dashboard' className='w-8 h-8 rounded-full overflow-hidden flex-shrink-0'>
+                {userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt={formattedDisplayName} 
+                    className='w-full h-full object-cover'
+                    onError={(e) => {
+                      // If image fails to load, fall back to the CustomAvatar
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <CustomAvatar 
+                  name={formattedDisplayName} 
+                  size='md' 
+                  className={`w-full h-full ${userAvatar ? 'hidden' : ''}`} 
+                />
               </Link>
               <div className='text-left hidden sm:block'>
                 <p className='text-sm font-medium'>{formattedDisplayName}</p>
