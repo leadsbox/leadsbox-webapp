@@ -10,6 +10,7 @@ import { Mail, Lock, Eye, EyeOff, User, Building } from 'lucide-react';
 import { API_BASE, endpoints } from '@/api/config';
 import client from '@/api/client';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 declare global {
   interface Window {
@@ -31,6 +32,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
+  const [agree, setAgree] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -87,6 +89,11 @@ const Register = () => {
 
     if (!username || !email || !password || !confirmPassword || !organizationName) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (!agree) {
+      toast.error('You must agree to the Privacy Policy to continue');
       return;
     }
 
@@ -273,7 +280,17 @@ const Register = () => {
               </div>
             </div>
 
-            <Button type='submit' className='w-full' disabled={isLoading}>
+            <div className='space-y-3'>
+              <div className='flex items-start gap-2'>
+                <Checkbox id='agree' checked={agree} onCheckedChange={(v) => setAgree(!!v)} />
+                <Label htmlFor='agree' className='text-sm text-muted-foreground'>
+                  I agree to the{' '}
+                  <Link to='/privacy' className='text-primary hover:underline'>Privacy Policy</Link>
+                </Label>
+              </div>
+            </div>
+
+            <Button type='submit' className='w-full mt-2' disabled={isLoading || !agree}>
               {isLoading ? 'Creating account...' : 'Create Account'}
             </Button>
           </form>
