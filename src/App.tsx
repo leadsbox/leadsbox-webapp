@@ -20,6 +20,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
 
 // Dashboard Pages
 import InboxPage from "./features/inbox/InboxPage";
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               
               {/* Protected Dashboard Routes */}
               <Route path="/dashboard" element={

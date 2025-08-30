@@ -12,7 +12,7 @@ export const endpoints = {
   refresh: '/auth/refresh',
   logout: '/auth/logout',
   me: '/auth/me',
-  verifyEmail: '/auth/email/verify',
+  verifyEmailByToken: (token: string) => `/auth/verify-email/${token}`,
   resendVerification: '/auth/resend-verification',
   checkUsername: '/auth/check-username',
   

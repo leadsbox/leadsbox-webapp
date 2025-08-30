@@ -26,8 +26,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Check if we're coming back from OAuth
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
+        const path = window.location.pathname || '';
         
-        if (token) {
+        // Only treat ?token as an access token for OAuth redirects, not for /verify-email
+        if (token && !path.startsWith('/verify-email')) {
           // We have a token from OAuth, store it
           setAccessToken(token);
           // Remove token from URL to prevent issues
