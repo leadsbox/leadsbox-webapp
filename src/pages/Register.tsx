@@ -284,8 +284,8 @@ const Register = () => {
               <div className='flex items-start gap-2'>
                 <Checkbox id='agree' checked={agree} onCheckedChange={(v) => setAgree(!!v)} />
                 <Label htmlFor='agree' className='text-sm text-muted-foreground'>
-                  I agree to the{' '}
-                  <Link to='/privacy' className='text-primary hover:underline'>Privacy Policy</Link>
+                  I agree to the <Link to='/privacy' className='text-primary hover:underline'>Privacy Policy</Link> and{' '}
+                  <Link to='/terms' className='text-primary hover:underline'>Terms of Service</Link>
                 </Label>
               </div>
             </div>
