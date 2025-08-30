@@ -36,6 +36,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           window.history.replaceState({}, document.title, window.location.pathname);
         }
 
+        // Skip auth check on public auth pages to avoid redirect churn
+        const isPublicAuthPage = (
+          path.startsWith('/login') ||
+          path.startsWith('/register') ||
+          path.startsWith('/verify-email') ||
+          path.startsWith('/forgot-password') ||
+          path.startsWith('/reset-password')
+        );
+        if (isPublicAuthPage) {
+          setUser(null);
+          setloading(false);
+          return;
+        }
+
         // Get user data
         const { data } = await client.get(endpoints.me);
 

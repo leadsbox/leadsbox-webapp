@@ -109,9 +109,16 @@ client.interceptors.response.use(
         // Clear auth state on refresh failure
         setAccessToken('');
         setOrgId('');
-        // Only redirect if not already on login/register pages
-        const currentPath = window.location.pathname;
-        if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
+        // Only redirect if not already on public auth pages
+        const currentPath = window.location.pathname || '';
+        const isPublicAuthPage = (
+          currentPath.startsWith('/login') ||
+          currentPath.startsWith('/register') ||
+          currentPath.startsWith('/verify-email') ||
+          currentPath.startsWith('/forgot-password') ||
+          currentPath.startsWith('/reset-password')
+        );
+        if (!isPublicAuthPage) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
