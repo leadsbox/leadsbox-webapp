@@ -296,7 +296,7 @@ const InboxPage: React.FC = () => {
                     }`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                         message.sender === 'AGENT'
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-foreground'
@@ -359,7 +359,7 @@ const InboxPage: React.FC = () => {
           onClick={() => setMobileThreadsOpen(false)}
         />
         <aside
-          className={`absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-card border-r border-border shadow-lg transition-transform duration-300 ease-in-out ${mobileThreadsOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className={`absolute inset-y-2 left-2 w-80 max-w-[85vw] bg-card border border-border shadow-xl rounded-2xl overflow-hidden transition-transform duration-300 ease-in-out ${mobileThreadsOpen ? 'translate-x-0' : '-translate-x-full'}`}
           role="dialog"
           aria-modal="true"
           aria-label="Threads"

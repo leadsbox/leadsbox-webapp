@@ -97,6 +97,24 @@ function TelegramIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox='0 0 24 24' aria-hidden='true' {...props}>
+      <defs>
+        <linearGradient id='ig' x1='0%' y1='0%' x2='100%' y2='100%'>
+          <stop offset='0%' stopColor='#F58529' />
+          <stop offset='50%' stopColor='#DD2A7B' />
+          <stop offset='100%' stopColor='#8134AF' />
+        </linearGradient>
+      </defs>
+      <rect x='2' y='2' width='20' height='20' rx='5' fill='url(#ig)' />
+      <circle cx='12' cy='12' r='4' fill='#fff' />
+      <circle cx='17.5' cy='6.5' r='1.2' fill='#fff' />
+      <circle cx='12' cy='12' r='2.5' fill='url(#ig)' />
+    </svg>
+  );
+}
+
 function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox='0 0 24 24' aria-hidden='true' {...props}>
@@ -146,7 +164,9 @@ const Index = () => {
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <a href="/" className="flex items-center gap-3 transition-transform hover:scale-105">
-            <img src="/leadsboxlogo.svg" alt="LeadsBox" className="h-8 w-8 object-contain" />
+            <div className="w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center">
+              <img src="/leadsboxlogo.svg" alt="LeadsBox Logo" className="w-full h-full object-contain" />
+            </div>
             <span className="text-xl font-semibold">LeadsBox</span>
           </a>
 
@@ -205,21 +225,21 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Announcement Banner */}
-      <div className="container mx-auto px-4 pt-6">
-        <Badge variant="secondary" className="mx-auto flex w-fit items-center gap-2 animate-fade-in">
-          <WhatsAppIcon className="h-4 w-4" />
-          <span>&</span>
-          <TelegramIcon className="h-4 w-4" />
-          <span>Chat-commerce integration now live →</span>
-        </Badge>
-      </div>
-
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16" id="product">
         <div className="grid lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-6 space-y-8">
             <div className="space-y-6 animate-slide-in-left">
+              <div className="-mt-4">
+                <Badge variant="secondary" className="flex w-fit items-center gap-2">
+                  <WhatsAppIcon className="h-4 w-4" />
+                  <span>&</span>
+                  <InstagramIcon className="h-4 w-4" />
+                  <span>&</span>
+                  <TelegramIcon className="h-4 w-4" />
+                  <span>Chat-commerce integration now live →</span>
+                </Badge>
+              </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">Turn social DMs into revenue.</h1>
               <p className="text-lg text-muted-foreground max-w-xl">One inbox for WhatsApp + Instagram with AI that tags, follows up, and nudges deals to paid.</p>
             </div>
@@ -273,7 +293,9 @@ const Index = () => {
               <CardContent className="p-0">
                 {/* Chat Header */}
                 <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/50">
-                  <img src="/leadsboxlogo.svg" alt="LeadsBox" className="h-8 w-8 rounded-sm object-contain" />
+                  <div className="w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center">
+                    <img src="/leadsboxlogo.svg" alt="LeadsBox Logo" className="w-full h-full object-contain" />
+                  </div>
                   <div>
                     <div className="font-medium">LeadsBox Bot</div>
                     <div className="text-xs text-muted-foreground">WhatsApp • Online</div>
@@ -372,9 +394,11 @@ const Index = () => {
               <WhatsAppIcon className="h-4 w-4" /> WhatsApp Business
             </Badge>
             <Badge variant="outline" className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-sm bg-gradient-to-br from-pink-500 to-purple-500" /> Instagram
+              <InstagramIcon className="h-4 w-4" /> Instagram
             </Badge>
-            <Badge variant="secondary">Telegram, Facebook and more — soon</Badge>
+            <Badge variant="outline" className="flex items-center gap-2">
+              <TelegramIcon className="h-4 w-4" /> Telegram
+            </Badge>
           </div>
         </div>
       </section>
@@ -536,8 +560,8 @@ const Index = () => {
         <div className="container mx-auto px-4 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-                <span className="text-xs font-bold text-primary-foreground">LB</span>
+              <div className="w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center">
+                <img src="/leadsboxlogo.svg" alt="LeadsBox Logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-semibold">LeadsBox</span>
               <span className="text-muted-foreground">© {new Date().getFullYear()}</span>
