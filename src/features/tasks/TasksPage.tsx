@@ -145,14 +145,14 @@ const TasksPage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tasks</h1>
           <p className="text-sm sm:text-base text-muted-foreground">Manage your tasks and deadlines</p>
         </div>
-        <Button>
+        <Button className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Task
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
@@ -220,7 +220,7 @@ const TasksPage: React.FC = () => {
           />
         </div>
 
-        <Button variant="outline">
+        <Button variant="outline" className="w-full sm:w-auto">
           <Filter className="h-4 w-4 mr-2" />
           Filter
         </Button>
@@ -228,20 +228,20 @@ const TasksPage: React.FC = () => {
 
       {/* Task Tabs */}
       <Tabs value={activeTab} onValueChange={(value: TabValue) => setActiveTab(value)}>
-        <TabsList className="flex gap-2 overflow-x-auto">
-          <TabsTrigger value="overdue" className="flex items-center space-x-2">
+        <TabsList className="flex gap-2 overflow-x-auto whitespace-nowrap">
+          <TabsTrigger value="overdue" className="flex items-center space-x-2 shrink-0">
             <AlertTriangle className="h-3 w-3" />
             <span>Overdue ({overdueTasks.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="today" className="flex items-center space-x-2">
+          <TabsTrigger value="today" className="flex items-center space-x-2 shrink-0">
             <Clock className="h-3 w-3" />
             <span>Today ({todayTasks.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="upcoming" className="flex items-center space-x-2">
+          <TabsTrigger value="upcoming" className="flex items-center space-x-2 shrink-0">
             <Calendar className="h-3 w-3" />
             <span>Upcoming ({upcomingTasks.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center space-x-2">
+          <TabsTrigger value="all" className="flex items-center space-x-2 shrink-0">
             <CheckSquare className="h-3 w-3" />
             <span>All ({mockTasks.length})</span>
           </TabsTrigger>
@@ -294,10 +294,10 @@ const TasksPage: React.FC = () => {
 
                           {/* Task Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                               <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <h3 className={`font-medium ${
+                                <div className="flex items-center space-x-2 mb-1 min-w-0">
+                                  <h3 className={`font-medium truncate ${
                                     task.status === 'COMPLETED' ? 'line-through text-muted-foreground' : 'text-foreground'
                                   }`}>
                                     {task.title}
@@ -311,7 +311,7 @@ const TasksPage: React.FC = () => {
                                   </p>
                                 )}
 
-                                <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                                   <div className="flex items-center space-x-1">
                                     {getTypeIcon(task.type)}
                                     <span className="capitalize">{task.type.replace('_', ' ')}</span>
@@ -339,7 +339,7 @@ const TasksPage: React.FC = () => {
                               </div>
 
                               {/* Task Actions */}
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
                                 <Badge variant="outline" className={getPriorityColor(task.priority)}>
                                   <Flag className="h-3 w-3 mr-1" />
                                   {task.priority}
