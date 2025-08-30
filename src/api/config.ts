@@ -15,6 +15,8 @@ export const endpoints = {
   verifyEmailByToken: (token: string) => `/auth/verify-email/${token}`,
   resendVerification: '/auth/resend-verification',
   checkUsername: '/auth/check-username',
+  forgotPassword: '/auth/forgot-password',
+  resetPassword: '/auth/reset-password',
   
   // Orgs (backend path is /orgs)
   orgs: '/orgs',
