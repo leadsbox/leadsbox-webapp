@@ -34,8 +34,8 @@ const Register = () => {
   const navigate = useNavigate();
 
   const handleGoogleRedirect = () => {
-    // No need for a callback URL - the backend will handle the redirect
-    window.location.href = `${API_BASE}${endpoints.google.login}`;
+    const next = encodeURIComponent('/dashboard');
+    window.location.href = `${API_BASE}${endpoints.google.login}?next=${next}`;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

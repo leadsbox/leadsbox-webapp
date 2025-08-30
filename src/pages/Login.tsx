@@ -19,9 +19,9 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleGoogleRedirect = () => {
-    // Include the current origin as the redirect_uri
-    const redirectUri = encodeURIComponent(window.location.origin);
-    window.location.href = `${API_BASE}${endpoints.google.login}?redirect_uri=${redirectUri}`;
+    // Land on home dashboard after OAuth
+    const next = encodeURIComponent('/dashboard');
+    window.location.href = `${API_BASE}${endpoints.google.login}?next=${next}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
