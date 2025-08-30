@@ -143,7 +143,7 @@ const InboxPage: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)}>
+          <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="unread">Unread</TabsTrigger>
@@ -382,7 +382,7 @@ const InboxPage: React.FC = () => {
                 className="pl-10"
               />
             </div>
-            <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)}>
+            <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="unread">Unread</TabsTrigger>
