@@ -88,12 +88,12 @@ client.interceptors.response.use(
           { withCredentials: true }
         );
 
-        // Get fresh user data with new token
+        // Get fresh user data with new token from /auth/me
         const userResponse = await axios.get(
-          `${API_BASE}/user/profile`,
+          `${API_BASE}/auth/me`,
           { withCredentials: true }
         );
-        
+
         const newToken = userResponse?.data?.accessToken;
         if (newToken) {
           setAccessToken(newToken);

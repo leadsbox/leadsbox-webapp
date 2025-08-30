@@ -31,6 +31,9 @@ import {
 import { CustomAvatar } from './ui/custom-avatar';
 import { Badge } from './ui/badge';
 import { useAuth } from '../context/AuthContext';
+import client from '../api/client';
+import { endpoints } from '../api/config';
+import { toast } from 'react-toastify';
 
 interface DashboardHeaderProps {
   onSidebarToggle?: () => void;
@@ -68,10 +71,32 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     logout();
   };
 
+  const resendVerification = async () => {
+    try {
+      if (!user?.email) return;
+      await client.post(endpoints.resendVerification, { email: user.email });
+      toast.success('Verification email sent');
+    } catch (e) {
+      console.error('Failed to resend verification email', e);
+      toast.error('Failed to resend verification email');
+    }
+  };
+
   return (
-    <header className='dashboard-header sticky top-0 z-30 h-16 px-3 sm:px-4 flex items-center justify-between border-b border-border bg-card/60 backdrop-blur-md supports-[backdrop-filter]:bg-card/60'>
-      {/* Left section - Logo and navigation */}
-      <div className='flex items-center space-x-4'>
+    <header className='dashboard-header sticky top-0 z-30 px-3 sm:px-4 border-b border-border bg-card/60 backdrop-blur-md supports-[backdrop-filter]:bg-card/60'>
+      {user && (user as any).emailVerified === false && (
+        <div className='w-full bg-amber-50 text-amber-800 text-xs sm:text-sm px-3 py-2 rounded-b-md flex items-center justify-between border-b border-amber-200'>
+          <span>
+            Your email is not verified. Please check your inbox.
+          </span>
+          <Button size='sm' variant='outline' onClick={resendVerification} className='ml-3'>
+            Resend link
+          </Button>
+        </div>
+      )}
+      <div className='h-16 flex items-center justify-between'>
+        {/* Left section - Logo and navigation */}
+        <div className='flex items-center space-x-4'>
         {/* Sidebar toggle */}
         <Button
           variant='ghost'
@@ -138,26 +163,22 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Current page indicator */}
-        {/* <div className='hidden md:flex items-center ml-4 border-l border-border pl-4 h-8'>
-          <h1 className='text-lg font-semibold text-foreground'>{currentPage?.label || 'Dashboard'}</h1>
-        </div> */}
-      </div>
-
-      {/* Center section - Search */}
-      <div className='flex-1 max-w-md mx-4 hidden lg:block'>
-        <div className='relative'>
-          <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-          <Input placeholder='Search leads, messages, tasks...' className='pl-10 bg-muted/50 border-muted-foreground/20 focus:bg-background' />
         </div>
-      </div>
 
-      {/* Right section - Actions and user menu */}
-      <div className='flex items-center space-x-2'>
-        {/* Search button for mobile */}
-        <Button variant='ghost' size='icon' className='lg:hidden'>
-          <Search className='h-5 w-5' />
-        </Button>
+        {/* Center section - Search */}
+        <div className='flex-1 max-w-md mx-4 hidden lg:block'>
+          <div className='relative'>
+            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+            <Input placeholder='Search leads, messages, tasks...' className='pl-10 bg-muted/50 border-muted-foreground/20 focus:bg-background' />
+          </div>
+        </div>
+
+        {/* Right section - Actions and user menu */}
+        <div className='flex items-center space-x-2'>
+          {/* Search button for mobile */}
+          <Button variant='ghost' size='icon' className='lg:hidden'>
+            <Search className='h-5 w-5' />
+          </Button>
 
         {/* Notifications */}
         <DropdownMenu>
@@ -243,6 +264,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   );

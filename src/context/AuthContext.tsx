@@ -8,7 +8,7 @@ type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (params: { email: string; password: string; username: string; organizationName: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   setOrg: (id: string) => void;
@@ -61,14 +61,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string): Promise<void> => {
     setloading(true);
     try {
-      const { data } = await client.post<AuthResponse>(endpoints.login, {
-        email,
+      const res = await client.post(endpoints.login, {
+        identifier: email,
         password,
       });
 
-      if (data?.user) {
-        setUser(data.user);
-        toast.success(`Welcome back, ${data.user.username}!`);
+      const payload = res?.data?.data || {};
+      const profile = payload?.profile;
+      const token = payload?.token || payload?.profile?.token;
+
+      if (token) setAccessToken(token);
+      if (profile) {
+        setUser(profile);
+        toast.success(`Welcome back, ${profile.username || profile.email}!`);
       } else {
         throw new Error('Login failed');
       }
@@ -81,18 +86,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (email: string, password: string, name?: string): Promise<void> => {
+  const register = async (params: { email: string; password: string; username: string; organizationName: string }): Promise<void> => {
     setloading(true);
     try {
-      const { data } = await client.post<AuthResponse>(endpoints.register, {
-        email,
-        password,
-        name,
-      });
+      const { email, password, username, organizationName } = params;
+      const res = await client.post(endpoints.register, { email, password, username, organizationName });
 
-      if (data?.user) {
-        setUser(data.user);
-        toast.success(`Welcome to LeadsBox, ${data.user.username}!`);
+      const payload = res?.data?.data || {};
+      const profile = payload?.profile; // register returns token inside profile
+      const token = payload?.token || payload?.profile?.token;
+
+      if (token) setAccessToken(token);
+      if (profile) {
+        setUser(profile);
+        toast.success(`Welcome to LeadsBox, ${profile.username || profile.email}!`);
+        // Org is created server-side during register; if backend returns orgId later we can set it here
       } else {
         throw new Error('Registration failed');
       }

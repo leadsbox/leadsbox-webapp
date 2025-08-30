@@ -13,6 +13,11 @@ export const endpoints = {
   logout: '/auth/logout',
   me: '/auth/me',
   verifyEmail: '/auth/email/verify',
+  resendVerification: '/auth/resend-verification',
+  checkUsername: '/auth/check-username',
+  
+  // Orgs (backend path is /orgs)
+  orgs: '/orgs',
   
   // OAuth & Social Auth
   google: {
@@ -20,9 +25,9 @@ export const endpoints = {
     callback: '/auth/google/callback',
   },
   
-  // User & Organization
-  profile: '/user/profile',
-  organization: '/organization',
+  // User & Organization (legacy keys kept for compatibility)
+  profile: '/user/profile', // not used by this backend; left for compat
+  organization: '/organization', // use endpoints.orgs instead
   members: '/organization/members',
   
   // Leads

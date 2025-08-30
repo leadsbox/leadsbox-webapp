@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'react-toastify';
 import { Mail, Lock, Eye, EyeOff, User, Building } from 'lucide-react';
 import { API_BASE, endpoints } from '@/api/config';
+import client from '@/api/client';
 import { cn } from '@/lib/utils';
 
 declare global {
@@ -18,8 +19,7 @@ declare global {
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -29,9 +29,25 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Auto-suggest username from email when empty
+  useEffect(() => {
+    if (!formData.username && formData.email) {
+      const local = formData.email.split('@')[0] || '';
+      const suggestion = local
+        .replace(/[^a-zA-Z0-9._]/g, '')
+        .toLowerCase()
+        .slice(0, 20);
+      if (suggestion) {
+        setFormData((prev) => ({ ...prev, username: suggestion }));
+      }
+    }
+  }, [formData.email]);
 
   const handleGoogleRedirect = () => {
     const next = encodeURIComponent('/dashboard');
@@ -43,15 +59,39 @@ const Register = () => {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    if (e.target.name === 'username') {
+      setUsernameAvailable(null);
+    }
+  };
+
+  const checkUsername = async (username: string) => {
+    const uname = (username || '').trim();
+    if (!uname) return;
+    setCheckingUsername(true);
+    try {
+      const res = await client.get(`${endpoints.checkUsername}?username=${encodeURIComponent(uname)}`);
+      const available = !!res?.data?.data?.available;
+      setUsernameAvailable(available);
+    } catch (e) {
+      setUsernameAvailable(null);
+      console.error('Username check failed', e);
+    } finally {
+      setCheckingUsername(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { firstName, lastName, email, password, confirmPassword, organizationName } = formData;
+    const { username, email, password, confirmPassword, organizationName } = formData;
 
-    if (!firstName || !lastName || !email || !password || !confirmPassword || !organizationName) {
+    if (!username || !email || !password || !confirmPassword || !organizationName) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (usernameAvailable === false) {
+      toast.error('Username is already taken. Please choose another.');
       return;
     }
 
@@ -68,8 +108,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      // The register function now expects email, password, and optional name as separate parameters
-      await register(email, password, `${firstName} ${lastName}`.trim());
+      await register({ email, password, username, organizationName });
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error) {
@@ -128,37 +167,27 @@ const Register = () => {
             </div>
           </div>
           <form onSubmit={handleSubmit} className='space-y-4'>
-            <div className='grid grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='firstName'>First Name</Label>
-                <div className='relative'>
-                  <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                  <Input
-                    id='firstName'
-                    name='firstName'
-                    type='text'
-                    placeholder='John'
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className='pl-10'
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='lastName'>Last Name</Label>
+            <div className='space-y-2'>
+              <Label htmlFor='username'>Username</Label>
+              <div className='relative'>
+                <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
                 <Input
-                  id='lastName'
-                  name='lastName'
+                  id='username'
+                  name='username'
                   type='text'
-                  placeholder='Doe'
-                  value={formData.lastName}
+                  placeholder='yourname'
+                  value={formData.username}
                   onChange={handleInputChange}
+                  onBlur={() => checkUsername(formData.username)}
+                  className='pl-10'
                   disabled={isLoading}
                 />
+                {checkingUsername && <p className='mt-1 text-xs text-muted-foreground'>Checking availability…</p>}
+                {usernameAvailable === true && !checkingUsername && <p className='mt-1 text-xs text-green-600'>Username is available</p>}
+                {usernameAvailable === false && !checkingUsername && <p className='mt-1 text-xs text-red-600'>Username is taken</p>}
               </div>
             </div>
+            {/* First/Last name moved to profile settings after registration */}
 
             <div className='space-y-2'>
               <Label htmlFor='organizationName'>Organization Name</Label>
