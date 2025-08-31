@@ -58,6 +58,10 @@ import { WhatsAppIcon, TelegramIcon, InstagramIcon, FacebookIcon } from '@/compo
 const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [organization, setOrganization] = useState(mockOrganization);
+  const [orgs, setOrgs] = useState<Array<{ id: string; name: string; settings?: any }>>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [createOrgName, setCreateOrgName] = useState('');
   const [members, setMembers] = useState(mockUsers);
   const [tags, setTags] = useState(['hot-lead', 'enterprise', 'startup', 'demo-requested', 'negotiation', 'follow-up']);
   const [newTag, setNewTag] = useState('');
@@ -88,6 +92,32 @@ const SettingsPage: React.FC = () => {
       setAvatar(user.profileImage || user.avatar || '');
     }
   }, [user]);
+
+  // Load organizations
+  useEffect(() => {
+    (async () => {
+      try {
+        setOrgLoading(true);
+        const resp = await client.get('/orgs');
+        const list: Array<any> = resp?.data?.data?.orgs || [];
+        setOrgs(list);
+        if (list.length) {
+          setSelectedOrgId(list[0].id);
+          // Normalize with mock structure for UI compatibility
+          const normalized = {
+            ...mockOrganization,
+            ...list[0],
+            settings: { ...mockOrganization.settings, ...(list[0].settings || {}) },
+          };
+          setOrganization(normalized);
+        }
+      } catch (e) {
+        console.error('Failed to load organizations', e);
+      } finally {
+        setOrgLoading(false);
+      }
+    })();
+  }, []);
 
   const saveProfile = async () => {
     try {
@@ -268,9 +298,40 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleSaveOrganization = () => {
-    // In a real app, this would make an API call
-    console.log('Saving organization settings:', organization);
+  const handleSaveOrganization = async () => {
+    if (!selectedOrgId) return;
+    try {
+      await client.put(`/orgs/${selectedOrgId}`, { name: organization.name });
+      toast.success('Organization updated');
+      // refresh list names
+      const next = orgs.map((o) => (o.id === selectedOrgId ? { ...o, name: organization.name } : o));
+      setOrgs(next);
+    } catch (e) {
+      toast.error('Failed to update organization');
+    }
+  };
+
+  const handleCreateOrganization = async () => {
+    const name = createOrgName.trim();
+    if (!name) {
+      toast.error('Please enter a name');
+      return;
+    }
+    try {
+      const resp = await client.post('/orgs', { name });
+      const org = resp?.data?.data?.org;
+      if (org) {
+        const updated = [org, ...orgs];
+        setOrgs(updated);
+        setSelectedOrgId(org.id);
+        const normalized = { ...mockOrganization, ...org, settings: { ...mockOrganization.settings, ...(org.settings || {}) } };
+        setOrganization(normalized);
+        setCreateOrgName('');
+        toast.success('Organization created');
+      }
+    } catch (e) {
+      toast.error('Failed to create organization');
+    }
   };
 
   const handleAddTag = () => {
@@ -364,6 +425,35 @@ const SettingsPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div>
+                  <Label>Select Organization</Label>
+                  <Select value={selectedOrgId} onValueChange={(v) => {
+                    setSelectedOrgId(v);
+                    const sel = orgs.find((o) => o.id === v);
+                    if (sel) {
+                      const normalized = { ...mockOrganization, ...sel, settings: { ...mockOrganization.settings, ...(sel.settings || {}) } };
+                      setOrganization(normalized);
+                    }
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={orgLoading ? 'Loading...' : 'Choose organization'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orgs.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Create New</Label>
+                  <div className='flex gap-2'>
+                    <Input value={createOrgName} onChange={(e) => setCreateOrgName(e.target.value)} placeholder='New organization name' />
+                    <Button onClick={handleCreateOrganization}>Create</Button>
+                  </div>
+                </div>
+              </div>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <div>
                   <Label htmlFor='org-name'>Organization Name</Label>
