@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Settings,
   Users,
   Building,
   Tag,
@@ -137,7 +136,9 @@ const SettingsPage: React.FC = () => {
         const resp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
         const connected = !!resp?.data?.data?.connected;
         setWaConnected(connected);
-      } catch {}
+      } catch {
+        console.error('Failed to fetch WhatsApp status');
+      }
     })();
   }, [apiRoot]);
 
@@ -281,21 +282,11 @@ const SettingsPage: React.FC = () => {
               <div className='grid grid-cols-1 gap-4'>
                 <div>
                   <Label htmlFor='name'>Full Name</Label>
-                  <Input 
-                    id='name' 
-                    value={name} 
-                    onChange={(e) => setName(e.target.value)} 
-                    placeholder='John Doe' 
-                  />
+                  <Input id='name' value={name} onChange={(e) => setName(e.target.value)} placeholder='John Doe' />
                 </div>
                 <div>
                   <Label htmlFor='avatar'>Avatar URL</Label>
-                  <Input 
-                    id='avatar' 
-                    value={avatar} 
-                    onChange={(e) => setAvatar(e.target.value)} 
-                    placeholder='https://...' 
-                  />
+                  <Input id='avatar' value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder='https://...' />
                 </div>
               </div>
               <div className='flex justify-end'>
@@ -636,9 +627,13 @@ const SettingsPage: React.FC = () => {
                         </div>
                       </div>
                       {waConnected ? (
-                        <Badge variant='outline' className='bg-green-500/10 text-green-400'>Connected</Badge>
+                        <Badge variant='outline' className='bg-green-500/10 text-green-400'>
+                          Connected
+                        </Badge>
                       ) : (
-                        <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>Not Connected</Badge>
+                        <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                          Not Connected
+                        </Badge>
                       )}
                     </div>
                   </CardHeader>
@@ -654,11 +649,15 @@ const SettingsPage: React.FC = () => {
                               </SelectTrigger>
                               <SelectContent>
                                 {businesses.map((b) => (
-                                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.name}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={waLoading || !selectedBusiness}>Next</Button>
+                            <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={waLoading || !selectedBusiness}>
+                              Next
+                            </Button>
                           </div>
                           {wabas.length > 0 && (
                             <div>
@@ -669,11 +668,15 @@ const SettingsPage: React.FC = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {wabas.map((w) => (
-                                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                    <SelectItem key={w.id} value={w.id}>
+                                      {w.name}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={waLoading || !selectedWaba}>Next</Button>
+                              <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={waLoading || !selectedWaba}>
+                                Next
+                              </Button>
                             </div>
                           )}
                           {phones.length > 0 && (
@@ -685,11 +688,15 @@ const SettingsPage: React.FC = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {phones.map((p) => (
-                                    <SelectItem key={p.id} value={p.id}>{p.display}</SelectItem>
+                                    <SelectItem key={p.id} value={p.id}>
+                                      {p.display}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={waLoading || !selectedPhone}>Connect</Button>
+                              <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={waLoading || !selectedPhone}>
+                                Connect
+                              </Button>
                             </div>
                           )}
                         </div>
