@@ -71,7 +71,6 @@ const SettingsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const apiRoot = React.useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
-  const webhookUrl = `${apiRoot}/api/whatsapp/webhook`;
   const [waToken, setWaToken] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedBusiness, setSelectedBusiness] = useState('');
@@ -193,6 +192,23 @@ const SettingsPage: React.FC = () => {
       toast.error('Failed to link WhatsApp');
     } finally {
       setWaLoading(false);
+    }
+  };
+
+  const disconnectWhatsApp = async () => {
+    try {
+      await client.delete(`${apiRoot}/api/provider/whatsapp/disconnect`);
+      setWaConnected(false);
+      setWaToken(null);
+      setBusinesses([]);
+      setWabas([]);
+      setPhones([]);
+      setSelectedBusiness('');
+      setSelectedWaba('');
+      setSelectedPhone('');
+      toast.success('WhatsApp disconnected');
+    } catch (e) {
+      toast.error('Failed to disconnect WhatsApp');
     }
   };
 
@@ -678,20 +694,14 @@ const SettingsPage: React.FC = () => {
                           )}
                         </div>
                       ) : (
-                        <>
-                          <div>
-                            <Label>Webhook URL</Label>
-                            <Input value={webhookUrl} readOnly />
-                          </div>
-                          <div className='flex space-x-2'>
-                            <Button onClick={startWhatsAppConnect} className='flex-1'>
-                              {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
-                            </Button>
-                            <Button variant='outline' className='text-destructive' disabled={!waConnected}>
-                              Disconnect
-                            </Button>
-                          </div>
-                        </>
+                        <div className='flex space-x-2'>
+                          <Button onClick={startWhatsAppConnect} className='flex-1'>
+                            {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
+                          </Button>
+                          <Button variant='outline' className='text-destructive' disabled={!waConnected} onClick={disconnectWhatsApp}>
+                            Disconnect
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>
