@@ -72,6 +72,14 @@ const SettingsPage: React.FC = () => {
 
   const apiRoot = React.useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
   const webhookUrl = `${apiRoot}/api/whatsapp/webhook`;
+  const [waToken, setWaToken] = useState<string | null>(null);
+  const [businesses, setBusinesses] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedBusiness, setSelectedBusiness] = useState('');
+  const [wabas, setWabas] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedWaba, setSelectedWaba] = useState('');
+  const [phones, setPhones] = useState<Array<{ id: string; display: string }>>([]);
+  const [selectedPhone, setSelectedPhone] = useState('');
+  const [waLoading, setWaLoading] = useState(false);
 
   useEffect(() => {
     // initialize profile fields from user if available
@@ -94,10 +102,27 @@ const SettingsPage: React.FC = () => {
   // Check for WhatsApp connect status from query param
   useEffect(() => {
     const status = searchParams.get('whatsapp');
+    const token = searchParams.get('waToken');
     if (status === 'connected') {
       setWaConnected(true);
+      if (token) {
+        setWaToken(token);
+        // Kick off fetching businesses for multi-step
+        (async () => {
+          try {
+            const resp = await client.get(`${apiRoot}/api/provider/whatsapp/businesses`, {
+              params: { accessToken: token },
+            });
+            const list = resp?.data?.data?.data || resp?.data?.data || [];
+            setBusinesses(Array.isArray(list?.data) ? list.data : list);
+          } catch (e) {
+            toast.error('Failed to fetch businesses');
+          }
+        })();
+      }
       toast.success('WhatsApp connected');
       searchParams.delete('whatsapp');
+      searchParams.delete('waToken');
       setSearchParams(searchParams, { replace: true });
     } else if (status === 'error') {
       toast.error('WhatsApp connection failed');
@@ -105,6 +130,71 @@ const SettingsPage: React.FC = () => {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+  // Load connection status on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
+        const connected = !!resp?.data?.data?.connected;
+        setWaConnected(connected);
+      } catch {}
+    })();
+  }, [apiRoot]);
+
+  const confirmBusiness = async () => {
+    if (!waToken || !selectedBusiness) return;
+    setWaLoading(true);
+    try {
+      const resp = await client.post(`${apiRoot}/api/provider/whatsapp/select-business`, {
+        accessToken: waToken,
+        businessId: selectedBusiness,
+      });
+      const list = resp?.data?.data?.wabas || [];
+      setWabas(list);
+    } catch (e) {
+      toast.error('Failed to fetch WABAs');
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const confirmWaba = async () => {
+    if (!waToken || !selectedWaba) return;
+    setWaLoading(true);
+    try {
+      const resp = await client.post(`${apiRoot}/api/provider/whatsapp/select-waba`, {
+        accessToken: waToken,
+        wabaId: selectedWaba,
+      });
+      const list = resp?.data?.data?.phoneNumbers || [];
+      setPhones(list);
+    } catch (e) {
+      toast.error('Failed to fetch phone numbers');
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const finalizeConnect = async () => {
+    if (!waToken || !selectedWaba || !selectedPhone || !user?.id) return;
+    setWaLoading(true);
+    try {
+      await client.post(`${apiRoot}/api/provider/whatsapp/connect`, {
+        accessToken: waToken,
+        wabaId: selectedWaba,
+        phoneId: selectedPhone,
+        userId: user.id,
+      });
+      setWaConnected(true);
+      setWaToken(null);
+      toast.success('WhatsApp account linked');
+    } catch (e) {
+      toast.error('Failed to link WhatsApp');
+    } finally {
+      setWaLoading(false);
+    }
+  };
 
   const startWhatsAppConnect = () => {
     window.location.href = `${apiRoot}/api/provider/whatsapp`;
@@ -538,18 +628,71 @@ const SettingsPage: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className='space-y-3'>
-                      <div>
-                        <Label>Webhook URL</Label>
-                        <Input value={webhookUrl} readOnly />
-                      </div>
-                      <div className='flex space-x-2'>
-                        <Button onClick={startWhatsAppConnect} className='flex-1'>
-                          {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
-                        </Button>
-                        <Button variant='outline' className='text-destructive' disabled={!waConnected}>
-                          Disconnect
-                        </Button>
-                      </div>
+                      {!waConnected && waToken ? (
+                        <div className='space-y-4'>
+                          <div>
+                            <Label>Business</Label>
+                            <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Select business' />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {businesses.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={waLoading || !selectedBusiness}>Next</Button>
+                          </div>
+                          {wabas.length > 0 && (
+                            <div>
+                              <Label>WABA</Label>
+                              <Select value={selectedWaba} onValueChange={setSelectedWaba}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder='Select WABA' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {wabas.map((w) => (
+                                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={waLoading || !selectedWaba}>Next</Button>
+                            </div>
+                          )}
+                          {phones.length > 0 && (
+                            <div>
+                              <Label>Phone Number</Label>
+                              <Select value={selectedPhone} onValueChange={setSelectedPhone}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder='Select phone' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {phones.map((p) => (
+                                    <SelectItem key={p.id} value={p.id}>{p.display}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={waLoading || !selectedPhone}>Connect</Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <Label>Webhook URL</Label>
+                            <Input value={webhookUrl} readOnly />
+                          </div>
+                          <div className='flex space-x-2'>
+                            <Button onClick={startWhatsAppConnect} className='flex-1'>
+                              {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
+                            </Button>
+                            <Button variant='outline' className='text-destructive' disabled={!waConnected}>
+                              Disconnect
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
