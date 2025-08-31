@@ -78,6 +78,10 @@ const SettingsPage: React.FC = () => {
   const [phones, setPhones] = useState<Array<{ id: string; display: string }>>([]);
   const [selectedPhone, setSelectedPhone] = useState('');
   const [waLoading, setWaLoading] = useState(false);
+  const [orgDialogOpen, setOrgDialogOpen] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [connections, setConnections] = useState<Array<{ id: string; wabaId: string; phoneNumberId: string; display?: string }>>([]);
+  const [disconnectKey, setDisconnectKey] = useState('');
 
   useEffect(() => {
     // initialize profile fields from user if available
@@ -105,16 +109,26 @@ const SettingsPage: React.FC = () => {
       setWaConnected(true);
       if (token) {
         setWaToken(token);
-        // Kick off fetching businesses for multi-step
+        // Ensure org exists first; if none, prompt to create before proceeding
         (async () => {
           try {
-            const resp = await client.get(`${apiRoot}/api/provider/whatsapp/businesses`, {
-              params: { accessToken: token },
-            });
-            const list = resp?.data?.data?.data || resp?.data?.data || [];
-            setBusinesses(Array.isArray(list?.data) ? list.data : list);
+            const orgResp = await client.get('/orgs');
+            const orgs = orgResp?.data?.data?.orgs || [];
+            if (!Array.isArray(orgs) || orgs.length === 0) {
+              setOrgDialogOpen(true);
+              return;
+            }
+            try {
+              const resp = await client.get(`${apiRoot}/api/provider/whatsapp/businesses`, {
+                params: { accessToken: token },
+              });
+              const list = resp?.data?.data?.data || resp?.data?.data || [];
+              setBusinesses(Array.isArray(list?.data) ? list.data : list);
+            } catch (e) {
+              toast.error('Failed to fetch businesses');
+            }
           } catch (e) {
-            toast.error('Failed to fetch businesses');
+            toast.error('Failed to verify organization');
           }
         })();
       }
@@ -134,8 +148,14 @@ const SettingsPage: React.FC = () => {
     (async () => {
       try {
         const resp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
-        const connected = !!resp?.data?.data?.connected;
+        const payload = resp?.data?.data || {};
+        const connected = !!payload?.connected;
+        const conns = Array.isArray(payload?.connections) ? payload.connections : [];
         setWaConnected(connected);
+        setConnections(conns);
+        if (conns.length === 1) {
+          setDisconnectKey(`${conns[0].wabaId}|${conns[0].phoneNumberId}`);
+        }
       } catch {
         console.error('Failed to fetch WhatsApp status');
       }
@@ -198,7 +218,13 @@ const SettingsPage: React.FC = () => {
 
   const disconnectWhatsApp = async () => {
     try {
-      await client.delete(`${apiRoot}/api/provider/whatsapp/disconnect`);
+      // If a specific connection is selected, pass it to backend
+      let url = `${apiRoot}/api/provider/whatsapp/disconnect`;
+      if (disconnectKey) {
+        const [wabaId, phoneId] = disconnectKey.split('|');
+        url += `?wabaId=${encodeURIComponent(wabaId)}&phoneId=${encodeURIComponent(phoneId)}`;
+      }
+      await client.delete(url);
       setWaConnected(false);
       setWaToken(null);
       setBusinesses([]);
@@ -207,14 +233,41 @@ const SettingsPage: React.FC = () => {
       setSelectedBusiness('');
       setSelectedWaba('');
       setSelectedPhone('');
+      setConnections([]);
+      setDisconnectKey('');
       toast.success('WhatsApp disconnected');
     } catch (e) {
       toast.error('Failed to disconnect WhatsApp');
     }
   };
 
-  const startWhatsAppConnect = () => {
-    window.location.href = `${apiRoot}/api/provider/whatsapp`;
+  const startWhatsAppConnect = async () => {
+    try {
+      const resp = await client.get('/orgs');
+      const orgs = resp?.data?.data?.orgs || [];
+      if (!Array.isArray(orgs) || orgs.length === 0) {
+        setOrgDialogOpen(true);
+        return;
+      }
+      window.location.href = `${apiRoot}/api/provider/whatsapp`;
+    } catch (e) {
+      toast.error('Failed to check organizations');
+    }
+  };
+
+  const createOrgAndStart = async () => {
+    if (!newOrgName.trim()) {
+      toast.error('Please enter an organization name');
+      return;
+    }
+    try {
+      await client.post('/orgs', { name: newOrgName.trim() });
+      setOrgDialogOpen(false);
+      setNewOrgName('');
+      window.location.href = `${apiRoot}/api/provider/whatsapp`;
+    } catch (e) {
+      toast.error('Failed to create organization');
+    }
   };
 
   const handleSaveOrganization = () => {
@@ -701,14 +754,33 @@ const SettingsPage: React.FC = () => {
                           )}
                         </div>
                       ) : (
-                        <div className='flex space-x-2'>
-                          <Button onClick={startWhatsAppConnect} className='flex-1'>
-                            {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
-                          </Button>
-                          <Button variant='outline' className='text-destructive' disabled={!waConnected} onClick={disconnectWhatsApp}>
-                            Disconnect
-                          </Button>
-                        </div>
+                        <>
+                          {waConnected && connections.length > 0 && (
+                            <div className='space-y-2'>
+                              <Label>Select connection to disconnect</Label>
+                              <Select value={disconnectKey} onValueChange={setDisconnectKey}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder='Choose a connection' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {connections.map((c) => (
+                                    <SelectItem key={c.id} value={`${c.wabaId}|${c.phoneNumberId}`}>
+                                      WABA: {c.wabaId} — Phone: {c.display || c.phoneNumberId}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          <div className='flex space-x-2'>
+                            <Button onClick={startWhatsAppConnect} className='flex-1'>
+                              {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
+                            </Button>
+                            <Button variant='outline' className='text-destructive' disabled={!waConnected} onClick={disconnectWhatsApp}>
+                              Disconnect
+                            </Button>
+                          </div>
+                        </>
                       )}
                     </div>
                   </CardContent>
@@ -801,6 +873,24 @@ const SettingsPage: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      <AlertDialog open={orgDialogOpen} onOpenChange={setOrgDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create an Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              You need an organization before connecting WhatsApp. Create one to proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className='space-y-2'>
+            <Label htmlFor='org-create-name'>Organization Name</Label>
+            <Input id='org-create-name' value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder='Your Company' />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={createOrgAndStart}>Create & Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
