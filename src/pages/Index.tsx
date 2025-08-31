@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Play, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+import { WhatsAppIcon, TelegramIcon, CheckIcon, ArrowIcon } from '@/components/brand-icons';
 
 /**
  * LeadsBox — Modern landing page with design system integration

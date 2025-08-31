@@ -21,6 +21,8 @@ import {
   User as UserIcon,
   X,
   Check,
+  Instagram as InstagramIcon,
+  Facebook as FacebookIcon,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -48,9 +50,13 @@ import { mockUsers, mockOrganization } from '../../data/mockData';
 import { User } from '../../types';
 import { ThemeSettings } from './components/ThemeSettings';
 import client from '../../api/client';
-import { endpoints } from '../../api/config';
+import { API_BASE, endpoints } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
+import { useSearchParams } from 'react-router-dom';
+import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
+
+// brand icons imported from shared file
 
 const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -61,6 +67,11 @@ const SettingsPage: React.FC = () => {
   const { user, refreshAuth } = useAuth();
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [waConnected, setWaConnected] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const apiRoot = React.useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
+  const webhookUrl = `${apiRoot}/api/whatsapp/webhook`;
 
   useEffect(() => {
     // initialize profile fields from user if available
@@ -78,6 +89,25 @@ const SettingsPage: React.FC = () => {
     } catch (e) {
       toast.error('Failed to update profile');
     }
+  };
+
+  // Check for WhatsApp connect status from query param
+  useEffect(() => {
+    const status = searchParams.get('whatsapp');
+    if (status === 'connected') {
+      setWaConnected(true);
+      toast.success('WhatsApp connected');
+      searchParams.delete('whatsapp');
+      setSearchParams(searchParams, { replace: true });
+    } else if (status === 'error') {
+      toast.error('WhatsApp connection failed');
+      searchParams.delete('whatsapp');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const startWhatsAppConnect = () => {
+    window.location.href = `${apiRoot}/api/provider/whatsapp`;
   };
 
   const handleSaveOrganization = () => {
@@ -491,30 +521,32 @@ const SettingsPage: React.FC = () => {
                   <CardHeader className='pb-4'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center'>
-                          <span className='text-white font-bold'>W</span>
+                        <div>
+                          <WhatsAppIcon className='h-4 w-4' />
                         </div>
                         <div>
                           <h3 className='font-medium'>WhatsApp Business</h3>
                           <p className='text-sm text-muted-foreground'>Connect your WhatsApp account</p>
                         </div>
                       </div>
-                      <Badge variant='outline' className='bg-green-500/10 text-green-400'>
-                        Connected
-                      </Badge>
+                      {waConnected ? (
+                        <Badge variant='outline' className='bg-green-500/10 text-green-400'>Connected</Badge>
+                      ) : (
+                        <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>Not Connected</Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className='space-y-3'>
                       <div>
                         <Label>Webhook URL</Label>
-                        <Input value={organization.settings.integrations.whatsapp.webhook || ''} readOnly />
+                        <Input value={webhookUrl} readOnly />
                       </div>
                       <div className='flex space-x-2'>
-                        <Button variant='outline' className='flex-1'>
-                          Configure
+                        <Button onClick={startWhatsAppConnect} className='flex-1'>
+                          {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
                         </Button>
-                        <Button variant='outline' className='text-destructive'>
+                        <Button variant='outline' className='text-destructive' disabled={!waConnected}>
                           Disconnect
                         </Button>
                       </div>
@@ -527,8 +559,8 @@ const SettingsPage: React.FC = () => {
                   <CardHeader className='pb-4'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center'>
-                          <span className='text-white font-bold'>T</span>
+                        <div>
+                          <TelegramIcon className='h-4 w-4' />
                         </div>
                         <div>
                           <h3 className='font-medium'>Telegram</h3>
@@ -546,7 +578,61 @@ const SettingsPage: React.FC = () => {
                         <Label>Bot Token</Label>
                         <Input placeholder='Enter your bot token' />
                       </div>
-                      <Button className='w-full'>Connect Telegram</Button>
+                      <Button className='w-full' onClick={() => toast.info('Telegram integration coming soon')}>
+                        Connect Telegram
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Instagram */}
+                <Card className='border-muted'>
+                  <CardHeader className='pb-4'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center space-x-3'>
+                        <div className='w-10 h-10 rounded-lg flex items-center justify-center bg-pink-500/10 border border-pink-500/30'>
+                          <InstagramIcon className='h-5 w-5 text-pink-500' />
+                        </div>
+                        <div>
+                          <h3 className='font-medium'>Instagram</h3>
+                          <p className='text-sm text-muted-foreground'>Connect your Instagram account</p>
+                        </div>
+                      </div>
+                      <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                        Not Connected
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='space-y-3'>
+                      <Button className='w-full' onClick={() => toast.info('Instagram integration coming soon')}>
+                        Connect Instagram
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Facebook */}
+                <Card className='border-muted'>
+                  <CardHeader className='pb-4'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center space-x-3'>
+                        <div className='w-10 h-10 rounded-lg flex items-center justify-center bg-blue-600/10 border border-blue-600/30'>
+                          <FacebookIcon className='h-5 w-5 text-blue-600' />
+                        </div>
+                        <div>
+                          <h3 className='font-medium'>Facebook</h3>
+                          <p className='text-sm text-muted-foreground'>Connect your Facebook account</p>
+                        </div>
+                      </div>
+                      <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                        Not Connected
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='space-y-3'>
+                      <Button className='w-full' onClick={() => toast.info('Facebook integration coming soon')}>
+                        Connect Facebook
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
