@@ -20,8 +20,6 @@ import {
   User as UserIcon,
   X,
   Check,
-  Instagram as InstagramIcon,
-  Facebook as FacebookIcon,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -53,7 +51,7 @@ import { API_BASE, endpoints } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import { useSearchParams } from 'react-router-dom';
-import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
+import { WhatsAppIcon, TelegramIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons';
 
 // brand icons imported from shared file
 
@@ -671,8 +669,8 @@ const SettingsPage: React.FC = () => {
                   <CardHeader className='pb-4'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center space-x-3'>
-                        <div>
-                          <WhatsAppIcon className='h-4 w-4' />
+                        <div className='w-10 h-10 flex items-center justify-center'>
+                          <WhatsAppIcon className='h-6 w-6' />
                         </div>
                         <div>
                           <h3 className='font-medium'>WhatsApp Business</h3>
@@ -791,8 +789,8 @@ const SettingsPage: React.FC = () => {
                   <CardHeader className='pb-4'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center space-x-3'>
-                        <div>
-                          <TelegramIcon className='h-4 w-4' />
+                        <div className='w-10 h-10 flex items-center justify-center'>
+                          <TelegramIcon className='h-6 w-6' />
                         </div>
                         <div>
                           <h3 className='font-medium'>Telegram</h3>
@@ -821,8 +819,8 @@ const SettingsPage: React.FC = () => {
                   <CardHeader className='pb-4'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 rounded-lg flex items-center justify-center bg-pink-500/10 border border-pink-500/30'>
-                          <InstagramIcon className='h-5 w-5 text-pink-500' />
+                        <div className='w-10 h-10 flex items-center justify-center'>
+                          <InstagramIcon className='h-6 w-6 text-pink-500' />
                         </div>
                         <div>
                           <h3 className='font-medium'>Instagram</h3>
@@ -847,8 +845,8 @@ const SettingsPage: React.FC = () => {
                   <CardHeader className='pb-4'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 rounded-lg flex items-center justify-center bg-blue-600/10 border border-blue-600/30'>
-                          <FacebookIcon className='h-5 w-5 text-blue-600' />
+                        <div className='w-10 h-10 flex items-center justify-center'>
+                          <FacebookIcon className='h-6 w-6 text-blue-600' />
                         </div>
                         <div>
                           <h3 className='font-medium'>Facebook</h3>
