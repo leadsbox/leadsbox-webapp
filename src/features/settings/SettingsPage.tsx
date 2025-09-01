@@ -43,11 +43,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../../components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog';
 import { mockUsers, mockOrganization } from '../../data/mockData';
-import { User } from '../../types';
 import { ThemeSettings } from './components/ThemeSettings';
+import ProfileTab from './tabs/ProfileTab';
+import OrganizationTab from './tabs/OrganizationTab';
+import MembersTab from './tabs/MembersTab';
+import TagsTab from './tabs/TagsTab';
+import TemplatesTab from './tabs/TemplatesTab';
+import NotificationsTab from './tabs/NotificationsTab';
+import IntegrationsTab from './tabs/IntegrationsTab';
 import client from '../../api/client';
-import { API_BASE, endpoints } from '../../api/config';
+import { API_BASE } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import { useSearchParams } from 'react-router-dom';
@@ -61,11 +75,19 @@ const SettingsPage: React.FC = () => {
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string; settings?: any }>>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [orgLoading, setOrgLoading] = useState(false);
-  const [createOrgName, setCreateOrgName] = useState('');
-  const [members, setMembers] = useState(mockUsers);
+  // const [createOrgName, setCreateOrgName] = useState(''); // removed, creation via modal
+  const [members, setMembers] = useState<Array<{
+    membershipId: string;
+    userId: string;
+    name: string;
+    email: string;
+    avatar?: string | null;
+    role: 'OWNER' | 'ADMIN' | 'MEMBER';
+    addedAt: string;
+  }>>([]);
   const [tags, setTags] = useState(['hot-lead', 'enterprise', 'startup', 'demo-requested', 'negotiation', 'follow-up']);
   const [newTag, setNewTag] = useState('');
-  const { user, refreshAuth } = useAuth();
+  const { user, refreshAuth, setOrg } = useAuth();
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [waConnected, setWaConnected] = useState(false);
@@ -82,8 +104,18 @@ const SettingsPage: React.FC = () => {
   const [waLoading, setWaLoading] = useState(false);
   const [orgDialogOpen, setOrgDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
+  const [createOrgOpen, setCreateOrgOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    description: '',
+    currency: 'NGN',
+    timezone: 'UTC',
+  });
   const [connections, setConnections] = useState<Array<{ id: string; wabaId: string; phoneNumberId: string; display?: string }>>([]);
   const [disconnectKey, setDisconnectKey] = useState('');
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
 
   useEffect(() => {
     // initialize profile fields from user if available
@@ -103,6 +135,9 @@ const SettingsPage: React.FC = () => {
         setOrgs(list);
         if (list.length) {
           setSelectedOrgId(list[0].id);
+          try { setOrg(list[0].id); window.dispatchEvent(new CustomEvent('lb:org-changed')); } catch {
+            console.error('Failed to set organization');
+          }
           // Normalize with mock structure for UI compatibility
           const normalized = {
             ...mockOrganization,
@@ -119,9 +154,44 @@ const SettingsPage: React.FC = () => {
     })();
   }, []);
 
+  // Load members when organization changes
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!selectedOrgId) return;
+      try {
+        const resp = await client.get(`/orgs/${selectedOrgId}/members`);
+        const list: Array<any> = resp?.data?.data?.members || [];
+        const mapped = list.map((m) => ({
+          membershipId: m.id,
+          userId: m.userId,
+          name: m.user?.name || m.user?.username || 'User',
+          email: m.user?.email || '',
+          avatar: m.user?.profileImage || m.user?.avatar || null,
+          role: m.role,
+          addedAt: m.addedAt,
+        }));
+        setMembers(mapped);
+      } catch (e) {
+        console.error('Failed to load members', e);
+      }
+    };
+    fetchMembers();
+  }, [selectedOrgId]);
+
   const saveProfile = async () => {
     try {
-      await client.patch('/user/profile', { name, profileImage: avatar });
+      const parts = (name || '').trim().split(/\s+/);
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ');
+      const payload: any = {};
+      if (firstName) payload.firstName = firstName;
+      if (lastName) payload.lastName = lastName;
+      if (avatar?.trim()) payload.profileImage = avatar.trim();
+      if (Object.keys(payload).length === 0) {
+        toast.info('Nothing to update');
+        return;
+      }
+      await client.patch('/user/profile', payload);
       toast.success('Profile updated');
       await refreshAuth();
     } catch (e) {
@@ -301,7 +371,13 @@ const SettingsPage: React.FC = () => {
   const handleSaveOrganization = async () => {
     if (!selectedOrgId) return;
     try {
-      await client.put(`/orgs/${selectedOrgId}`, { name: organization.name });
+      await client.put(`/orgs/${selectedOrgId}`, {
+        name: organization.name,
+        settings: {
+          currency: organization.settings.currency,
+          timezone: organization.settings.timezone,
+        },
+      });
       toast.success('Organization updated');
       // refresh list names
       const next = orgs.map((o) => (o.id === selectedOrgId ? { ...o, name: organization.name } : o));
@@ -311,24 +387,56 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleCreateOrganization = async () => {
-    const name = createOrgName.trim();
+  // Deprecated inline create function removed; using modal with details instead
+
+  // Create organization via modal with details
+  const handleCreateOrganizationWithDetails = async () => {
+    const name = createForm.name.trim();
     if (!name) {
-      toast.error('Please enter a name');
+      toast.error('Organization name is required');
       return;
     }
     try {
-      const resp = await client.post('/orgs', { name });
+      // Step 1: create org with basic fields
+      const resp = await client.post('/orgs', {
+        name,
+        description: createForm.description?.trim() || undefined,
+      });
       const org = resp?.data?.data?.org;
-      if (org) {
-        const updated = [org, ...orgs];
-        setOrgs(updated);
-        setSelectedOrgId(org.id);
-        const normalized = { ...mockOrganization, ...org, settings: { ...mockOrganization.settings, ...(org.settings || {}) } };
-        setOrganization(normalized);
-        setCreateOrgName('');
-        toast.success('Organization created');
+      if (!org || !org.id) {
+        throw new Error('Create response missing organization');
       }
+
+      // Step 2: update settings (currency, timezone) if changed from defaults
+      const nextSettings: any = {};
+      if (createForm.currency) nextSettings.currency = createForm.currency;
+      if (createForm.timezone) nextSettings.timezone = createForm.timezone;
+      try {
+        if (Object.keys(nextSettings).length > 0) {
+          await client.put(`/orgs/${org.id}`, { settings: nextSettings });
+        }
+      } catch (e) {
+        // Non-fatal; notify but keep created org selected
+        toast.error('Organization created, but failed to save settings');
+      }
+
+      // Update UI state
+      const normalized = {
+        ...mockOrganization,
+        ...org,
+        settings: { ...mockOrganization.settings, ...(org.settings || {}), ...nextSettings },
+      };
+      setOrgs([org, ...orgs]);
+      setSelectedOrgId(org.id);
+      try { setOrg(org.id); window.dispatchEvent(new CustomEvent('lb:org-changed')); } catch {
+        console.error('Failed to set organization');
+      }
+      setOrganization(normalized);
+
+      // Reset and close
+      setCreateForm({ name: '', description: '', currency: 'NGN', timezone: 'UTC' });
+      setCreateOrgOpen(false);
+      toast.success('Organization created');
     } catch (e) {
       toast.error('Failed to create organization');
     }
@@ -345,13 +453,67 @@ const SettingsPage: React.FC = () => {
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
-  const getRoleBadgeColor = (role: User['role']) => {
+  const inviteMember = async () => {
+    if (!selectedOrgId) {
+      toast.error('Select an organization first');
+      return;
+    }
+    if (!inviteEmail.trim()) {
+      toast.error('Enter member email');
+      return;
+    }
+    try {
+      await client.post(`/orgs/${selectedOrgId}/members`, { email: inviteEmail.trim(), role: inviteRole });
+      setInviteEmail('');
+      setInviteRole('MEMBER');
+      setMemberDialogOpen(false);
+      const resp = await client.get(`/orgs/${selectedOrgId}/members`);
+      const list: Array<any> = resp?.data?.data?.members || [];
+      const mapped = list.map((m) => ({
+        membershipId: m.id,
+        userId: m.userId,
+        name: m.user?.name || m.user?.username || 'User',
+        email: m.user?.email || '',
+        avatar: m.user?.profileImage || m.user?.avatar || null,
+        role: m.role,
+        addedAt: m.addedAt,
+      }));
+      setMembers(mapped);
+      toast.success('Member added');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to add member');
+    }
+  };
+
+  const updateMemberRole = async (userId: string, role: 'MEMBER' | 'ADMIN' | 'OWNER') => {
+    if (!selectedOrgId) return;
+    try {
+      await client.patch(`/orgs/${selectedOrgId}/members/${userId}/role`, { role });
+      setMembers((prev) => prev.map((m) => (m.userId === userId ? { ...m, role } : m)));
+      toast.success('Member role updated');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to update role');
+    }
+  };
+
+  const removeMember = async (userId: string) => {
+    if (!selectedOrgId) return;
+    try {
+      await client.delete(`/orgs/${selectedOrgId}/members/${userId}`);
+      setMembers((prev) => prev.filter((m) => m.userId !== userId));
+      toast.success('Member removed');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to remove member');
+    }
+  };
+
+  const getRoleBadgeColor = (role: any) => {
     switch (role) {
       case 'OWNER':
         return 'bg-red-500/10 text-red-400';
-      case 'MANAGER':
+      case 'ADMIN':
         return 'bg-blue-500/10 text-blue-400';
-      case 'AGENT':
+      case 'MEMBER':
         return 'bg-green-500/10 text-green-400';
       default:
         return 'bg-gray-500/10 text-gray-400';
@@ -383,31 +545,7 @@ const SettingsPage: React.FC = () => {
 
         {/* Profile Settings */}
         <TabsContent value='profile' className='space-y-6'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center'>
-                <UserIcon className='h-5 w-5 mr-2' />
-                Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='grid grid-cols-1 gap-4'>
-                <div>
-                  <Label htmlFor='name'>Full Name</Label>
-                  <Input id='name' value={name} onChange={(e) => setName(e.target.value)} placeholder='John Doe' />
-                </div>
-                <div>
-                  <Label htmlFor='avatar'>Avatar URL</Label>
-                  <Input id='avatar' value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder='https://...' />
-                </div>
-              </div>
-              <div className='flex justify-end'>
-                <Button onClick={saveProfile}>
-                  <Save className='h-4 w-4 mr-2' /> Save Profile
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <ProfileTab />
         </TabsContent>
 
         {/* Appearance Settings */}
@@ -417,568 +555,43 @@ const SettingsPage: React.FC = () => {
 
         {/* Organization Settings */}
         <TabsContent value='organization' className='space-y-6'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center'>
-                <Building className='h-5 w-5 mr-2' />
-                Organization Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <div>
-                  <Label>Select Organization</Label>
-                  <Select value={selectedOrgId} onValueChange={(v) => {
-                    setSelectedOrgId(v);
-                    const sel = orgs.find((o) => o.id === v);
-                    if (sel) {
-                      const normalized = { ...mockOrganization, ...sel, settings: { ...mockOrganization.settings, ...(sel.settings || {}) } };
-                      setOrganization(normalized);
-                    }
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={orgLoading ? 'Loading...' : 'Choose organization'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {orgs.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Create New</Label>
-                  <div className='flex gap-2'>
-                    <Input value={createOrgName} onChange={(e) => setCreateOrgName(e.target.value)} placeholder='New organization name' />
-                    <Button onClick={handleCreateOrganization}>Create</Button>
-                  </div>
-                </div>
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <div>
-                  <Label htmlFor='org-name'>Organization Name</Label>
-                  <Input id='org-name' value={organization.name} onChange={(e) => setOrganization({ ...organization, name: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor='plan'>Current Plan</Label>
-                  <Select value={organization.plan}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='STARTER'>Starter</SelectItem>
-                      <SelectItem value='PRO'>Pro</SelectItem>
-                      <SelectItem value='ENTERPRISE'>Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor='timezone'>Timezone</Label>
-                  <Select value={organization.settings.timezone}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='UTC'>UTC</SelectItem>
-                      <SelectItem value='America/New_York'>Eastern Time</SelectItem>
-                      <SelectItem value='America/Chicago'>Central Time</SelectItem>
-                      <SelectItem value='America/Denver'>Mountain Time</SelectItem>
-                      <SelectItem value='America/Los_Angeles'>Pacific Time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor='currency'>Currency</Label>
-                  <Select value={organization.settings.currency}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='USD'>USD ($)</SelectItem>
-                      <SelectItem value='EUR'>EUR (€)</SelectItem>
-                      <SelectItem value='GBP'>GBP (£)</SelectItem>
-                      <SelectItem value='CAD'>CAD ($)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button onClick={handleSaveOrganization}>
-                <Save className='h-4 w-4 mr-2' />
-                Save Changes
-              </Button>
-            </CardContent>
-          </Card>
+          <OrganizationTab
+            orgs={orgs}
+            setOrgs={setOrgs}
+            selectedOrgId={selectedOrgId}
+            setSelectedOrgId={setSelectedOrgId}
+            organization={organization}
+            setOrganization={setOrganization}
+            orgLoading={orgLoading}
+            onSaveOrganization={handleSaveOrganization}
+          />
         </TabsContent>
 
         {/* Members Management */}
         <TabsContent value='members' className='space-y-6'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <CardTitle className='flex items-center'>
-                <Users className='h-5 w-5 mr-2' />
-                Team Members
-              </CardTitle>
-              <Button>
-                <Plus className='h-4 w-4 mr-2' />
-                Invite Member
-              </Button>
-            </CardHeader>
-            <CardContent className='overflow-x-auto'>
-              <Table className='min-w-[720px]'>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className='flex items-center space-x-3'>
-                          <Avatar className='h-10 w-10'>
-                            <AvatarImage src={member.avatar} />
-                            <AvatarFallback>{member.name.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className='font-medium'>{member.name}</div>
-                            <div className='text-sm text-muted-foreground'>{member.email}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant='outline' className={getRoleBadgeColor(member.role)}>
-                          {member.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(member.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge variant='outline' className='bg-green-500/10 text-green-400'>
-                          Active
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className='flex items-center space-x-2'>
-                          <Button variant='ghost' size='icon'>
-                            <Edit className='h-4 w-4' />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant='ghost' size='icon' className='text-destructive'>
-                                <Trash2 className='h-4 w-4' />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Remove Member</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to remove {member.name} from the organization? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                                  Remove
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <MembersTab selectedOrgId={selectedOrgId} />
         </TabsContent>
 
         {/* Tags Management */}
         <TabsContent value='tags' className='space-y-6'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center'>
-                <Tag className='h-5 w-5 mr-2' />
-                Lead Tags
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex items-center space-x-2'>
-                <Input
-                  placeholder='Add new tag...'
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                />
-                <Button onClick={handleAddTag}>
-                  <Plus className='h-4 w-4' />
-                </Button>
-              </div>
-
-              <div className='flex flex-wrap gap-2'>
-                {tags.map((tag) => (
-                  <Badge key={tag} variant='secondary' className='flex items-center space-x-1'>
-                    <span>{tag}</span>
-                    <button onClick={() => handleRemoveTag(tag)} className='ml-1 hover:text-destructive'>
-                      <X className='h-3 w-3' />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <TagsTab />
         </TabsContent>
 
         {/* Templates */}
         <TabsContent value='templates' className='space-y-6'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <CardTitle className='flex items-center'>
-                <MessageSquare className='h-5 w-5 mr-2' />
-                Message Templates
-              </CardTitle>
-              <Button>
-                <Plus className='h-4 w-4 mr-2' />
-                Add Template
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-4'>
-                {[
-                  { name: 'Welcome Message', content: 'Hi there! Thanks for reaching out. How can I help you today?' },
-                  { name: 'Follow Up', content: 'Hi {name}, I wanted to follow up on our previous conversation...' },
-                  { name: 'Meeting Reminder', content: 'This is a reminder about our meeting scheduled for {date} at {time}.' },
-                ].map((template, index) => (
-                  <Card key={index} className='border-muted'>
-                    <CardContent className='p-4'>
-                      <div className='flex items-start justify-between'>
-                        <div className='flex-1'>
-                          <h4 className='font-medium mb-2'>{template.name}</h4>
-                          <p className='text-sm text-muted-foreground'>{template.content}</p>
-                        </div>
-                        <div className='flex items-center space-x-2'>
-                          <Button variant='ghost' size='icon'>
-                            <Edit className='h-4 w-4' />
-                          </Button>
-                          <Button variant='ghost' size='icon' className='text-destructive'>
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <TemplatesTab />
         </TabsContent>
 
         {/* Notifications */}
         <TabsContent value='notifications' className='space-y-6'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center'>
-                <Bell className='h-5 w-5 mr-2' />
-                Notification Preferences
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-6'>
-              <div>
-                <h4 className='font-medium mb-4'>Email Notifications</h4>
-                <div className='space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <Label>New Leads</Label>
-                      <p className='text-sm text-muted-foreground'>Receive emails when new leads are created</p>
-                    </div>
-                    <Switch checked={organization.settings.notifications.email.newLeads} />
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <Label>Task Reminders</Label>
-                      <p className='text-sm text-muted-foreground'>Get reminded about upcoming tasks</p>
-                    </div>
-                    <Switch checked={organization.settings.notifications.email.taskReminders} />
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <Label>System Updates</Label>
-                      <p className='text-sm text-muted-foreground'>Product updates and announcements</p>
-                    </div>
-                    <Switch checked={organization.settings.notifications.email.systemUpdates} />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className='font-medium mb-4'>Push Notifications</h4>
-                <div className='space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <Label>New Messages</Label>
-                      <p className='text-sm text-muted-foreground'>Instant notifications for new messages</p>
-                    </div>
-                    <Switch checked={organization.settings.notifications.push.newMessages} />
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <Label>Task Deadlines</Label>
-                      <p className='text-sm text-muted-foreground'>Alerts for approaching deadlines</p>
-                    </div>
-                    <Switch checked={organization.settings.notifications.push.taskDeadlines} />
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <Label>Lead Updates</Label>
-                      <p className='text-sm text-muted-foreground'>Notifications when leads change status</p>
-                    </div>
-                    <Switch checked={organization.settings.notifications.push.leadUpdates} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <NotificationsTab organization={organization} />
         </TabsContent>
 
         {/* Integrations */}
         <TabsContent value='integrations' className='space-y-6'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center'>
-                <Globe className='h-5 w-5 mr-2' />
-                Integrations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-6'>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                {/* WhatsApp */}
-                <Card className='border-muted'>
-                  <CardHeader className='pb-4'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 flex items-center justify-center'>
-                          <WhatsAppIcon className='h-6 w-6' />
-                        </div>
-                        <div>
-                          <h3 className='font-medium'>WhatsApp Business</h3>
-                          <p className='text-sm text-muted-foreground'>Connect your WhatsApp account</p>
-                        </div>
-                      </div>
-                      {waConnected ? (
-                        <Badge variant='outline' className='bg-green-500/10 text-green-400'>
-                          Connected
-                        </Badge>
-                      ) : (
-                        <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                          Not Connected
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='space-y-3'>
-                      {!waConnected && waToken ? (
-                        <div className='space-y-4'>
-                          <div>
-                            <Label>Business</Label>
-                            <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>
-                              <SelectTrigger>
-                                <SelectValue placeholder='Select business' />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {businesses.map((b) => (
-                                  <SelectItem key={b.id} value={b.id}>
-                                    {b.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={waLoading || !selectedBusiness}>
-                              Next
-                            </Button>
-                          </div>
-                          {wabas.length > 0 && (
-                            <div>
-                              <Label>WABA</Label>
-                              <Select value={selectedWaba} onValueChange={setSelectedWaba}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder='Select WABA' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {wabas.map((w) => (
-                                    <SelectItem key={w.id} value={w.id}>
-                                      {w.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={waLoading || !selectedWaba}>
-                                Next
-                              </Button>
-                            </div>
-                          )}
-                          {phones.length > 0 && (
-                            <div>
-                              <Label>Phone Number</Label>
-                              <Select value={selectedPhone} onValueChange={setSelectedPhone}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder='Select phone' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {phones.map((p) => (
-                                    <SelectItem key={p.id} value={p.id}>
-                                      {p.display}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={waLoading || !selectedPhone}>
-                                Connect
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          {waConnected && connections.length > 0 && (
-                            <div className='space-y-2'>
-                              <Label>Select connection to disconnect</Label>
-                              <Select value={disconnectKey} onValueChange={setDisconnectKey}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder='Choose a connection' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {connections.map((c) => (
-                                    <SelectItem key={c.id} value={`${c.wabaId}|${c.phoneNumberId}`}>
-                                      WABA: {c.wabaId} — Phone: {c.display || c.phoneNumberId}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          <div className='flex space-x-2'>
-                            <Button onClick={startWhatsAppConnect} className='flex-1'>
-                              {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
-                            </Button>
-                            <Button variant='outline' className='text-destructive' disabled={!waConnected} onClick={disconnectWhatsApp}>
-                              Disconnect
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Telegram */}
-                <Card className='border-muted'>
-                  <CardHeader className='pb-4'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 flex items-center justify-center'>
-                          <TelegramIcon className='h-6 w-6' />
-                        </div>
-                        <div>
-                          <h3 className='font-medium'>Telegram</h3>
-                          <p className='text-sm text-muted-foreground'>Connect your Telegram bot</p>
-                        </div>
-                      </div>
-                      <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                        Not Connected
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='space-y-3'>
-                      <div>
-                        <Label>Bot Token</Label>
-                        <Input placeholder='Enter your bot token' />
-                      </div>
-                      <Button className='w-full' onClick={() => toast.info('Telegram integration coming soon')}>
-                        Connect Telegram
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                {/* Instagram */}
-                <Card className='border-muted'>
-                  <CardHeader className='pb-4'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 flex items-center justify-center'>
-                          <InstagramIcon className='h-6 w-6 text-pink-500' />
-                        </div>
-                        <div>
-                          <h3 className='font-medium'>Instagram</h3>
-                          <p className='text-sm text-muted-foreground'>Connect your Instagram account</p>
-                        </div>
-                      </div>
-                      <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                        Not Connected
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='space-y-3'>
-                      <Button className='w-full' onClick={() => toast.info('Instagram integration coming soon')}>
-                        Connect Instagram
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                {/* Facebook */}
-                <Card className='border-muted'>
-                  <CardHeader className='pb-4'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-3'>
-                        <div className='w-10 h-10 flex items-center justify-center'>
-                          <FacebookIcon className='h-6 w-6 text-blue-600' />
-                        </div>
-                        <div>
-                          <h3 className='font-medium'>Facebook</h3>
-                          <p className='text-sm text-muted-foreground'>Connect your Facebook account</p>
-                        </div>
-                      </div>
-                      <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                        Not Connected
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='space-y-3'>
-                      <Button className='w-full' onClick={() => toast.info('Facebook integration coming soon')}>
-                        Connect Facebook
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
+          <IntegrationsTab />
         </TabsContent>
       </Tabs>
-      <AlertDialog open={orgDialogOpen} onOpenChange={setOrgDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Create an Organization</AlertDialogTitle>
-            <AlertDialogDescription>
-              You need an organization before connecting WhatsApp. Create one to proceed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className='space-y-2'>
-            <Label htmlFor='org-create-name'>Organization Name</Label>
-            <Input id='org-create-name' value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder='Your Company' />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={createOrgAndStart}>Create & Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

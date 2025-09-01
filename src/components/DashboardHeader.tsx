@@ -31,7 +31,7 @@ import {
 import { CustomAvatar } from './ui/custom-avatar';
 import { Badge } from './ui/badge';
 import { useAuth } from '../context/AuthContext';
-import client from '../api/client';
+import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { toast } from 'react-toastify';
 
@@ -42,10 +42,46 @@ interface DashboardHeaderProps {
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggle, sidebarOpen = true }) => {
   const { user, logout } = useAuth();
-  console.log(user);
   const location = useLocation();
   // Get the profile image URL
-  const userAvatar = user?.profileImage;
+  const userAvatar = user?.profileImage || (user as any)?.avatar || undefined;
+  const [orgId, setOrgIdState] = React.useState<string>(() => getOrgId());
+  const [memberRole, setMemberRole] = React.useState<'OWNER' | 'ADMIN' | 'MEMBER' | null>(null);
+
+  // Track org changes via storage or custom event (set by Settings page)
+  React.useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'lb_org_id') {
+        setOrgIdState(getOrgId());
+      }
+    };
+    const onCustom = () => setOrgIdState(getOrgId());
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('lb:org-changed', onCustom as any);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('lb:org-changed', onCustom as any);
+    };
+  }, []);
+
+  // Load current membership role for the selected org
+  React.useEffect(() => {
+    const loadRole = async () => {
+      if (!orgId || !user?.id) {
+        setMemberRole(null);
+        return;
+      }
+      try {
+        const resp = await client.get(`/orgs/${orgId}/members`);
+        const list: Array<any> = resp?.data?.data?.members || [];
+        const me = list.find((m) => m.userId === user.id);
+        setMemberRole(me?.role || null);
+      } catch (e) {
+        setMemberRole(null);
+      }
+    };
+    loadRole();
+  }, [orgId, user?.id]);
   const formatName = (name: string) => {
     return name
       .split(' ')
@@ -233,9 +269,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
               <div className='flex flex-col space-y-1'>
                 <p className='text-sm font-medium leading-none'>{user?.username}</p>
                 <p className='text-xs leading-none text-muted-foreground'>{user?.email}</p>
-                <Badge variant='secondary' className='w-fit text-xs mt-1'>
-                  {user?.role}
-                </Badge>
+                {memberRole && (
+                  <Badge variant='secondary' className='w-fit text-xs mt-1'>
+                    {memberRole.charAt(0) + memberRole.slice(1).toLowerCase()}
+                  </Badge>
+                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
