@@ -1,6 +1,6 @@
 // Leads Page Component for LeadsBox Dashboard
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Search, 
   Filter, 
@@ -47,16 +47,60 @@ import {
 } from '../../components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { mockLeads, mockUsers } from '../../data/mockData';
+import { mockUsers } from '../../data/mockData';
 import { Lead, Stage } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
+import client from '@/api/client';
+import { endpoints } from '@/api/config';
 
 const LeadsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [stageFilter, setStageFilter] = useState<Stage | 'ALL'>('ALL');
+  const [leads, setLeads] = useState<Lead[]>([]);
 
-  const filteredLeads = mockLeads.filter(lead => {
+  const labelToStage = (label?: string): Stage => {
+    switch ((label || '').toUpperCase()) {
+      case 'NEW': return 'NEW';
+      case 'QUALIFIED': return 'QUALIFIED';
+      case 'CUSTOMER': return 'WON';
+      case 'CONTACTED': return 'IN_PROGRESS';
+      case 'UNQUALIFIED':
+      case 'LOST': return 'LOST';
+      default: return 'NEW';
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await client.get(endpoints.leads);
+        const list: Array<any> = resp?.data?.data?.leads || resp?.data || [];
+        const mapped: Lead[] = list.map((l: any) => ({
+          id: l.id,
+          name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : (l.conversationId || 'Lead'),
+          email: '',
+          phone: undefined,
+          company: undefined,
+          source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
+          stage: labelToStage(l.label),
+          priority: 'MEDIUM',
+          tags: [],
+          assignedTo: '',
+          value: undefined,
+          createdAt: l.createdAt,
+          updatedAt: l.updatedAt,
+          lastActivity: l.lastMessageAt,
+        }));
+        setLeads(mapped);
+      } catch (e) {
+        console.error('Failed to load leads', e);
+        setLeads([]);
+      }
+    })();
+  }, []);
+
+  const filteredLeads = useMemo(() => leads.filter(lead => {
     const matchesSearch = 
       lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -65,7 +109,7 @@ const LeadsPage: React.FC = () => {
     const matchesStage = stageFilter === 'ALL' || lead.stage === stageFilter;
     
     return matchesSearch && matchesStage;
-  });
+  }), [leads, searchQuery, stageFilter]);
 
   const getStageColor = (stage: Stage) => {
     switch (stage) {
@@ -166,7 +210,7 @@ const LeadsPage: React.FC = () => {
             <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockLeads.length}</div>
+            <div className="text-2xl font-bold">{leads.length}</div>
             <p className="text-xs text-muted-foreground">+12% from last month</p>
           </CardContent>
         </Card>
@@ -176,7 +220,7 @@ const LeadsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {mockLeads.filter(l => l.stage === 'QUALIFIED').length}
+              {leads.filter(l => l.stage === 'QUALIFIED').length}
             </div>
             <p className="text-xs text-muted-foreground">+8% from last month</p>
           </CardContent>
@@ -196,7 +240,7 @@ const LeadsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${mockLeads.reduce((sum, lead) => sum + (lead.value || 0), 0).toLocaleString()}
+              ${leads.reduce((sum, lead) => sum + (lead.value || 0), 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">+18% from last month</p>
           </CardContent>
