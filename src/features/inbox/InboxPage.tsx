@@ -1,7 +1,8 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreHorizontal, MessageCircle, Phone, Clock, X, ChevronLeft } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft } from 'lucide-react';
+import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -68,15 +69,15 @@ const InboxPage: React.FC = () => {
   const getChannelIcon = (channel: Thread['channel']) => {
     switch (channel) {
       case 'whatsapp':
-        return '💬';
+        return <WhatsAppIcon className="h-4 w-4" />;
       case 'telegram':
-        return '✈️';
+        return <TelegramIcon className="h-4 w-4" />;
       case 'sms':
-        return '📱';
+        return <span role="img" aria-label="sms">📱</span>;
       case 'email':
-        return '✉️';
+        return <span role="img" aria-label="email">✉️</span>;
       default:
-        return '💬';
+        return <WhatsAppIcon className="h-4 w-4" />;
     }
   };
 
@@ -157,7 +158,7 @@ const InboxPage: React.FC = () => {
         <div className="flex-1 overflow-auto">
           {filteredThreads.length === 0 ? (
             <div className="p-6 text-center">
-              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <WhatsAppIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No conversations found</h3>
               <p className="text-muted-foreground">Try adjusting your search or filters.</p>
             </div>
@@ -336,7 +337,7 @@ const InboxPage: React.FC = () => {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <WhatsAppIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-medium text-foreground mb-2">
                 Select a conversation
               </h3>
@@ -394,7 +395,7 @@ const InboxPage: React.FC = () => {
           <div className="flex-1 overflow-auto">
             {filteredThreads.length === 0 ? (
               <div className="p-6 text-center">
-                <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <WhatsAppIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-2">No conversations found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filters.</p>
               </div>

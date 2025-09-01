@@ -61,11 +61,19 @@ const InvoicesPage: React.FC = () => {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
             <div>
               <Label>Customer Phone (WhatsApp)</Label>
-              <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder='+234...' />
+              <Input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder='+2348012345678'
+              />
             </div>
             <div>
               <Label>Currency</Label>
-              <Input value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder='NGN' />
+              <Input
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                placeholder='NGN (e.g., NGN, USD)'
+              />
             </div>
           </div>
 
@@ -79,13 +87,38 @@ const InvoicesPage: React.FC = () => {
             {items.map((it, i) => (
               <div key={i} className='grid grid-cols-1 md:grid-cols-12 gap-2'>
                 <div className='md:col-span-6'>
-                  <Input value={it.name} onChange={(e) => updateItem(i, { name: e.target.value })} placeholder='Item name' />
+                  <Label className='mb-1 block'>Item Name</Label>
+                  <Input
+                    value={it.name}
+                    onChange={(e) => updateItem(i, { name: e.target.value })}
+                    placeholder='e.g., Consultation, Product X, Service Y'
+                  />
                 </div>
                 <div className='md:col-span-3'>
-                  <Input type='number' value={it.qty} onChange={(e) => updateItem(i, { qty: Number(e.target.value) })} placeholder='Qty' />
+                  <Label className='mb-1 block'>Quantity</Label>
+                  <Input
+                    type='number'
+                    min={1}
+                    step={1}
+                    value={it.qty}
+                    onChange={(e) => updateItem(i, { qty: Number(e.target.value) })}
+                    placeholder='e.g., 1'
+                  />
                 </div>
                 <div className='md:col-span-3'>
-                  <Input type='number' value={it.unitPrice} onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) })} placeholder='Unit price' />
+                  <Label className='mb-1 block'>Unit Price</Label>
+                  <Input
+                    type='text'
+                    inputMode='decimal'
+                    value={String(it.unitPrice ?? '')}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const cleaned = raw.replace(/[^0-9.]/g, '');
+                      const num = cleaned ? parseFloat(cleaned) : 0;
+                      updateItem(i, { unitPrice: isNaN(num) ? 0 : num });
+                    }}
+                    placeholder='e.g., 5000'
+                  />
                 </div>
               </div>
             ))}
@@ -112,4 +145,3 @@ const InvoicesPage: React.FC = () => {
 };
 
 export default InvoicesPage;
-

@@ -218,35 +218,34 @@ export const OrganizationTab: React.FC<Props> = ({
         </Button>
 
         {/* Bank Details */}
-        <div className='pt-6'>
-          <Card className='border-muted'>
-            <CardHeader>
-              <CardTitle className='text-base'>Bank Account</CardTitle>
-            </CardHeader>
-            <CardContent className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div>
-                <Label>Bank Name</Label>
-                <Input value={bankForm.bankName} onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })} placeholder='Bank name' />
-              </div>
-              <div>
-                <Label>Account Name</Label>
-                <Input value={bankForm.accountName} onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })} placeholder='Account name' />
-              </div>
-              <div>
-                <Label>Account Number</Label>
-                <Input value={bankForm.accountNumber} onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })} placeholder='1234567890' />
-              </div>
-              <div>
-                <Label>Notes</Label>
-                <Input value={bankForm.notes} onChange={(e) => setBankForm({ ...bankForm, notes: e.target.value })} placeholder='Optional notes' />
-              </div>
-              <div className='md:col-span-2 flex justify-end'>
-                <Button onClick={saveBank} disabled={bankLoading}>
-                  <Save className='h-4 w-4 mr-2' /> Save Bank Details
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className='pt-8'>
+          <h3 className='text-lg font-semibold mb-4 flex items-center'>
+            <Building className='h-5 w-5 mr-2' />
+            Bank Details
+          </h3>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div>
+              <Label>Bank Name</Label>
+              <Input value={bankForm.bankName} onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })} placeholder='Bank name' />
+            </div>
+            <div>
+              <Label>Account Name</Label>
+              <Input value={bankForm.accountName} onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })} placeholder='Account name' />
+            </div>
+            <div>
+              <Label>Account Number</Label>
+              <Input value={bankForm.accountNumber} onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })} placeholder='1234567890' />
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Input value={bankForm.notes} onChange={(e) => setBankForm({ ...bankForm, notes: e.target.value })} placeholder='Optional notes' />
+            </div>
+            <div className='md:col-span-2'>
+              <Button onClick={saveBank} disabled={bankLoading}>
+                <Save className='h-4 w-4 mr-2' /> Save Bank Details
+              </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
 

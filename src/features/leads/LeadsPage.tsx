@@ -50,6 +50,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { mockUsers } from '../../data/mockData';
 import { Lead, Stage } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
+import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 
@@ -144,15 +145,15 @@ const LeadsPage: React.FC = () => {
   const getSourceIcon = (source: Lead['source']) => {
     switch (source) {
       case 'whatsapp':
-        return '💬';
+        return <WhatsAppIcon className="h-4 w-4" />;
       case 'telegram':
-        return '✈️';
+        return <TelegramIcon className="h-4 w-4" />;
       case 'website':
-        return '🌐';
+        return <span role="img" aria-label="website">🌐</span>;
       case 'manual':
-        return '📝';
+        return <span role="img" aria-label="manual">📝</span>;
       default:
-        return '📝';
+        return <span role="img" aria-label="manual">📝</span>;
     }
   };
 
@@ -296,8 +297,8 @@ const LeadsPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        <span className="mr-1">{getSourceIcon(lead.source)}</span>
-                        <span className="capitalize text-sm">{lead.source}</span>
+                        {getSourceIcon(lead.source)}
+                        <span className="capitalize text-sm ml-1">{lead.source}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -499,7 +500,7 @@ const LeadsPage: React.FC = () => {
                                   Edit Lead
                                 </Button>
                                 <Button variant="outline">
-                                  <MessageCircle className="h-4 w-4 mr-2" />
+                                  <WhatsAppIcon className="h-4 w-4 mr-2" />
                                   Message
                                 </Button>
                                 <Button variant="outline" size="icon">

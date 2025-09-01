@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { MessageSquare, Users, Zap, CheckSquare, BarChart3, Settings, ChevronLeft, Inbox, Target, Calendar } from 'lucide-react';
+import { MessageSquare, Users, Zap, CheckSquare, BarChart3, Settings, ChevronLeft, Inbox, Target, Calendar, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -40,6 +40,12 @@ const sidebarItems = [
     href: '/dashboard/analytics',
     icon: BarChart3,
     description: 'Performance metrics',
+  },
+  {
+    title: 'Invoices',
+    href: '/dashboard/invoices',
+    icon: FileText,
+    description: 'Create and manage invoices',
   },
   {
     title: 'Settings',
