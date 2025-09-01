@@ -61,7 +61,7 @@ export const ProfileTab: React.FC = () => {
             <Input id='avatar' value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder='https://...' />
           </div>
         </div>
-        <div className='flex justify-end'>
+        <div>
           <Button onClick={saveProfile}>
             <Save className='h-4 w-4 mr-2' /> Save Profile
           </Button>

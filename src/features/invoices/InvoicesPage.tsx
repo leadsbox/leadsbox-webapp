@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Plus, Save } from 'lucide-react';
-import client from '@/api/client';
+import client, { getOrgId } from '@/api/client';
 import { toast } from 'react-toastify';
 
 type Item = { name: string; qty: number; unitPrice: number };
@@ -16,6 +16,8 @@ const InvoicesPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [lastInvoice, setLastInvoice] = useState<any>(null);
   const [html, setHtml] = useState<string>('');
+  const [verifying, setVerifying] = useState(false);
+  const [receiptInfo, setReceiptInfo] = useState<{ id: string; url: string; number: string } | null>(null);
 
   const addItem = () => setItems((prev) => [...prev, { name: '', qty: 1, unitPrice: 0 }]);
   const updateItem = (i: number, patch: Partial<Item>) =>
@@ -43,6 +45,24 @@ const InvoicesPage: React.FC = () => {
       toast.error(e?.response?.data?.message || 'Failed to create invoice');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const verifyPayment = async () => {
+    if (!lastInvoice?.code) return;
+    setVerifying(true);
+    try {
+      const orgId = getOrgId();
+      const res = await client.post(`/invoices/${lastInvoice.code}/verify-payment`, { orgId });
+      const payload = res?.data?.data || {};
+      const r = payload?.receipt;
+      if (r) {
+        setReceiptInfo({ id: r.id, url: r.url, number: r.number });
+      }
+    } catch (e) {
+      // noop
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -124,7 +144,7 @@ const InvoicesPage: React.FC = () => {
             ))}
           </div>
 
-          <div className='flex justify-end'>
+          <div>
             <Button onClick={createInvoice} disabled={creating}>
               <Save className='h-4 w-4 mr-2' /> Create Invoice
             </Button>
@@ -133,6 +153,16 @@ const InvoicesPage: React.FC = () => {
           {lastInvoice && (
             <div className='mt-4 space-y-2'>
               <div className='text-sm'>Invoice Code: <b>{lastInvoice.code}</b></div>
+              <div className='flex items-center gap-2'>
+                <Button size='sm' variant='outline' onClick={verifyPayment} disabled={verifying}>
+                  Mark as Paid / Generate Receipt
+                </Button>
+                {receiptInfo && (
+                  <Button size='sm' asChild>
+                    <a href={`/dashboard/receipts/${receiptInfo.id}`}>View Receipt</a>
+                  </Button>
+                )}
+              </div>
               {html && (
                 <div className='border rounded-md p-3 overflow-auto max-h-96 bg-background' dangerouslySetInnerHTML={{ __html: html }} />
               )}

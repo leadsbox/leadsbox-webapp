@@ -35,6 +35,7 @@ import AnalyticsPage from "./features/analytics/AnalyticsPage";
 import SettingsPage from "./features/settings/SettingsPage";
 import DashboardHomePage from "./features/dashboard/DashboardHomePage";
 import InvoicesPage from "./features/invoices/InvoicesPage";
+import ReceiptPage from "./features/receipts/ReceiptPage";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +113,7 @@ const App = () => (
               }>
                 <Route index element={<DashboardHomePage />} />
                 <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="receipts/:receiptId" element={<ReceiptPage />} />
                 <Route path="inbox" element={<InboxPage />} />
                 <Route path="leads" element={<LeadsPage />} />
                 <Route path="pipeline" element={<PipelinePage />} />
