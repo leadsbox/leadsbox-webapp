@@ -34,6 +34,7 @@ import TasksPage from "./features/tasks/TasksPage";
 import AnalyticsPage from "./features/analytics/AnalyticsPage";
 import SettingsPage from "./features/settings/SettingsPage";
 import DashboardHomePage from "./features/dashboard/DashboardHomePage";
+import InvoicesPage from "./features/invoices/InvoicesPage";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,7 @@ const App = () => (
                 </ProtectedRoute>
               }>
                 <Route index element={<DashboardHomePage />} />
+                <Route path="invoices" element={<InvoicesPage />} />
                 <Route path="inbox" element={<InboxPage />} />
                 <Route path="leads" element={<LeadsPage />} />
                 <Route path="pipeline" element={<PipelinePage />} />

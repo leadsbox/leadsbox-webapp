@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,46 @@ export const OrganizationTab: React.FC<Props> = ({
   const { setOrg } = useAuth();
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ name: '', description: '', currency: 'NGN', timezone: 'UTC' });
+  const [bankForm, setBankForm] = useState({ bankName: '', accountName: '', accountNumber: '', isDefault: true, notes: '' });
+  const [bankLoading, setBankLoading] = useState(false);
+
+  // Load existing bank details for current org
+  useEffect(() => {
+    const loadBank = async () => {
+      if (!selectedOrgId) return;
+      try {
+        const resp = await client.get('/settings/bank');
+        const bank = resp?.data?.data?.bank;
+        if (bank) {
+          setBankForm({
+            bankName: bank.bankName || '',
+            accountName: bank.accountName || '',
+            accountNumber: bank.accountNumber || '',
+            isDefault: !!bank.isDefault,
+            notes: bank.notes || '',
+          });
+        } else {
+          setBankForm({ bankName: '', accountName: '', accountNumber: '', isDefault: true, notes: '' });
+        }
+      } catch (e) {
+        // silent
+      }
+    };
+    loadBank();
+  }, [selectedOrgId]);
+
+  const saveBank = async () => {
+    if (!selectedOrgId) return;
+    setBankLoading(true);
+    try {
+      await client.post('/settings/bank', bankForm);
+      toast.success('Bank details saved');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to save bank details');
+    } finally {
+      setBankLoading(false);
+    }
+  };
 
   const handleCreateOrganizationWithDetails = async () => {
     const name = createForm.name.trim();
@@ -176,6 +216,38 @@ export const OrganizationTab: React.FC<Props> = ({
           <Save className='h-4 w-4 mr-2' />
           Save Changes
         </Button>
+
+        {/* Bank Details */}
+        <div className='pt-6'>
+          <Card className='border-muted'>
+            <CardHeader>
+              <CardTitle className='text-base'>Bank Account</CardTitle>
+            </CardHeader>
+            <CardContent className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <div>
+                <Label>Bank Name</Label>
+                <Input value={bankForm.bankName} onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })} placeholder='Bank name' />
+              </div>
+              <div>
+                <Label>Account Name</Label>
+                <Input value={bankForm.accountName} onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })} placeholder='Account name' />
+              </div>
+              <div>
+                <Label>Account Number</Label>
+                <Input value={bankForm.accountNumber} onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })} placeholder='1234567890' />
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Input value={bankForm.notes} onChange={(e) => setBankForm({ ...bankForm, notes: e.target.value })} placeholder='Optional notes' />
+              </div>
+              <div className='md:col-span-2 flex justify-end'>
+                <Button onClick={saveBank} disabled={bankLoading}>
+                  <Save className='h-4 w-4 mr-2' /> Save Bank Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </CardContent>
 
       {/* Create Organization Modal */}
@@ -239,4 +311,3 @@ export const OrganizationTab: React.FC<Props> = ({
 };
 
 export default OrganizationTab;
-

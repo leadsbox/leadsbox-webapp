@@ -210,7 +210,7 @@ const LeadsPage: React.FC = () => {
             <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{leads.length}</div>
+              <div className="text-2xl font-bold">{leads.length}</div>
             <p className="text-xs text-muted-foreground">+12% from last month</p>
           </CardContent>
         </Card>
@@ -236,13 +236,11 @@ const LeadsPage: React.FC = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Leads</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              ${leads.reduce((sum, lead) => sum + (lead.value || 0), 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">+18% from last month</p>
+            <div className="text-2xl font-bold">{filteredLeads.length}</div>
+            <p className="text-xs text-muted-foreground">Based on current filters</p>
           </CardContent>
         </Card>
       </div>
@@ -259,10 +257,10 @@ const LeadsPage: React.FC = () => {
                 <TableHead>Lead</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Source</TableHead>
+                <TableHead>From</TableHead>
                 <TableHead>Stage</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Assigned To</TableHead>
-                <TableHead>Value</TableHead>
                 <TableHead>Last Activity</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -303,6 +301,11 @@ const LeadsPage: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {(lead as any).from || (lead as any).providerId || (lead as any).conversationId || '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="outline" className={getStageColor(lead.stage)}>
                         {lead.stage}
                       </Badge>
@@ -325,14 +328,7 @@ const LeadsPage: React.FC = () => {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {lead.value && (
-                        <div className="flex items-center">
-                          <DollarSign className="h-3 w-3 mr-1 text-muted-foreground" />
-                          <span className="font-medium">{lead.value.toLocaleString()}</span>
-                        </div>
-                      )}
-                    </TableCell>
+                    
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
                         {lead.lastActivity && formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true })}
