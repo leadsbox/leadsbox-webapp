@@ -80,17 +80,15 @@ export const OrganizationTab: React.FC<Props> = ({
 
   return (
     <Card>
-      <CardHeader className='space-y-3'>
-        <div>
-          <Button onClick={() => setCreateOrgOpen(true)} size='sm'>
-            <Plus className='h-4 w-4 mr-2' />
-            Create Organization
-          </Button>
-        </div>
+      <CardHeader className='flex flex-row items-center justify-between'>
         <CardTitle className='flex items-center'>
           <Building className='h-5 w-5 mr-2' />
           Organization Details
         </CardTitle>
+        <Button onClick={() => setCreateOrgOpen(true)} size='sm'>
+          <Plus className='h-4 w-4 mr-2' />
+          Create Organization
+        </Button>
       </CardHeader>
       <CardContent className='space-y-4'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
