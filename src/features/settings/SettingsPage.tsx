@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { mockOrganization } from '../../data/mockData';
+import { Org, Organization, OrgSettings } from './types';
 import { ThemeSettings } from './components/ThemeSettings';
 import ProfileTab from './tabs/ProfileTab';
 import OrganizationTab from './tabs/OrganizationTab';
@@ -18,8 +19,15 @@ import { toast } from 'react-toastify';
 
 const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
-  const [organization, setOrganization] = useState(mockOrganization);
-  const [orgs, setOrgs] = useState<Array<{ id: string; name: string; settings?: any }>>([]);
+  const [organization, setOrganization] = useState<Organization>({
+    ...mockOrganization,
+    settings: {
+      timezone: 'UTC',
+      currency: 'USD',
+      ...mockOrganization.settings,
+    },
+  });
+  const [orgs, setOrgs] = useState<Org[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [orgLoading, setOrgLoading] = useState(false);
   const { setOrg } = useAuth();
@@ -29,19 +37,31 @@ const SettingsPage: React.FC = () => {
     (async () => {
       try {
         setOrgLoading(true);
-        const resp = await client.get('/orgs');
-        const list: Array<any> = resp?.data?.data?.orgs || [];
+        const resp = await client.get<{ data: { orgs: Organization[] } }>('/orgs');
+        const list = resp?.data?.data?.orgs || [];
         setOrgs(list);
         if (list.length) {
           setSelectedOrgId(list[0].id);
-          try { setOrg(list[0].id); window.dispatchEvent(new CustomEvent('lb:org-changed')); } catch {
-            console.error('Failed to set organization');
+          try {
+            setOrg(list[0].id);
+            window.dispatchEvent(new CustomEvent('lb:org-changed'));
+          } catch (error) {
+            console.error('Failed to set organization', error);
           }
           // Normalize with mock structure for UI compatibility
-          const normalized = {
+          const org = list[0];
+          const normalized: Organization = {
             ...mockOrganization,
-            ...list[0],
-            settings: { ...mockOrganization.settings, ...(list[0].settings || {}) },
+            ...org,
+            settings: {
+              // Ensure nested defaults like notifications exist
+              ...mockOrganization.settings,
+              // Provide base defaults
+              timezone: 'UTC',
+              currency: 'USD',
+              // Overlay org-provided settings last
+              ...(org.settings || {}),
+            },
           };
           setOrganization(normalized);
         }

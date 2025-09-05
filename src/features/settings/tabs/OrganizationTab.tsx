@@ -10,16 +10,15 @@ import { mockOrganization } from '@/data/mockData';
 import client from '@/api/client';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
-
-type Org = { id: string; name: string; settings?: any };
+import type { Org, Organization, OrgSettings } from '@/features/settings/types';
 
 interface Props {
   orgs: Org[];
-  setOrgs: (os: Org[]) => void;
+  setOrgs: React.Dispatch<React.SetStateAction<Org[]>>;
   selectedOrgId: string;
-  setSelectedOrgId: (id: string) => void;
-  organization: any;
-  setOrganization: (o: any) => void;
+  setSelectedOrgId: React.Dispatch<React.SetStateAction<string>>;
+  organization: Organization;
+  setOrganization: React.Dispatch<React.SetStateAction<Organization>>;
   orgLoading: boolean;
   onSaveOrganization: () => void;
 }
@@ -87,11 +86,11 @@ export const OrganizationTab: React.FC<Props> = ({
     try {
       // create org
       const resp = await client.post('/orgs', { name, description: createForm.description?.trim() || undefined });
-      const org = resp?.data?.data?.org;
+      const org: Org = resp?.data?.data?.org;
       if (!org || !org.id) throw new Error('Create response missing organization');
 
       // update settings
-      const nextSettings: any = {};
+      const nextSettings: Partial<OrgSettings> = {};
       if (createForm.currency) nextSettings.currency = createForm.currency;
       if (createForm.timezone) nextSettings.timezone = createForm.timezone;
       try {
@@ -101,11 +100,19 @@ export const OrganizationTab: React.FC<Props> = ({
       }
 
       // update parent state
-      const normalized = { ...mockOrganization, ...org, settings: { ...mockOrganization.settings, ...(org.settings || {}), ...nextSettings } };
-      setOrgs([org, ...orgs]);
-      setSelectedOrgId(org.id);
+      const normalized: Organization = { 
+        ...mockOrganization, 
+        ...org, 
+        settings: { 
+          ...mockOrganization.settings, 
+          ...(org.settings || {}), 
+          ...nextSettings 
+        } 
+      };
+      setOrgs((prev) => [org, ...prev]);
+      setSelectedOrgId(String(org.id));
       try {
-        setOrg(org.id);
+        setOrg(String(org.id));
         window.dispatchEvent(new CustomEvent('lb:org-changed'));
       } catch {}
       setOrganization(normalized);
@@ -142,7 +149,7 @@ export const OrganizationTab: React.FC<Props> = ({
                   setOrg(v);
                   window.dispatchEvent(new CustomEvent('lb:org-changed'));
                 } catch {}
-                const sel = orgs.find((o) => o.id === v);
+                const sel = orgs.find((o) => String(o.id) === v);
                 if (sel) {
                   const normalized = { ...mockOrganization, ...sel, settings: { ...mockOrganization.settings, ...(sel.settings || {}) } };
                   setOrganization(normalized);
@@ -154,8 +161,8 @@ export const OrganizationTab: React.FC<Props> = ({
               </SelectTrigger>
               <SelectContent>
                 {orgs.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}
+                  <SelectItem key={String(o.id)} value={String(o.id)}>
+                    {String(o.name)}
                   </SelectItem>
                 ))}
               </SelectContent>

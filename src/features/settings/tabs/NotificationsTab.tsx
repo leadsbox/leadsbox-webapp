@@ -3,12 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Bell } from 'lucide-react';
+import type { Organization } from '@/features/settings/types';
 
 interface Props {
-  organization: any;
+  organization: Organization;
 }
 
 export const NotificationsTab: React.FC<Props> = ({ organization }) => {
+  const notifications = organization?.settings?.notifications as any;
+  const email = notifications?.email as
+    | { newLeads?: boolean; taskReminders?: boolean; systemUpdates?: boolean }
+    | undefined;
+  const push = notifications?.push as
+    | { newMessages?: boolean; taskDeadlines?: boolean; leadUpdates?: boolean }
+    | undefined;
   return (
     <Card>
       <CardHeader>
@@ -26,21 +34,21 @@ export const NotificationsTab: React.FC<Props> = ({ organization }) => {
                 <Label>New Leads</Label>
                 <p className='text-sm text-muted-foreground'>Receive emails when new leads are created</p>
               </div>
-              <Switch checked={organization.settings.notifications.email.newLeads} />
+              <Switch checked={!!email?.newLeads} />
             </div>
             <div className='flex items-center justify-between'>
               <div>
                 <Label>Task Reminders</Label>
                 <p className='text-sm text-muted-foreground'>Get reminded about upcoming tasks</p>
               </div>
-              <Switch checked={organization.settings.notifications.email.taskReminders} />
+              <Switch checked={!!email?.taskReminders} />
             </div>
             <div className='flex items-center justify-between'>
               <div>
                 <Label>System Updates</Label>
                 <p className='text-sm text-muted-foreground'>Product updates and announcements</p>
               </div>
-              <Switch checked={organization.settings.notifications.email.systemUpdates} />
+              <Switch checked={!!email?.systemUpdates} />
             </div>
           </div>
         </div>
@@ -53,21 +61,21 @@ export const NotificationsTab: React.FC<Props> = ({ organization }) => {
                 <Label>New Messages</Label>
                 <p className='text-sm text-muted-foreground'>Instant notifications for new messages</p>
               </div>
-              <Switch checked={organization.settings.notifications.push.newMessages} />
+              <Switch checked={!!push?.newMessages} />
             </div>
             <div className='flex items-center justify-between'>
               <div>
                 <Label>Task Deadlines</Label>
                 <p className='text-sm text-muted-foreground'>Alerts for approaching deadlines</p>
               </div>
-              <Switch checked={organization.settings.notifications.push.taskDeadlines} />
+              <Switch checked={!!push?.taskDeadlines} />
             </div>
             <div className='flex items-center justify-between'>
               <div>
                 <Label>Lead Updates</Label>
                 <p className='text-sm text-muted-foreground'>Notifications when leads change status</p>
               </div>
-              <Switch checked={organization.settings.notifications.push.leadUpdates} />
+              <Switch checked={!!push?.leadUpdates} />
             </div>
           </div>
         </div>
@@ -77,4 +85,3 @@ export const NotificationsTab: React.FC<Props> = ({ organization }) => {
 };
 
 export default NotificationsTab;
-

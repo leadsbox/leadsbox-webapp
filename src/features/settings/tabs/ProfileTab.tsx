@@ -15,9 +15,9 @@ export const ProfileTab: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      const display = (user as any).name || user.username || (user.email ? user.email.split('@')[0] : '') || '';
+      const display = (user as { name?: string }).name || user.username || (user.email ? user.email.split('@')[0] : '') || '';
       setName(display);
-      setAvatar(user.profileImage || (user as any).avatar || '');
+      setAvatar((user as { profileImage?: string }).profileImage || '');
     }
   }, [user]);
 
@@ -26,7 +26,11 @@ export const ProfileTab: React.FC = () => {
       const parts = (name || '').trim().split(/\s+/);
       const firstName = parts[0] || '';
       const lastName = parts.slice(1).join(' ');
-      const payload: any = {};
+      const payload: {
+        firstName?: string;
+        lastName?: string;
+        profileImage?: string;
+      } = {};
       if (firstName) payload.firstName = firstName;
       if (lastName) payload.lastName = lastName;
       if (avatar?.trim()) payload.profileImage = avatar.trim();
