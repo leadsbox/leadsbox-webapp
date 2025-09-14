@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AxiosError } from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,8 @@ const InvoicesPage: React.FC = () => {
       setLastInvoice(payload.invoice || null);
       setHtml(payload.html || '');
       toast.success('Invoice created');
-    } catch (e: any) {
+    } catch (error) {
+      const e = error as AxiosError<{ message?: string }>;
       toast.error(e?.response?.data?.message || 'Failed to create invoice');
     } finally {
       setCreating(false);
