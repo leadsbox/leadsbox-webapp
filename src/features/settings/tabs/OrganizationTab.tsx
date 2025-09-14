@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AxiosError } from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -70,8 +71,9 @@ export const OrganizationTab: React.FC<Props> = ({
     try {
       await client.post('/settings/bank', bankForm);
       toast.success('Bank details saved');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to save bank details');
+    } catch (error) {
+      const e = error as AxiosError<{ message?: string }>;
+      toast.error(e.response?.data?.message || 'Failed to save bank details');
     } finally {
       setBankLoading(false);
     }
@@ -100,21 +102,25 @@ export const OrganizationTab: React.FC<Props> = ({
       }
 
       // update parent state
-      const normalized: Organization = { 
-        ...mockOrganization, 
-        ...org, 
-        settings: { 
-          ...mockOrganization.settings, 
-          ...(org.settings || {}), 
-          ...nextSettings 
-        } 
+      const normalized: Organization = {
+        ...mockOrganization,
+        ...org,
+        settings: {
+          ...mockOrganization.settings,
+          ...(org.settings || {}),
+          ...nextSettings,
+        },
       };
       setOrgs((prev) => [org, ...prev]);
       setSelectedOrgId(String(org.id));
       try {
         setOrg(String(org.id));
         window.dispatchEvent(new CustomEvent('lb:org-changed'));
-      } catch {}
+      } catch (error) {
+        console.error('Error changing organization:', error);
+        // Optionally show a toast message to the user
+        toast.error('Failed to switch organization');
+      }
       setOrganization(normalized);
 
       setCreateForm({ name: '', description: '', currency: 'NGN', timezone: 'UTC' });
@@ -148,7 +154,9 @@ export const OrganizationTab: React.FC<Props> = ({
                 try {
                   setOrg(v);
                   window.dispatchEvent(new CustomEvent('lb:org-changed'));
-                } catch {}
+                } catch (e) {
+                  toast.error('Failed to switch organization');
+                }
                 const sel = orgs.find((o) => String(o.id) === v);
                 if (sel) {
                   const normalized = { ...mockOrganization, ...sel, settings: { ...mockOrganization.settings, ...(sel.settings || {}) } };
@@ -190,7 +198,10 @@ export const OrganizationTab: React.FC<Props> = ({
           </div>
           <div>
             <Label htmlFor='timezone'>Timezone</Label>
-            <Select value={organization.settings.timezone} onValueChange={(tz) => setOrganization({ ...organization, settings: { ...organization.settings, timezone: tz } })}>
+            <Select
+              value={organization.settings.timezone}
+              onValueChange={(tz) => setOrganization({ ...organization, settings: { ...organization.settings, timezone: tz } })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -205,7 +216,10 @@ export const OrganizationTab: React.FC<Props> = ({
           </div>
           <div>
             <Label htmlFor='currency'>Currency</Label>
-            <Select value={organization.settings.currency} onValueChange={(cur) => setOrganization({ ...organization, settings: { ...organization.settings, currency: cur } })}>
+            <Select
+              value={organization.settings.currency}
+              onValueChange={(cur) => setOrganization({ ...organization, settings: { ...organization.settings, currency: cur } })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -237,11 +251,19 @@ export const OrganizationTab: React.FC<Props> = ({
             </div>
             <div>
               <Label>Account Name</Label>
-              <Input value={bankForm.accountName} onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })} placeholder='Account name' />
+              <Input
+                value={bankForm.accountName}
+                onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })}
+                placeholder='Account name'
+              />
             </div>
             <div>
               <Label>Account Number</Label>
-              <Input value={bankForm.accountNumber} onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })} placeholder='1234567890' />
+              <Input
+                value={bankForm.accountNumber}
+                onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                placeholder='1234567890'
+              />
             </div>
             <div>
               <Label>Notes</Label>
@@ -266,11 +288,21 @@ export const OrganizationTab: React.FC<Props> = ({
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div className='md:col-span-2'>
               <Label htmlFor='create-org-name'>Name</Label>
-              <Input id='create-org-name' value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder='Acme Inc.' />
+              <Input
+                id='create-org-name'
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                placeholder='Acme Inc.'
+              />
             </div>
             <div className='md:col-span-2'>
               <Label htmlFor='create-org-desc'>Description (optional)</Label>
-              <Input id='create-org-desc' value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} placeholder='What does your organization do?' />
+              <Input
+                id='create-org-desc'
+                value={createForm.description}
+                onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                placeholder='What does your organization do?'
+              />
             </div>
             <div>
               <Label>Timezone</Label>
@@ -304,7 +336,9 @@ export const OrganizationTab: React.FC<Props> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button variant='outline' onClick={() => setCreateOrgOpen(false)}>Cancel</Button>
+            <Button variant='outline' onClick={() => setCreateOrgOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleCreateOrganizationWithDetails}>
               <Plus className='h-4 w-4 mr-2' />
               Create

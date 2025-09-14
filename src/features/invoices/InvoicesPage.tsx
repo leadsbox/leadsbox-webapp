@@ -14,7 +14,12 @@ const InvoicesPage: React.FC = () => {
   const [currency, setCurrency] = useState('NGN');
   const [items, setItems] = useState<Item[]>([{ name: '', qty: 1, unitPrice: 0 }]);
   const [creating, setCreating] = useState(false);
-  const [lastInvoice, setLastInvoice] = useState<any>(null);
+  interface Invoice {
+    code?: string;
+    // Add other invoice properties as needed
+  }
+
+  const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
   const [html, setHtml] = useState<string>('');
   const [verifying, setVerifying] = useState(false);
   const [receiptInfo, setReceiptInfo] = useState<{ id: string; url: string; number: string } | null>(null);
@@ -53,6 +58,10 @@ const InvoicesPage: React.FC = () => {
     setVerifying(true);
     try {
       const orgId = getOrgId();
+      if (!orgId) {
+        toast.error('Organization ID not found');
+        return;
+      }
       const res = await client.post(`/invoices/${lastInvoice.code}/verify-payment`, { orgId });
       const payload = res?.data?.data || {};
       const r = payload?.receipt;
