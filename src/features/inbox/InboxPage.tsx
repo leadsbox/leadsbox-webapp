@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 import client from '@/api/client';
+import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
 import { Thread, Message } from '../../types';
@@ -123,7 +124,7 @@ const InboxPage: React.FC = () => {
   const fetchThreads = async () => {
     setLoadingThreads(true);
     try {
-      const res = await client.get('/threads');
+      const res = await client.get(endpoints.threads);
       const list = (res?.data?.data?.threads || []) as ApiThread[];
       const ui = list.map(toUiThread);
       setThreads(ui);
@@ -139,7 +140,7 @@ const InboxPage: React.FC = () => {
   const fetchMessages = async (id: string) => {
     setLoadingMessages(true);
     try {
-      const res = await client.get(`/threads/${id}/messages`);
+      const res = await client.get(endpoints.threadMessages(id));
       const list = (res?.data?.data?.messages || []) as ApiMessage[];
       setMessages(list.map(toUiMessage));
     } catch (error) {
@@ -449,7 +450,7 @@ const InboxPage: React.FC = () => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (selectedThread && composer.trim()) {
-                        client.post(`/threads/${selectedThread.id}/reply`, { text: composer.trim() })
+                        client.post(endpoints.threadReply(selectedThread.id), { text: composer.trim() })
                           .then(() => fetchMessages(selectedThread.id))
                           .catch(() => toast.error('Failed to send message'))
                           .finally(() => setComposer(''))
@@ -461,7 +462,7 @@ const InboxPage: React.FC = () => {
                   disabled={!selectedThread || !composer.trim()}
                   onClick={() => {
                     if (!selectedThread || !composer.trim()) return;
-                    client.post(`/threads/${selectedThread.id}/reply`, { text: composer.trim() })
+                    client.post(endpoints.threadReply(selectedThread.id), { text: composer.trim() })
                       .then(() => fetchMessages(selectedThread.id))
                       .catch(() => toast.error('Failed to send message'))
                       .finally(() => setComposer(''))
