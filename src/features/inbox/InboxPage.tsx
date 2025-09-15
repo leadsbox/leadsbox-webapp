@@ -18,30 +18,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listThreads, listMessages, replyToThread } from '@/api/threads';
+import client from '@/api/client';
+import { AxiosError } from 'axios';
+import { toast } from 'react-toastify';
 import { Thread, Message } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 
 const InboxPage: React.FC = () => {
-  const qc = useQueryClient();
-  const { data: threads = [], isLoading } = useQuery({ queryKey: ['threads'], queryFn: listThreads });
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [loadingThreads, setLoadingThreads] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
-  const selectedId = selectedThread?.id;
-  const { data: messages = [] } = useQuery({
-    queryKey: ['threads', selectedId, 'messages'],
-    queryFn: () => listMessages(selectedId!),
-    enabled: !!selectedId,
-  });
-  const sendMutation = useMutation({
-    mutationFn: ({ id, text }: { id: string; text: string }) => replyToThread(id, text),
-    onSuccess: () => {
-      if (selectedId) {
-        qc.invalidateQueries({ queryKey: ['threads', selectedId, 'messages'] });
-        qc.invalidateQueries({ queryKey: ['threads'] });
-      }
-    },
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'mine' | 'hot'>('all');
   const [mobileThreadsOpen, setMobileThreadsOpen] = useState(false);
@@ -69,9 +57,107 @@ const InboxPage: React.FC = () => {
     };
   }, []);
 
+  // API types and mappers (local)
+  type ApiThread = {
+    id: string;
+    organizationId: string;
+    contact: { id: string; displayName?: string | null; phone?: string | null };
+    channel: { id: string; type: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'; displayName?: string | null };
+    status: string;
+    lastMessageAt: string;
+  };
+  type ApiMessage = {
+    id: string;
+    threadId: string;
+    channelType: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK';
+    direction: 'IN' | 'OUT';
+    text?: string | null;
+    sentAt: string;
+  };
+
+  const mapChannel = (t: ApiThread['channel']['type']): Thread['channel'] => {
+    if (t === 'WHATSAPP') return 'whatsapp';
+    if (t === 'INSTAGRAM') return 'sms';
+    if (t === 'FACEBOOK') return 'sms';
+    return 'whatsapp';
+  };
+  const toUiLead = (api: ApiThread): Thread['lead'] => {
+    const name = api.contact.displayName || api.contact.phone || 'Contact';
+    return {
+      id: api.contact.id,
+      name,
+      email: '',
+      phone: api.contact.phone || undefined,
+      source: 'whatsapp',
+      stage: 'NEW',
+      priority: 'MEDIUM',
+      tags: [],
+      createdAt: api.lastMessageAt,
+      updatedAt: api.lastMessageAt,
+    } as any;
+  };
+  const toUiThread = (api: ApiThread): Thread => ({
+    id: api.id,
+    leadId: api.contact.id,
+    lead: toUiLead(api),
+    channel: mapChannel(api.channel.type),
+    status: 'OPEN',
+    priority: 'MEDIUM',
+    isUnread: false,
+    lastMessage: undefined,
+    assignedTo: undefined,
+    tags: [],
+    createdAt: api.lastMessageAt,
+    updatedAt: api.lastMessageAt,
+  });
+  const toUiMessage = (m: ApiMessage): Message => ({
+    id: m.id,
+    threadId: m.threadId,
+    content: m.text || '',
+    type: 'TEXT',
+    sender: m.direction === 'IN' ? 'LEAD' : 'AGENT',
+    createdAt: m.sentAt,
+    isRead: true,
+  });
+
+  const fetchThreads = async () => {
+    setLoadingThreads(true);
+    try {
+      const res = await client.get('/threads');
+      const list = (res?.data?.data?.threads || []) as ApiThread[];
+      const ui = list.map(toUiThread);
+      setThreads(ui);
+      if (!selectedThread && ui.length > 0) setSelectedThread(ui[0]);
+    } catch (error) {
+      const e = error as AxiosError<{ message?: string }>;
+      toast.error(e?.response?.data?.message || 'Failed to load threads');
+    } finally {
+      setLoadingThreads(false);
+    }
+  };
+
+  const fetchMessages = async (id: string) => {
+    setLoadingMessages(true);
+    try {
+      const res = await client.get(`/threads/${id}/messages`);
+      const list = (res?.data?.data?.messages || []) as ApiMessage[];
+      setMessages(list.map(toUiMessage));
+    } catch (error) {
+      const e = error as AxiosError<{ message?: string }>;
+      toast.error(e?.response?.data?.message || 'Failed to load messages');
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
   useEffect(() => {
-    if (!selectedThread && threads.length > 0) setSelectedThread(threads[0]);
-  }, [threads, selectedThread]);
+    fetchThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (selectedThread?.id) fetchMessages(selectedThread.id);
+  }, [selectedThread?.id]);
 
   const filteredThreads = useMemo(() => threads.filter(thread => {
     const matchesSearch = thread.lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,7 +265,7 @@ const InboxPage: React.FC = () => {
 
         {/* Thread List */}
         <div className="flex-1 overflow-auto">
-          {isLoading ? (
+          {loadingThreads ? (
             <div className="p-6 text-center text-muted-foreground">Loading...</div>
           ) : filteredThreads.length === 0 ? (
             <div className="p-6 text-center">
@@ -312,13 +398,15 @@ const InboxPage: React.FC = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.sender === 'AGENT' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
+              {loadingMessages ? (
+                <div className="text-center text-muted-foreground">Loading messages...</div>
+              ) : messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    message.sender === 'AGENT' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
                     <div
                       className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                         message.sender === 'AGENT'
@@ -361,18 +449,22 @@ const InboxPage: React.FC = () => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (selectedThread && composer.trim()) {
-                        sendMutation.mutate({ id: selectedThread.id, text: composer.trim() });
-                        setComposer('');
+                        client.post(`/threads/${selectedThread.id}/reply`, { text: composer.trim() })
+                          .then(() => fetchMessages(selectedThread.id))
+                          .catch(() => toast.error('Failed to send message'))
+                          .finally(() => setComposer(''))
                       }
                     }
                   }}
                 />
                 <Button
-                  disabled={!selectedThread || !composer.trim() || sendMutation.isPending}
+                  disabled={!selectedThread || !composer.trim()}
                   onClick={() => {
                     if (!selectedThread || !composer.trim()) return;
-                    sendMutation.mutate({ id: selectedThread.id, text: composer.trim() });
-                    setComposer('');
+                    client.post(`/threads/${selectedThread.id}/reply`, { text: composer.trim() })
+                      .then(() => fetchMessages(selectedThread.id))
+                      .catch(() => toast.error('Failed to send message'))
+                      .finally(() => setComposer(''))
                   }}
                 >
                   Send
