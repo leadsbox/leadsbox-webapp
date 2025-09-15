@@ -94,7 +94,7 @@ const InboxPage: React.FC = () => {
       tags: [],
       createdAt: api.lastMessageAt,
       updatedAt: api.lastMessageAt,
-    } as any;
+    };
   };
   const toUiThread = (api: ApiThread): Thread => ({
     id: api.id,
