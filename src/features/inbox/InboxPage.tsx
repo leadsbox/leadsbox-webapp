@@ -352,61 +352,102 @@ const InboxPage: React.FC = () => {
         </div>
       </div>
 
-      {/* New Chat Modal */}
-      {showNewChat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-card border border-border rounded-lg p-4 w-full max-w-md">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">Start New Chat</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowNewChat(false)} aria-label="Close">
-                <X className="h-4 w-4" />
-              </Button>
+      {/* Message View */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {showNewChat ? (
+          <>
+            {/* New Chat Header with phone input */}
+            <div className="p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 w-full">
+                  <h2 className="text-lg font-semibold text-foreground whitespace-nowrap">New Chat</h2>
+                  <Input
+                    placeholder="WhatsApp Phone (e.g., +2348012345678)"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="max-w-md"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" aria-label="Cancel new chat" onClick={() => setShowNewChat(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm block mb-1">WhatsApp Phone (E.164)</label>
-                <Input placeholder="+2348012345678" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+
+            {/* Empty timeline area with hint */}
+            <div className="flex-1 overflow-auto p-4">
+              <div className="h-full grid place-items-center text-center text-muted-foreground">
+                <div>
+                  <WhatsAppIcon className="h-12 w-12 mx-auto mb-3" />
+                  <p>Enter a phone number above and your message below to start a conversation.</p>
+                </div>
               </div>
-              <div>
-                <label className="text-sm block mb-1">Message</label>
-                <Input placeholder="Type your message..." value={newText} onChange={(e) => setNewText(e.target.value)} />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowNewChat(false)}>Cancel</Button>
+            </div>
+
+            {/* Composer for initial message */}
+            <div className="p-3 sm:p-4 border-t border-border bg-card/50">
+              <div className="flex items-center space-x-2">
+                <Input
+                  placeholder="Type your message..."
+                  className="flex-1"
+                  value={newText}
+                  onChange={(e) => setNewText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!newPhone.trim() || !newText.trim()) return;
+                      (async () => {
+                        try {
+                          setSendingNew(true);
+                          const res = await client.post(endpoints.threadStart, { contactPhone: newPhone.trim(), text: newText.trim() });
+                          const threadId = res?.data?.data?.threadId as string | undefined;
+                          setShowNewChat(false);
+                          setNewPhone(''); setNewText('');
+                          await fetchThreads();
+                          if (threadId) {
+                            const created = (threads || []).find(t => t.id === threadId);
+                            if (created) setSelectedThread(created);
+                            await fetchMessages(threadId);
+                          }
+                        } catch (_) {
+                          toast.error('Failed to start chat');
+                        } finally {
+                          setSendingNew(false);
+                        }
+                      })();
+                    }
+                  }}
+                />
                 <Button
                   disabled={sendingNew || !newPhone.trim() || !newText.trim()}
                   onClick={async () => {
                     try {
-                      setSendingNew(true)
-                      const res = await client.post(endpoints.threadStart, { contactPhone: newPhone.trim(), text: newText.trim() })
-                      const threadId = res?.data?.data?.threadId as string | undefined
-                      setShowNewChat(false)
-                      setNewPhone(''); setNewText('')
-                      await fetchThreads()
+                      setSendingNew(true);
+                      const res = await client.post(endpoints.threadStart, { contactPhone: newPhone.trim(), text: newText.trim() });
+                      const threadId = res?.data?.data?.threadId as string | undefined;
+                      setShowNewChat(false);
+                      setNewPhone(''); setNewText('');
+                      await fetchThreads();
                       if (threadId) {
-                        const created = (threads || []).find(t => t.id === threadId)
-                        if (created) setSelectedThread(created)
-                        await fetchMessages(threadId)
+                        const created = (threads || []).find(t => t.id === threadId);
+                        if (created) setSelectedThread(created);
+                        await fetchMessages(threadId);
                       }
-                    } catch (e) {
-                      toast.error('Failed to start chat')
+                    } catch (_) {
+                      toast.error('Failed to start chat');
                     } finally {
-                      setSendingNew(false)
+                      setSendingNew(false);
                     }
                   }}
                 >
                   Send
                 </Button>
               </div>
-              <div className="text-xs text-muted-foreground">Requires backend WhatsApp Cloud API credentials.</div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Message View */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {selectedThread ? (
+          </>
+        ) : selectedThread ? (
           <>
             {/* Conversation Header */}
             <div className="p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10">
