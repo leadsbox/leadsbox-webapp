@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { toast } from 'react-toastify';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
-import client, { setAccessToken, setOrgId } from '../api/client';
+import client, { setAccessToken, setOrgId, getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 
 type AuthState = {
@@ -55,7 +55,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (data?.user) {
           setUser(data.user);
-          if (data.user.orgId) setOrgId(data.user.orgId);
+          // Ensure x-org-id is set for org-scoped APIs
+          if (data.user.orgId) {
+            setOrgId(data.user.orgId);
+          } else if (!getOrgId()) {
+            // Auto-select a default org if user has one
+            try {
+              const orgRes = await client.get(endpoints.orgs);
+              const orgs = orgRes?.data?.data?.orgs || orgRes?.data?.orgs || [];
+              if (Array.isArray(orgs) && orgs.length > 0) {
+                setOrgId(orgs[0].id);
+              }
+            } catch (_) {
+              // noop — user may not have an org yet
+            }
+          }
           if (data.accessToken) setAccessToken(data.accessToken);
         } else {
           setUser(null);
@@ -90,6 +104,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (profile) {
         setUser(profile);
         toast.success(`Welcome back, ${profile.username || profile.email}!`);
+        // Ensure orgId is set after login
+        if (!getOrgId()) {
+          try {
+            const orgRes = await client.get(endpoints.orgs);
+            const orgs = orgRes?.data?.data?.orgs || orgRes?.data?.orgs || [];
+            if (Array.isArray(orgs) && orgs.length > 0) {
+              setOrgId(orgs[0].id);
+            }
+          } catch (_) {
+            // noop
+          }
+        }
       } else {
         throw new Error('Login failed');
       }
