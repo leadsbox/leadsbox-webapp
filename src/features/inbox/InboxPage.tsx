@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import client from '@/api/client';
+import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
@@ -401,7 +401,7 @@ const InboxPage: React.FC = () => {
                       (async () => {
                         try {
                           setSendingNew(true);
-                          const res = await client.post(endpoints.threadStart, { contactPhone: newPhone.trim(), text: newText.trim() });
+                          const res = await client.post(endpoints.threadStart, { orgId: getOrgId(), contactPhone: newPhone.trim(), text: newText.trim() });
                           const threadId = res?.data?.data?.threadId as string | undefined;
                           setShowNewChat(false);
                           setNewPhone(''); setNewText('');
@@ -425,7 +425,7 @@ const InboxPage: React.FC = () => {
                   onClick={async () => {
                     try {
                       setSendingNew(true);
-                      const res = await client.post(endpoints.threadStart, { contactPhone: newPhone.trim(), text: newText.trim() });
+                      const res = await client.post(endpoints.threadStart, { orgId: getOrgId(), contactPhone: newPhone.trim(), text: newText.trim() });
                       const threadId = res?.data?.data?.threadId as string | undefined;
                       setShowNewChat(false);
                       setNewPhone(''); setNewText('');
@@ -549,7 +549,7 @@ const InboxPage: React.FC = () => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (selectedThread && composer.trim()) {
-                        client.post(endpoints.threadReply(selectedThread.id), { text: composer.trim() })
+                        client.post(endpoints.threadReply(selectedThread.id), { orgId: getOrgId(), text: composer.trim() })
                           .then(() => fetchMessages(selectedThread.id))
                           .catch(() => toast.error('Failed to send message'))
                           .finally(() => setComposer(''))
@@ -561,7 +561,7 @@ const InboxPage: React.FC = () => {
                   disabled={!selectedThread || !composer.trim()}
                   onClick={() => {
                     if (!selectedThread || !composer.trim()) return;
-                    client.post(endpoints.threadReply(selectedThread.id), { text: composer.trim() })
+                    client.post(endpoints.threadReply(selectedThread.id), { orgId: getOrgId(), text: composer.trim() })
                       .then(() => fetchMessages(selectedThread.id))
                       .catch(() => toast.error('Failed to send message'))
                       .finally(() => setComposer(''))
