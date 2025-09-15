@@ -1,6 +1,6 @@
 // Inbox Page Component for LeadsBox Dashboard
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
@@ -18,15 +18,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import { mockThreads, mockMessages } from '../../data/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { listThreads, listMessages, replyToThread } from '@/api/threads';
 import { Thread, Message } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 
 const InboxPage: React.FC = () => {
-  const [selectedThread, setSelectedThread] = useState<Thread | null>(mockThreads[0]);
+  const qc = useQueryClient();
+  const { data: threads = [], isLoading } = useQuery({ queryKey: ['threads'], queryFn: listThreads });
+  const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const selectedId = selectedThread?.id;
+  const { data: messages = [] } = useQuery({
+    queryKey: ['threads', selectedId, 'messages'],
+    queryFn: () => listMessages(selectedId!),
+    enabled: !!selectedId,
+  });
+  const sendMutation = useMutation({
+    mutationFn: ({ id, text }: { id: string; text: string }) => replyToThread(id, text),
+    onSuccess: () => {
+      if (selectedId) {
+        qc.invalidateQueries({ queryKey: ['threads', selectedId, 'messages'] });
+        qc.invalidateQueries({ queryKey: ['threads'] });
+      }
+    },
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'mine' | 'hot'>('all');
   const [mobileThreadsOpen, setMobileThreadsOpen] = useState(false);
+  const [composer, setComposer] = useState('');
 
   useEffect(() => {
     document.body.style.overflow = mobileThreadsOpen ? 'hidden' : '';
@@ -50,7 +69,11 @@ const InboxPage: React.FC = () => {
     };
   }, []);
 
-  const filteredThreads = mockThreads.filter(thread => {
+  useEffect(() => {
+    if (!selectedThread && threads.length > 0) setSelectedThread(threads[0]);
+  }, [threads, selectedThread]);
+
+  const filteredThreads = useMemo(() => threads.filter(thread => {
     const matchesSearch = thread.lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          thread.lead.email.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -64,7 +87,7 @@ const InboxPage: React.FC = () => {
       default:
         return matchesSearch;
     }
-  });
+  }), [threads, searchQuery, activeFilter]);
 
   const getChannelIcon = (channel: Thread['channel']) => {
     switch (channel) {
@@ -156,7 +179,9 @@ const InboxPage: React.FC = () => {
 
         {/* Thread List */}
         <div className="flex-1 overflow-auto">
-          {filteredThreads.length === 0 ? (
+          {isLoading ? (
+            <div className="p-6 text-center text-muted-foreground">Loading...</div>
+          ) : filteredThreads.length === 0 ? (
             <div className="p-6 text-center">
               <WhatsAppIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No conversations found</h3>
@@ -287,9 +312,7 @@ const InboxPage: React.FC = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {mockMessages
-                .filter((msg) => msg.threadId === selectedThread.id)
-                .map((message) => (
+              {messages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${
@@ -321,6 +344,9 @@ const InboxPage: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              {messages.length === 0 && (
+                <div className="text-center text-muted-foreground">No messages yet</div>
+              )}
             </div>
 
             {/* Message Input */}
@@ -329,8 +355,28 @@ const InboxPage: React.FC = () => {
                 <Input
                   placeholder="Type your message..."
                   className="flex-1"
+                  value={composer}
+                  onChange={(e) => setComposer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (selectedThread && composer.trim()) {
+                        sendMutation.mutate({ id: selectedThread.id, text: composer.trim() });
+                        setComposer('');
+                      }
+                    }
+                  }}
                 />
-                <Button>Send</Button>
+                <Button
+                  disabled={!selectedThread || !composer.trim() || sendMutation.isPending}
+                  onClick={() => {
+                    if (!selectedThread || !composer.trim()) return;
+                    sendMutation.mutate({ id: selectedThread.id, text: composer.trim() });
+                    setComposer('');
+                  }}
+                >
+                  Send
+                </Button>
               </div>
             </div>
           </>
