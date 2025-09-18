@@ -24,6 +24,7 @@ import { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
 import { Thread, Message } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
+import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 
 const InboxPage: React.FC = () => {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -39,6 +40,7 @@ const InboxPage: React.FC = () => {
   const [newPhone, setNewPhone] = useState('');
   const [newText, setNewText] = useState('');
   const [sendingNew, setSendingNew] = useState(false);
+  const [whatsappConnectionError, setWhatsappConnectionError] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = mobileThreadsOpen ? 'hidden' : '';
@@ -162,6 +164,7 @@ const InboxPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedThread?.id) fetchMessages(selectedThread.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThread?.id]);
 
   const filteredThreads = useMemo(() => threads.filter(thread => {
@@ -222,7 +225,14 @@ const InboxPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full bg-background">
+    <div className="flex h-full bg-background relative">
+      {/* WhatsApp Connection Error */}
+      {whatsappConnectionError && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4">
+          <WhatsAppConnectionError onRetry={() => setWhatsappConnectionError(false)} />
+        </div>
+      )}
+      
       {/* Thread List Sidebar - Desktop */}
       <div className="hidden md:flex w-96 border-r border-border flex-col">
         {/* Header */}
@@ -411,8 +421,13 @@ const InboxPage: React.FC = () => {
                             if (created) setSelectedThread(created);
                             await fetchMessages(threadId);
                           }
-                        } catch (_) {
-                          toast.error('Failed to start chat');
+                        } catch (error) {
+                          const e = error as AxiosError<{ message?: string }>;
+                          const errorMessage = e?.response?.data?.message || 'Failed to start chat';
+                          if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+                            setWhatsappConnectionError(true);
+                          }
+                          toast.error(errorMessage);
                         } finally {
                           setSendingNew(false);
                         }
@@ -435,8 +450,13 @@ const InboxPage: React.FC = () => {
                         if (created) setSelectedThread(created);
                         await fetchMessages(threadId);
                       }
-                    } catch (_) {
-                      toast.error('Failed to start chat');
+                    } catch (error) {
+                      const e = error as AxiosError<{ message?: string }>;
+                      const errorMessage = e?.response?.data?.message || 'Failed to start chat';
+                      if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+                        setWhatsappConnectionError(true);
+                      }
+                      toast.error(errorMessage);
                     } finally {
                       setSendingNew(false);
                     }
@@ -551,7 +571,14 @@ const InboxPage: React.FC = () => {
                       if (selectedThread && composer.trim()) {
                         client.post(endpoints.threadReply(selectedThread.id), { orgId: getOrgId(), text: composer.trim() })
                           .then(() => fetchMessages(selectedThread.id))
-                          .catch(() => toast.error('Failed to send message'))
+                          .catch((error) => {
+                            const e = error as AxiosError<{ message?: string }>;
+                            const errorMessage = e?.response?.data?.message || 'Failed to send message';
+                            if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+                              setWhatsappConnectionError(true);
+                            }
+                            toast.error(errorMessage);
+                          })
                           .finally(() => setComposer(''))
                       }
                     }
@@ -563,7 +590,14 @@ const InboxPage: React.FC = () => {
                     if (!selectedThread || !composer.trim()) return;
                     client.post(endpoints.threadReply(selectedThread.id), { orgId: getOrgId(), text: composer.trim() })
                       .then(() => fetchMessages(selectedThread.id))
-                      .catch(() => toast.error('Failed to send message'))
+                      .catch((error) => {
+                        const e = error as AxiosError<{ message?: string }>;
+                        const errorMessage = e?.response?.data?.message || 'Failed to send message';
+                        if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+                          setWhatsappConnectionError(true);
+                        }
+                        toast.error(errorMessage);
+                      })
                       .finally(() => setComposer(''))
                   }}
                 >
