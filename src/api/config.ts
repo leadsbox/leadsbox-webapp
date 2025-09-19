@@ -36,6 +36,10 @@ export const endpoints = {
   leads: '/leads',
   lead: (id: string) => `/leads/${id}`,
   
+  // Contacts (central contact management)
+  contacts: '/contacts',
+  contact: (id: string) => `/contacts/${id}`,
+  
   // Threads & Messages
   threads: '/threads',
   thread: (id: string) => `/threads/${id}`,
