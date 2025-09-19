@@ -1,11 +1,11 @@
 // Leads Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  MoreHorizontal, 
+import {
+  Search,
+  Filter,
+  Plus,
+  MoreHorizontal,
   Edit,
   Trash2,
   ExternalLink,
@@ -15,20 +15,13 @@ import {
   Tag,
   Calendar,
   DollarSign,
-  MessageCircle
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '../../components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,14 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '../../components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../../components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { mockUsers } from '../../data/mockData';
@@ -62,13 +48,19 @@ const LeadsPage: React.FC = () => {
 
   const labelToStage = (label?: string): Stage => {
     switch ((label || '').toUpperCase()) {
-      case 'NEW': return 'NEW';
-      case 'QUALIFIED': return 'QUALIFIED';
-      case 'CUSTOMER': return 'WON';
-      case 'CONTACTED': return 'IN_PROGRESS';
+      case 'NEW':
+        return 'NEW';
+      case 'QUALIFIED':
+        return 'QUALIFIED';
+      case 'CUSTOMER':
+        return 'WON';
+      case 'CONTACTED':
+        return 'IN_PROGRESS';
       case 'UNQUALIFIED':
-      case 'LOST': return 'LOST';
-      default: return 'NEW';
+      case 'LOST':
+        return 'LOST';
+      default:
+        return 'NEW';
     }
   };
 
@@ -79,7 +71,7 @@ const LeadsPage: React.FC = () => {
         const list: Array<any> = resp?.data?.data?.leads || resp?.data || [];
         const mapped: Lead[] = list.map((l: any) => ({
           id: l.id,
-          name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : (l.conversationId || 'Lead'),
+          name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
           email: '',
           phone: undefined,
           company: undefined,
@@ -101,16 +93,20 @@ const LeadsPage: React.FC = () => {
     })();
   }, []);
 
-  const filteredLeads = useMemo(() => leads.filter(lead => {
-    const matchesSearch = 
-      lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.company?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStage = stageFilter === 'ALL' || lead.stage === stageFilter;
-    
-    return matchesSearch && matchesStage;
-  }), [leads, searchQuery, stageFilter]);
+  const filteredLeads = useMemo(
+    () =>
+      leads.filter((lead) => {
+        const matchesSearch =
+          lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lead.company?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesStage = stageFilter === 'ALL' || lead.stage === stageFilter;
+
+        return matchesSearch && matchesStage;
+      }),
+    [leads, searchQuery, stageFilter]
+  );
 
   const getStageColor = (stage: Stage) => {
     switch (stage) {
@@ -145,103 +141,108 @@ const LeadsPage: React.FC = () => {
   const getSourceIcon = (source: Lead['source']) => {
     switch (source) {
       case 'whatsapp':
-        return <WhatsAppIcon className="h-4 w-4" />;
+        return <WhatsAppIcon className='h-4 w-4' />;
       case 'telegram':
-        return <TelegramIcon className="h-4 w-4" />;
+        return <TelegramIcon className='h-4 w-4' />;
       case 'website':
-        return <span role="img" aria-label="website">🌐</span>;
+        return (
+          <span role='img' aria-label='website'>
+            🌐
+          </span>
+        );
       case 'manual':
-        return <span role="img" aria-label="manual">📝</span>;
+        return (
+          <span role='img' aria-label='manual'>
+            📝
+          </span>
+        );
       default:
-        return <span role="img" aria-label="manual">📝</span>;
+        return (
+          <span role='img' aria-label='manual'>
+            📝
+          </span>
+        );
     }
   };
 
   const getAssignedUser = (userId: string) => {
-    return mockUsers.find(user => user.id === userId);
+    return mockUsers.find((user) => user.id === userId);
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Leads</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Manage and track your leads</p>
+          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Leads</h1>
+          <p className='text-sm sm:text-base text-muted-foreground'>Manage and track your leads</p>
         </div>
         <Button>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className='h-4 w-4 mr-2' />
           Add Lead
         </Button>
       </div>
 
       {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search leads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4'>
+        <div className='relative flex-1'>
+          <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+          <Input placeholder='Search leads...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
         </div>
 
         <Tabs value={stageFilter} onValueChange={(value: Stage | 'ALL') => setStageFilter(value)}>
-          <TabsList className="flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto">
-            <TabsTrigger value="ALL">All</TabsTrigger>
-            <TabsTrigger value="NEW">New</TabsTrigger>
-            <TabsTrigger value="QUALIFIED">Qualified</TabsTrigger>
-            <TabsTrigger value="IN_PROGRESS">In Progress</TabsTrigger>
-            <TabsTrigger value="WON">Won</TabsTrigger>
-            <TabsTrigger value="LOST">Lost</TabsTrigger>
+          <TabsList className='flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto'>
+            <TabsTrigger value='ALL'>All</TabsTrigger>
+            <TabsTrigger value='NEW'>New</TabsTrigger>
+            <TabsTrigger value='QUALIFIED'>Qualified</TabsTrigger>
+            <TabsTrigger value='IN_PROGRESS'>In Progress</TabsTrigger>
+            <TabsTrigger value='WON'>Won</TabsTrigger>
+            <TabsTrigger value='LOST'>Lost</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <Button variant="outline">
-          <Filter className="h-4 w-4 mr-2" />
+        <Button variant='outline'>
+          <Filter className='h-4 w-4 mr-2' />
           Filter
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
           </CardHeader>
           <CardContent>
-              <div className="text-2xl font-bold">{leads.length}</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
+            <div className='text-2xl font-bold'>{leads.length}</div>
+            <p className='text-xs text-muted-foreground'>+12% from last month</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Qualified</CardTitle>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-sm font-medium'>Qualified</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {leads.filter(l => l.stage === 'QUALIFIED').length}
-            </div>
-            <p className="text-xs text-muted-foreground">+8% from last month</p>
+            <div className='text-2xl font-bold'>{leads.filter((l) => l.stage === 'QUALIFIED').length}</div>
+            <p className='text-xs text-muted-foreground'>+8% from last month</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24.5%</div>
-            <p className="text-xs text-muted-foreground">+2.1% from last month</p>
+            <div className='text-2xl font-bold'>24.5%</div>
+            <p className='text-xs text-muted-foreground'>+2.1% from last month</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Leads</CardTitle>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-sm font-medium'>Active Leads</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredLeads.length}</div>
-            <p className="text-xs text-muted-foreground">Based on current filters</p>
+            <div className='text-2xl font-bold'>{filteredLeads.length}</div>
+            <p className='text-xs text-muted-foreground'>Based on current filters</p>
           </CardContent>
         </Card>
       </div>
@@ -251,8 +252,8 @@ const LeadsPage: React.FC = () => {
         <CardHeader>
           <CardTitle>Leads ({filteredLeads.length})</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table className="min-w-[800px]">
+        <CardContent className='overflow-x-auto'>
+          <Table className='min-w-[800px]'>
             <TableHeader>
               <TableRow>
                 <TableHead>Lead</TableHead>
@@ -270,167 +271,153 @@ const LeadsPage: React.FC = () => {
             <TableBody>
               {filteredLeads.map((lead) => {
                 const assignedUser = getAssignedUser(lead.assignedTo || '');
-                
+
                 return (
-                  <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow key={lead.id} className='cursor-pointer hover:bg-muted/50'>
                     <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {lead.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
+                      <div className='flex items-center space-x-3'>
+                        <Avatar className='h-8 w-8'>
+                          <AvatarFallback className='bg-primary/10 text-primary'>{lead.name.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{lead.name}</div>
-                          <div className="text-sm text-muted-foreground">{lead.email}</div>
+                          <div className='font-medium'>{lead.name}</div>
+                          <div className='text-sm text-muted-foreground'>{lead.email}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center">
+                      <div className='flex items-center'>
                         {lead.company && (
                           <>
-                            <Building className="h-3 w-3 mr-1 text-muted-foreground" />
-                            <span className="text-sm">{lead.company}</span>
+                            <Building className='h-3 w-3 mr-1 text-muted-foreground' />
+                            <span className='text-sm'>{lead.company}</span>
                           </>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center">
+                      <div className='flex items-center'>
                         {getSourceIcon(lead.source)}
-                        <span className="capitalize text-sm ml-1">{lead.source}</span>
+                        <span className='capitalize text-sm ml-1'>{lead.source}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
+                      <span className='text-sm text-muted-foreground'>
                         {(lead as any).from || (lead as any).providerId || (lead as any).conversationId || '—'}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getStageColor(lead.stage)}>
+                      <Badge variant='outline' className={getStageColor(lead.stage)}>
                         {lead.stage}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
+                      <div className='flex flex-wrap gap-1'>
                         {lead.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
+                          <Badge key={index} variant='secondary' className='text-xs'>
                             {tag}
                           </Badge>
                         ))}
-                        {lead.tags.length === 0 && (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
+                        {lead.tags.length === 0 && <span className='text-sm text-muted-foreground'>—</span>}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getPriorityColor(lead.priority)}>
+                      <Badge variant='outline' className={getPriorityColor(lead.priority)}>
                         {lead.priority}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       {assignedUser && (
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="h-6 w-6">
+                        <div className='flex items-center space-x-2'>
+                          <Avatar className='h-6 w-6'>
                             <AvatarImage src={assignedUser.avatar} />
-                            <AvatarFallback className="text-xs">
-                              {assignedUser.name.charAt(0).toUpperCase()}
-                            </AvatarFallback>
+                            <AvatarFallback className='text-xs'>{assignedUser.name.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <span className="text-sm">{assignedUser.name}</span>
+                          <span className='text-sm'>{assignedUser.name}</span>
                         </div>
                       )}
                     </TableCell>
-                    
+
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
+                      <span className='text-sm text-muted-foreground'>
                         {lead.lastActivity && formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true })}
                       </span>
                     </TableCell>
                     <TableCell>
                       <Sheet>
                         <SheetTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => setSelectedLead(lead)}
-                          >
-                            <ExternalLink className="h-4 w-4" />
+                          <Button variant='ghost' size='icon' onClick={() => setSelectedLead(lead)}>
+                            <ExternalLink className='h-4 w-4' />
                           </Button>
                         </SheetTrigger>
-                        <SheetContent className="w-[600px] sm:w-[600px]">
+                        <SheetContent className='w-[600px] sm:w-[600px]'>
                           <SheetHeader>
                             <SheetTitle>Lead Profile</SheetTitle>
-                            <SheetDescription>
-                              View and manage lead information
-                            </SheetDescription>
+                            <SheetDescription>View and manage lead information</SheetDescription>
                           </SheetHeader>
-                          
+
                           {selectedLead && (
-                            <div className="mt-6 space-y-6">
+                            <div className='mt-6 space-y-6'>
                               {/* Lead Header */}
-                              <div className="flex items-center space-x-4">
-                                <Avatar className="h-16 w-16">
-                                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                              <div className='flex items-center space-x-4'>
+                                <Avatar className='h-16 w-16'>
+                                  <AvatarFallback className='bg-primary text-primary-foreground text-2xl'>
                                     {selectedLead.name.charAt(0).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1">
-                                  <h2 className="text-2xl font-semibold">{selectedLead.name}</h2>
-                                  <div className="flex items-center space-x-4 mt-1">
-                                    <span className="text-muted-foreground">{selectedLead.email}</span>
-                                    {selectedLead.phone && (
-                                      <span className="text-muted-foreground">{selectedLead.phone}</span>
-                                    )}
+                                <div className='flex-1'>
+                                  <h2 className='text-2xl font-semibold'>{selectedLead.name}</h2>
+                                  <div className='flex items-center space-x-4 mt-1'>
+                                    <span className='text-muted-foreground'>{selectedLead.email}</span>
+                                    {selectedLead.phone && <span className='text-muted-foreground'>{selectedLead.phone}</span>}
                                   </div>
                                 </div>
-                                <div className="flex space-x-2">
-                                  <Button variant="outline" size="icon">
-                                    <Mail className="h-4 w-4" />
+                                <div className='flex space-x-2'>
+                                  <Button variant='outline' size='icon'>
+                                    <Mail className='h-4 w-4' />
                                   </Button>
-                                  <Button variant="outline" size="icon">
-                                    <Phone className="h-4 w-4" />
+                                  <Button variant='outline' size='icon'>
+                                    <Phone className='h-4 w-4' />
                                   </Button>
                                 </div>
                               </div>
 
                               {/* Status and Priority */}
-                              <div className="flex items-center space-x-4">
-                                <Badge variant="outline" className={getStageColor(selectedLead.stage)}>
+                              <div className='flex items-center space-x-4'>
+                                <Badge variant='outline' className={getStageColor(selectedLead.stage)}>
                                   {selectedLead.stage}
                                 </Badge>
-                                <Badge variant="outline" className={getPriorityColor(selectedLead.priority)}>
+                                <Badge variant='outline' className={getPriorityColor(selectedLead.priority)}>
                                   {selectedLead.priority}
                                 </Badge>
-                                <div className="flex items-center text-sm text-muted-foreground">
-                                  <span className="mr-1">{getSourceIcon(selectedLead.source)}</span>
-                                  <span className="capitalize">{selectedLead.source}</span>
+                                <div className='flex items-center text-sm text-muted-foreground'>
+                                  <span className='mr-1'>{getSourceIcon(selectedLead.source)}</span>
+                                  <span className='capitalize'>{selectedLead.source}</span>
                                 </div>
                               </div>
 
                               {/* Lead Details */}
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className='grid grid-cols-2 gap-4'>
                                 <Card>
-                                  <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm">Company</CardTitle>
+                                  <CardHeader className='pb-3'>
+                                    <CardTitle className='text-sm'>Company</CardTitle>
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="flex items-center">
-                                      <Building className="h-4 w-4 mr-2 text-muted-foreground" />
+                                    <div className='flex items-center'>
+                                      <Building className='h-4 w-4 mr-2 text-muted-foreground' />
                                       <span>{selectedLead.company || 'Not specified'}</span>
                                     </div>
                                   </CardContent>
                                 </Card>
 
                                 <Card>
-                                  <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm">Value</CardTitle>
+                                  <CardHeader className='pb-3'>
+                                    <CardTitle className='text-sm'>Value</CardTitle>
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="flex items-center">
-                                      <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
-                                      <span className="font-semibold">
+                                    <div className='flex items-center'>
+                                      <DollarSign className='h-4 w-4 mr-2 text-muted-foreground' />
+                                      <span className='font-semibold'>
                                         {selectedLead.value ? `$${selectedLead.value.toLocaleString()}` : 'Not set'}
                                       </span>
                                     </div>
@@ -438,29 +425,27 @@ const LeadsPage: React.FC = () => {
                                 </Card>
 
                                 <Card>
-                                  <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm">Created</CardTitle>
+                                  <CardHeader className='pb-3'>
+                                    <CardTitle className='text-sm'>Created</CardTitle>
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="flex items-center">
-                                      <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                                      <span>
-                                        {formatDistanceToNow(new Date(selectedLead.createdAt), { addSuffix: true })}
-                                      </span>
+                                    <div className='flex items-center'>
+                                      <Calendar className='h-4 w-4 mr-2 text-muted-foreground' />
+                                      <span>{formatDistanceToNow(new Date(selectedLead.createdAt), { addSuffix: true })}</span>
                                     </div>
                                   </CardContent>
                                 </Card>
 
                                 <Card>
-                                  <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm">Assigned To</CardTitle>
+                                  <CardHeader className='pb-3'>
+                                    <CardTitle className='text-sm'>Assigned To</CardTitle>
                                   </CardHeader>
                                   <CardContent>
                                     {selectedLead.assignedTo && (
-                                      <div className="flex items-center">
-                                        <Avatar className="h-6 w-6 mr-2">
+                                      <div className='flex items-center'>
+                                        <Avatar className='h-6 w-6 mr-2'>
                                           <AvatarImage src={getAssignedUser(selectedLead.assignedTo)?.avatar} />
-                                          <AvatarFallback className="text-xs">
+                                          <AvatarFallback className='text-xs'>
                                             {getAssignedUser(selectedLead.assignedTo)?.name.charAt(0).toUpperCase()}
                                           </AvatarFallback>
                                         </Avatar>
@@ -474,16 +459,16 @@ const LeadsPage: React.FC = () => {
                               {/* Tags */}
                               {selectedLead.tags.length > 0 && (
                                 <Card>
-                                  <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm flex items-center">
-                                      <Tag className="h-4 w-4 mr-2" />
+                                  <CardHeader className='pb-3'>
+                                    <CardTitle className='text-sm flex items-center'>
+                                      <Tag className='h-4 w-4 mr-2' />
                                       Tags
                                     </CardTitle>
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className='flex flex-wrap gap-2'>
                                       {selectedLead.tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary">
+                                        <Badge key={tag} variant='secondary'>
                                           {tag}
                                         </Badge>
                                       ))}
@@ -495,29 +480,27 @@ const LeadsPage: React.FC = () => {
                               {/* Notes */}
                               {selectedLead.notes && (
                                 <Card>
-                                  <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm">Notes</CardTitle>
+                                  <CardHeader className='pb-3'>
+                                    <CardTitle className='text-sm'>Notes</CardTitle>
                                   </CardHeader>
                                   <CardContent>
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                      {selectedLead.notes}
-                                    </p>
+                                    <p className='text-sm text-muted-foreground whitespace-pre-wrap'>{selectedLead.notes}</p>
                                   </CardContent>
                                 </Card>
                               )}
 
                               {/* Actions */}
-                              <div className="flex space-x-2 pt-4 border-t">
-                                <Button className="flex-1">
-                                  <Edit className="h-4 w-4 mr-2" />
+                              <div className='flex space-x-2 pt-4 border-t'>
+                                <Button className='flex-1'>
+                                  <Edit className='h-4 w-4 mr-2' />
                                   Edit Lead
                                 </Button>
-                                <Button variant="outline">
-                                  <WhatsAppIcon className="h-4 w-4 mr-2" />
+                                <Button variant='outline'>
+                                  <WhatsAppIcon className='h-4 w-4 mr-2' />
                                   Message
                                 </Button>
-                                <Button variant="outline" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
+                                <Button variant='outline' size='icon'>
+                                  <MoreHorizontal className='h-4 w-4' />
                                 </Button>
                               </div>
                             </div>
