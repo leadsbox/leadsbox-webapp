@@ -18,6 +18,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
@@ -41,6 +50,13 @@ const InboxPage: React.FC = () => {
   const [newText, setNewText] = useState('');
   const [sendingNew, setSendingNew] = useState(false);
   const [whatsappConnectionError, setWhatsappConnectionError] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactForm, setContactForm] = useState<{
+    displayName: string;
+    email: string;
+    phone: string;
+  }>({ displayName: '', email: '', phone: '' });
+  const [savingContact, setSavingContact] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = mobileThreadsOpen ? 'hidden' : '';
@@ -108,7 +124,7 @@ const InboxPage: React.FC = () => {
     const displayName = api.contact.displayName;
     const phone = api.contact.phone || api.contact.waId; // Use waId if phone is null
     const email = api.contact.email;
-    
+
     // Build a proper name - prioritize displayName, then format phone number
     let name = displayName;
     if (!name && phone) {
@@ -169,27 +185,36 @@ const InboxPage: React.FC = () => {
       const list = (res?.data?.data?.threads || []) as ApiThread[];
 
       // Debug: Log the contact data we're receiving and how it's mapped
-      console.log('API Threads Contact Data:', list.map((t) => ({
-        id: t.id,
-        contact: t.contact,
-        channel: t.channel,
-        contactFields: Object.keys(t.contact || {}),
-      })));
-      
-      const ui = list.map(toUiThread);
-      console.log('Mapped UI Leads:', ui.map(thread => ({
-        id: thread.id,
-        leadName: thread.lead.name,
-        leadPhone: thread.lead.phone,
-        leadEmail: thread.lead.email
-      })));
+      console.log(
+        'API Threads Contact Data:',
+        list.map((t) => ({
+          id: t.id,
+          contact: t.contact,
+          channel: t.channel,
+          contactFields: Object.keys(t.contact || {}),
+        }))
+      );
 
-      console.log('Mapped UI Leads:', ui.map(thread => ({
-        id: thread.id,
-        leadName: thread.lead.name,
-        leadPhone: thread.lead.phone,
-        leadEmail: thread.lead.email
-      })));
+      const ui = list.map(toUiThread);
+      console.log(
+        'Mapped UI Leads:',
+        ui.map((thread) => ({
+          id: thread.id,
+          leadName: thread.lead.name,
+          leadPhone: thread.lead.phone,
+          leadEmail: thread.lead.email,
+        }))
+      );
+
+      console.log(
+        'Mapped UI Leads:',
+        ui.map((thread) => ({
+          id: thread.id,
+          leadName: thread.lead.name,
+          leadPhone: thread.lead.phone,
+          leadEmail: thread.lead.email,
+        }))
+      );
       setThreads(ui);
       if (!selectedThread && ui.length > 0) setSelectedThread(ui[0]);
     } catch (error) {
@@ -293,6 +318,68 @@ const InboxPage: React.FC = () => {
       default:
         return 'bg-gray-500/10 text-gray-400';
     }
+  };
+
+  const handleEditContact = () => {
+    if (!selectedThread) return;
+    
+    setContactForm({
+      displayName: selectedThread.lead.name,
+      email: selectedThread.lead.email,
+      phone: selectedThread.lead.phone || '',
+    });
+    setEditingContact(true);
+  };
+
+  const handleSaveContact = async () => {
+    if (!selectedThread) return;
+    
+    setSavingContact(true);
+    try {
+      // Update the contact via API - this should update both inbox and leads
+      const response = await client.put(`/api/contacts/${selectedThread.lead.id}`, {
+        displayName: contactForm.displayName.trim() || null,
+        email: contactForm.email.trim() || null,
+        phone: contactForm.phone.trim() || null,
+      });
+      
+      // Update local state to reflect changes immediately
+      const updatedThreads = threads.map(thread => {
+        if (thread.id === selectedThread.id) {
+          return {
+            ...thread,
+            lead: {
+              ...thread.lead,
+              name: contactForm.displayName.trim() || contactForm.phone.trim() || 'Contact',
+              email: contactForm.email.trim(),
+              phone: contactForm.phone.trim() || undefined,
+            }
+          };
+        }
+        return thread;
+      });
+      
+      setThreads(updatedThreads);
+      
+      // Update selected thread
+      const updatedSelectedThread = updatedThreads.find(t => t.id === selectedThread.id);
+      if (updatedSelectedThread) {
+        setSelectedThread(updatedSelectedThread);
+      }
+      
+      setEditingContact(false);
+      toast.success('Contact updated successfully');
+    } catch (error) {
+      const e = error as AxiosError<{ message?: string }>;
+      toast.error(e?.response?.data?.message || 'Failed to update contact');
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
+  const handleCancelEditContact = () => {
+    setEditingContact(false);
+    setContactForm({ displayName: '', email: '', phone: '' });
   };
 
   return (
@@ -580,9 +667,27 @@ const InboxPage: React.FC = () => {
                   <Button variant='outline' size='icon'>
                     <Phone className='h-4 w-4' />
                   </Button>
-                  <Button variant='outline' size='icon'>
-                    <MoreHorizontal className='h-4 w-4' />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant='outline' size='icon'>
+                        <MoreHorizontal className='h-4 w-4' />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleEditContact}>
+                        Edit Contact Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        View Lead Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        Archive Conversation
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>
@@ -771,6 +876,65 @@ const InboxPage: React.FC = () => {
           </div>
         </aside>
       </div>
+
+      {/* Contact Edit Dialog */}
+      <Dialog open={editingContact} onOpenChange={setEditingContact}>
+        <DialogContent className='sm:max-w-[425px]'>
+          <DialogHeader>
+            <DialogTitle>Edit Contact Details</DialogTitle>
+            <DialogDescription>
+              Update the contact information. Changes will be reflected across both inbox and leads.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='grid gap-4 py-4'>
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <Label htmlFor='displayName' className='text-right'>
+                Name
+              </Label>
+              <Input
+                id='displayName'
+                value={contactForm.displayName}
+                onChange={(e) => setContactForm(prev => ({ ...prev, displayName: e.target.value }))}
+                className='col-span-3'
+                placeholder='Contact name'
+              />
+            </div>
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <Label htmlFor='email' className='text-right'>
+                Email
+              </Label>
+              <Input
+                id='email'
+                type='email'
+                value={contactForm.email}
+                onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                className='col-span-3'
+                placeholder='contact@example.com'
+              />
+            </div>
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <Label htmlFor='phone' className='text-right'>
+                Phone
+              </Label>
+              <Input
+                id='phone'
+                value={contactForm.phone}
+                onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
+                className='col-span-3'
+                placeholder='+234xxxxxxxxxx'
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant='outline' onClick={handleCancelEditContact}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveContact} disabled={savingContact}>
+              {savingContact ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
