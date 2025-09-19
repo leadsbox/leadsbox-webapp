@@ -240,19 +240,17 @@ const LeadDetailPage: React.FC = () => {
 
   return (
     <div className='container mx-auto py-6 space-y-6'>
-      {/* Header with Back Button */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center space-x-4'>
-          <Button variant='outline' size='sm' onClick={() => navigate('/leads')}>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+        <div>
+          <h1 className='text-2xl font-bold'>Lead Details</h1>
+          <p className='text-muted-foreground'>View and manage lead information</p>
+        </div>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button variant='outline' size='sm' onClick={() => navigate('/dashboard/leads')}>
             <ArrowLeft className='h-4 w-4 mr-2' />
             Back to Leads
           </Button>
-          <div>
-            <h1 className='text-2xl font-bold'>Lead Details</h1>
-            <p className='text-muted-foreground'>View and manage lead information</p>
-          </div>
-        </div>
-        <div className='flex space-x-2'>
           {isEditing ? (
             <>
               <Button variant='outline' size='sm' onClick={handleCancelEdit}>
@@ -385,6 +383,37 @@ const LeadDetailPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Quick Actions */}
+      {!isEditing && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='flex flex-col sm:flex-row gap-3'>
+              {lead.source === 'whatsapp' && (lead.conversationId || lead.providerId) && (
+                <Button onClick={() => handleWhatsAppClick(lead)} className='w-full sm:w-auto'>
+                  <WhatsAppIcon className='h-4 w-4 mr-2' />
+                  Open WhatsApp Chat
+                </Button>
+              )}
+              <Button variant='outline' className='w-full sm:w-auto'>
+                <Mail className='h-4 w-4 mr-2' />
+                Send Email
+              </Button>
+              <Button variant='outline' className='w-full sm:w-auto'>
+                <Phone className='h-4 w-4 mr-2' />
+                Make Call
+              </Button>
+              <Button variant='outline' size='icon' className='w-full sm:w-auto sm:px-3'>
+                <MoreHorizontal className='h-4 w-4' />
+                <span className='ml-2 sm:hidden'>More Actions</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Content Grid */}
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -563,36 +592,6 @@ const LeadDetailPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Actions */}
-      {!isEditing && (
-        <Card>
-          <CardContent className='p-6'>
-            <div className='flex justify-between items-center'>
-              <h3 className='text-lg font-semibold'>Quick Actions</h3>
-              <div className='flex space-x-3'>
-                {lead.source === 'whatsapp' && (lead.conversationId || lead.providerId) && (
-                  <Button onClick={() => handleWhatsAppClick(lead)}>
-                    <WhatsAppIcon className='h-4 w-4 mr-2' />
-                    Open WhatsApp Chat
-                  </Button>
-                )}
-                <Button variant='outline'>
-                  <Mail className='h-4 w-4 mr-2' />
-                  Send Email
-                </Button>
-                <Button variant='outline'>
-                  <Phone className='h-4 w-4 mr-2' />
-                  Make Call
-                </Button>
-                <Button variant='outline' size='icon'>
-                  <MoreHorizontal className='h-4 w-4' />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
