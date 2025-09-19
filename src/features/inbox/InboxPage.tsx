@@ -18,14 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
@@ -322,7 +315,7 @@ const InboxPage: React.FC = () => {
 
   const handleEditContact = () => {
     if (!selectedThread) return;
-    
+
     setContactForm({
       displayName: selectedThread.lead.name,
       email: selectedThread.lead.email,
@@ -333,7 +326,7 @@ const InboxPage: React.FC = () => {
 
   const handleSaveContact = async () => {
     if (!selectedThread) return;
-    
+
     setSavingContact(true);
     try {
       // Update the contact via API - this should update both inbox and leads
@@ -342,9 +335,9 @@ const InboxPage: React.FC = () => {
         email: contactForm.email.trim() || null,
         phone: contactForm.phone.trim() || null,
       });
-      
+
       // Update local state to reflect changes immediately
-      const updatedThreads = threads.map(thread => {
+      const updatedThreads = threads.map((thread) => {
         if (thread.id === selectedThread.id) {
           return {
             ...thread,
@@ -353,20 +346,20 @@ const InboxPage: React.FC = () => {
               name: contactForm.displayName.trim() || contactForm.phone.trim() || 'Contact',
               email: contactForm.email.trim(),
               phone: contactForm.phone.trim() || undefined,
-            }
+            },
           };
         }
         return thread;
       });
-      
+
       setThreads(updatedThreads);
-      
+
       // Update selected thread
-      const updatedSelectedThread = updatedThreads.find(t => t.id === selectedThread.id);
+      const updatedSelectedThread = updatedThreads.find((t) => t.id === selectedThread.id);
       if (updatedSelectedThread) {
         setSelectedThread(updatedSelectedThread);
       }
-      
+
       setEditingContact(false);
       toast.success('Contact updated successfully');
     } catch (error) {
@@ -676,16 +669,10 @@ const InboxPage: React.FC = () => {
                     <DropdownMenuContent align='end'>
                       <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleEditContact}>
-                        Edit Contact Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        View Lead Profile
-                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleEditContact}>Edit Contact Details</DropdownMenuItem>
+                      <DropdownMenuItem>View Lead Profile</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        Archive Conversation
-                      </DropdownMenuItem>
+                      <DropdownMenuItem>Archive Conversation</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -882,9 +869,7 @@ const InboxPage: React.FC = () => {
         <DialogContent className='sm:max-w-[425px]'>
           <DialogHeader>
             <DialogTitle>Edit Contact Details</DialogTitle>
-            <DialogDescription>
-              Update the contact information. Changes will be reflected across both inbox and leads.
-            </DialogDescription>
+            <DialogDescription>Update the contact information. Changes will be reflected across both inbox and leads.</DialogDescription>
           </DialogHeader>
           <div className='grid gap-4 py-4'>
             <div className='grid grid-cols-4 items-center gap-4'>
@@ -894,7 +879,7 @@ const InboxPage: React.FC = () => {
               <Input
                 id='displayName'
                 value={contactForm.displayName}
-                onChange={(e) => setContactForm(prev => ({ ...prev, displayName: e.target.value }))}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, displayName: e.target.value }))}
                 className='col-span-3'
                 placeholder='Contact name'
               />
@@ -907,7 +892,7 @@ const InboxPage: React.FC = () => {
                 id='email'
                 type='email'
                 value={contactForm.email}
-                onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
                 className='col-span-3'
                 placeholder='contact@example.com'
               />
@@ -919,7 +904,7 @@ const InboxPage: React.FC = () => {
               <Input
                 id='phone'
                 value={contactForm.phone}
-                onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
                 className='col-span-3'
                 placeholder='+234xxxxxxxxxx'
               />
