@@ -28,6 +28,16 @@ interface BackendLead {
   createdAt: string;
   updatedAt: string;
   lastMessageAt?: string;
+  contact?: {
+    id: string;
+    displayName?: string;
+    phone?: string;
+    email?: string;
+    waId?: string;
+  };
+  thread?: {
+    id: string;
+  };
 }
 
 const LeadDetailPage: React.FC = () => {
@@ -113,16 +123,30 @@ const LeadDetailPage: React.FC = () => {
 
       try {
         setIsLoading(true);
-        const resp = await client.get(endpoints.leads);
-        const list: BackendLead[] = resp?.data?.data?.leads || resp?.data || [];
-        const backendLead = list.find((l: BackendLead) => l.id === leadId);
+        const resp = await client.get(endpoints.lead(leadId));
+        const backendLead: BackendLead = resp?.data?.lead || resp?.data;
 
         if (backendLead) {
+          // Use contact information if available
+          const contact = backendLead.contact;
+          const displayName = contact?.displayName;
+          const phone = contact?.phone || contact?.waId;
+          const email = contact?.email;
+
+          // Build proper name from contact data
+          let name = displayName;
+          if (!name && phone) {
+            name = phone.startsWith('234') ? `+${phone}` : phone;
+          }
+          if (!name) {
+            name = backendLead.providerId || backendLead.conversationId || 'Contact';
+          }
+
           const mappedLead: Lead = {
             id: backendLead.id,
-            name: backendLead.providerId || backendLead.conversationId || 'Lead',
-            email: '',
-            phone: backendLead.providerId || backendLead.conversationId,
+            name,
+            email: email || '',
+            phone: phone || backendLead.providerId || backendLead.conversationId,
             company: undefined,
             source: (String(backendLead.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
             stage: labelToStage(backendLead.label),
@@ -136,6 +160,8 @@ const LeadDetailPage: React.FC = () => {
             value: 0,
             conversationId: backendLead.conversationId,
             providerId: backendLead.providerId,
+            // Store contact ID for editing
+            contactId: contact?.id,
           };
           setLead(mappedLead);
         } else {
@@ -176,8 +202,16 @@ const LeadDetailPage: React.FC = () => {
 
     setIsSaving(true);
     try {
-      // Here you would make API call to update the lead
-      // For now, just update local state
+      // Update contact information if contactId exists
+      if (lead.contactId && (editForm.name || editForm.email || editForm.phone)) {
+        await client.put(`/contacts/${lead.contactId}`, {
+          displayName: editForm.name?.trim() || null,
+          email: editForm.email?.trim() || null,
+          phone: editForm.phone?.trim() || null,
+        });
+      }
+
+      // Update local state
       const updatedLead = { ...lead, ...editForm };
       setLead(updatedLead);
       setIsEditing(false);
@@ -185,7 +219,7 @@ const LeadDetailPage: React.FC = () => {
 
       toast({
         title: 'Success',
-        description: 'Lead updated successfully',
+        description: 'Lead and contact updated successfully',
       });
     } catch (error) {
       console.error('Error updating lead:', error);
@@ -271,7 +305,7 @@ const LeadDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Lead Profile Header */}
+      {/* Lead Profile Header - Contact Information (syncs with Inbox) */}
       <Card>
         <CardContent className='p-4 sm:p-6 lg:p-8'>
           <div className='flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6'>
@@ -313,6 +347,12 @@ const LeadDetailPage: React.FC = () => {
                       type='number'
                     />
                   </div>
+                  {lead.contactId && (
+                    <p className='text-xs text-muted-foreground text-center sm:text-left'>
+                      <MessageCircle className='h-3 w-3 inline mr-1' />
+                      Contact changes will sync with inbox conversations
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className='space-y-2'>

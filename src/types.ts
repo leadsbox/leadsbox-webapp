@@ -33,6 +33,8 @@ export interface Lead {
   conversationId?: string;
   providerId?: string;
   from?: string;
+  // Contact ID for editing contact information
+  contactId?: string;
 }
 
 export interface Thread {
