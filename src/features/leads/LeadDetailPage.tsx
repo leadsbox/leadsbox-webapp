@@ -246,7 +246,7 @@ const LeadDetailPage: React.FC = () => {
           <h1 className='text-2xl font-bold'>Lead Details</h1>
           <p className='text-muted-foreground'>View and manage lead information</p>
         </div>
-        <div className='flex flex-wrap items-center gap-2'>
+        <div className='flex items-center justify-start gap-2'>
           <Button variant='outline' size='sm' onClick={() => navigate('/dashboard/leads')}>
             <ArrowLeft className='h-4 w-4 mr-2' />
             Back to Leads
@@ -275,12 +275,12 @@ const LeadDetailPage: React.FC = () => {
       <Card>
         <CardContent className='p-4 sm:p-6 lg:p-8'>
           <div className='flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6'>
-            <Avatar className='h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 mx-auto sm:mx-0'>
+            <Avatar className='h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 sm:mx-0'>
               <AvatarFallback className='bg-primary text-primary-foreground text-2xl sm:text-3xl lg:text-4xl'>
                 {(isEditing ? editForm.name : lead.name)?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className='flex-1 text-center sm:text-left'>
+            <div className='flex-1 text-left'>
               {isEditing ? (
                 <div className='space-y-4'>
                   <Input
@@ -317,7 +317,7 @@ const LeadDetailPage: React.FC = () => {
               ) : (
                 <div className='space-y-2'>
                   <h2 className='text-xl sm:text-2xl lg:text-3xl font-bold'>{lead.name}</h2>
-                  <div className='flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-muted-foreground text-sm'>
+                  <div className='flex flex-wrap items-center justify-start gap-3 sm:gap-4 text-muted-foreground text-sm'>
                     {lead.email && (
                       <div className='flex items-center space-x-2'>
                         <Mail className='h-4 w-4' />
@@ -336,11 +336,15 @@ const LeadDetailPage: React.FC = () => {
                         <span>{lead.company}</span>
                       </div>
                     )}
+                    <div className='flex items-center space-x-2'>
+                      {getSourceIcon(lead.source)}
+                      <span className='capitalize'>{lead.source}</span>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-            <div className='flex flex-row sm:flex-col justify-center gap-2'>
+            <div className='flex flex-row sm:flex-col justify-start sm:justify-center gap-2'>
               {isEditing ? (
                 <>
                   <Select value={editForm.stage || lead.stage} onValueChange={(value: Stage) => setEditForm((prev) => ({ ...prev, stage: value }))}>
