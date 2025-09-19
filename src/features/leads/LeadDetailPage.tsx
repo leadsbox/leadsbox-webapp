@@ -2,20 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Edit,
-  Save,
-  X,
-  Mail,
-  Phone,
-  Building,
-  Tag,
-  Calendar,
-  DollarSign,
-  MessageCircle,
-  MoreHorizontal,
-} from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Mail, Phone, Building, Tag, Calendar, DollarSign, MessageCircle, MoreHorizontal } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -123,13 +110,13 @@ const LeadDetailPage: React.FC = () => {
   useEffect(() => {
     const loadLead = async () => {
       if (!leadId) return;
-      
+
       try {
         setIsLoading(true);
         const resp = await client.get(endpoints.leads);
         const list: BackendLead[] = resp?.data?.data?.leads || resp?.data || [];
         const backendLead = list.find((l: BackendLead) => l.id === leadId);
-        
+
         if (backendLead) {
           const mappedLead: Lead = {
             id: backendLead.id,
@@ -186,7 +173,7 @@ const LeadDetailPage: React.FC = () => {
 
   const handleSaveLead = async () => {
     if (!lead) return;
-    
+
     setIsSaving(true);
     try {
       // Here you would make API call to update the lead
@@ -195,7 +182,7 @@ const LeadDetailPage: React.FC = () => {
       setLead(updatedLead);
       setIsEditing(false);
       setEditForm({});
-      
+
       toast({
         title: 'Success',
         description: 'Lead updated successfully',
@@ -358,10 +345,7 @@ const LeadDetailPage: React.FC = () => {
             <div className='flex flex-col space-y-2'>
               {isEditing ? (
                 <>
-                  <Select
-                    value={editForm.stage || lead.stage}
-                    onValueChange={(value: Stage) => setEditForm((prev) => ({ ...prev, stage: value }))}
-                  >
+                  <Select value={editForm.stage || lead.stage} onValueChange={(value: Stage) => setEditForm((prev) => ({ ...prev, stage: value }))}>
                     <SelectTrigger className='w-[160px]'>
                       <SelectValue />
                     </SelectTrigger>
@@ -445,18 +429,14 @@ const LeadDetailPage: React.FC = () => {
               <Calendar className='h-4 w-4 text-muted-foreground' />
               <div>
                 <div className='text-sm font-medium'>Created</div>
-                <div className='text-sm text-muted-foreground'>
-                  {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
-                </div>
+                <div className='text-sm text-muted-foreground'>{formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}</div>
               </div>
             </div>
             <div className='flex items-center space-x-3'>
               <Calendar className='h-4 w-4 text-muted-foreground' />
               <div>
                 <div className='text-sm font-medium'>Last Updated</div>
-                <div className='text-sm text-muted-foreground'>
-                  {formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}
-                </div>
+                <div className='text-sm text-muted-foreground'>{formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}</div>
               </div>
             </div>
             <div className='flex items-center space-x-3'>
@@ -471,9 +451,7 @@ const LeadDetailPage: React.FC = () => {
               <div>
                 <div className='text-sm font-medium'>Last Activity</div>
                 <div className='text-sm text-muted-foreground'>
-                  {lead.lastActivity
-                    ? formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true })
-                    : 'No activity recorded'}
+                  {lead.lastActivity ? formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true }) : 'No activity recorded'}
                 </div>
               </div>
             </div>
@@ -519,9 +497,7 @@ const LeadDetailPage: React.FC = () => {
                     <div className='flex items-center space-x-3'>
                       <Avatar className='h-8 w-8'>
                         <AvatarImage src={getAssignedUser(lead.assignedTo)?.avatar} />
-                        <AvatarFallback className='text-xs'>
-                          {getAssignedUser(lead.assignedTo)?.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
+                        <AvatarFallback className='text-xs'>{getAssignedUser(lead.assignedTo)?.name.charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <span className='text-sm'>{getAssignedUser(lead.assignedTo)?.name}</span>
                     </div>
