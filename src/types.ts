@@ -29,6 +29,10 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   lastActivity?: string;
+  // Additional fields for tracking original conversation
+  conversationId?: string;
+  providerId?: string;
+  from?: string;
 }
 
 export interface Thread {
