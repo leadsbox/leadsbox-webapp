@@ -330,7 +330,7 @@ const InboxPage: React.FC = () => {
     setSavingContact(true);
     try {
       // Update the contact via API - this should update both inbox and leads
-      const response = await client.put(`/api/contacts/${selectedThread.lead.id}`, {
+      const response = await client.put(`/contacts/${selectedThread.leadId}`, {
         displayName: contactForm.displayName.trim() || null,
         email: contactForm.email.trim() || null,
         phone: contactForm.phone.trim() || null,
