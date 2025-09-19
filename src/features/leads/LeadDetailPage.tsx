@@ -64,30 +64,30 @@ const LeadDetailPage: React.FC = () => {
   const getStageColor = (stage: Stage) => {
     switch (stage) {
       case 'NEW':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
       case 'QUALIFIED':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'IN_PROGRESS':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       case 'WON':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-500/10 text-green-400 border-green-500/20';
       case 'LOST':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
   };
 
   const getPriorityColor = (priority: 'HIGH' | 'MEDIUM' | 'LOW') => {
     switch (priority) {
       case 'HIGH':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-500/10 text-red-400';
       case 'MEDIUM':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-amber-500/10 text-amber-400';
       case 'LOW':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-blue-500/10 text-blue-400';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-500/10 text-gray-400';
     }
   };
 
@@ -120,9 +120,9 @@ const LeadDetailPage: React.FC = () => {
         if (backendLead) {
           const mappedLead: Lead = {
             id: backendLead.id,
-            name: backendLead.providerId ? `Lead ${String(backendLead.providerId).slice(0, 6)}` : backendLead.conversationId || 'Lead',
+            name: backendLead.providerId || backendLead.conversationId || 'Lead',
             email: '',
-            phone: undefined,
+            phone: backendLead.providerId || backendLead.conversationId,
             company: undefined,
             source: (String(backendLead.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
             stage: labelToStage(backendLead.label),
@@ -273,21 +273,21 @@ const LeadDetailPage: React.FC = () => {
 
       {/* Lead Profile Header */}
       <Card>
-        <CardContent className='p-8'>
-          <div className='flex items-center space-x-6'>
-            <Avatar className='h-24 w-24'>
-              <AvatarFallback className='bg-primary text-primary-foreground text-4xl'>
+        <CardContent className='p-4 sm:p-6 lg:p-8'>
+          <div className='flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6'>
+            <Avatar className='h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 mx-auto sm:mx-0'>
+              <AvatarFallback className='bg-primary text-primary-foreground text-2xl sm:text-3xl lg:text-4xl'>
                 {(isEditing ? editForm.name : lead.name)?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className='flex-1'>
+            <div className='flex-1 text-center sm:text-left'>
               {isEditing ? (
                 <div className='space-y-4'>
                   <Input
                     value={editForm.name || ''}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
                     placeholder='Lead name'
-                    className='text-2xl font-semibold h-12'
+                    className='text-lg sm:text-xl lg:text-2xl font-semibold h-10 sm:h-12'
                   />
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <Input
@@ -316,8 +316,8 @@ const LeadDetailPage: React.FC = () => {
                 </div>
               ) : (
                 <div className='space-y-2'>
-                  <h2 className='text-3xl font-bold'>{lead.name}</h2>
-                  <div className='flex flex-wrap items-center gap-4 text-muted-foreground'>
+                  <h2 className='text-xl sm:text-2xl lg:text-3xl font-bold'>{lead.name}</h2>
+                  <div className='flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-muted-foreground text-sm'>
                     {lead.email && (
                       <div className='flex items-center space-x-2'>
                         <Mail className='h-4 w-4' />
@@ -340,11 +340,11 @@ const LeadDetailPage: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className='flex flex-col space-y-2'>
+            <div className='flex flex-row sm:flex-col justify-center gap-2'>
               {isEditing ? (
                 <>
                   <Select value={editForm.stage || lead.stage} onValueChange={(value: Stage) => setEditForm((prev) => ({ ...prev, stage: value }))}>
-                    <SelectTrigger className='w-[160px]'>
+                    <SelectTrigger className='w-[140px] sm:w-[160px]'>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -359,13 +359,13 @@ const LeadDetailPage: React.FC = () => {
                     value={editForm.priority || lead.priority}
                     onValueChange={(value: 'HIGH' | 'MEDIUM' | 'LOW') => setEditForm((prev) => ({ ...prev, priority: value }))}
                   >
-                    <SelectTrigger className='w-[160px]'>
+                    <SelectTrigger className='w-[140px] sm:w-[160px]'>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value='HIGH'>High Priority</SelectItem>
-                      <SelectItem value='MEDIUM'>Medium Priority</SelectItem>
-                      <SelectItem value='LOW'>Low Priority</SelectItem>
+                      <SelectItem value='HIGH'>High</SelectItem>
+                      <SelectItem value='MEDIUM'>Medium</SelectItem>
+                      <SelectItem value='LOW'>Low</SelectItem>
                     </SelectContent>
                   </Select>
                 </>
@@ -375,7 +375,7 @@ const LeadDetailPage: React.FC = () => {
                     {lead.stage}
                   </Badge>
                   <Badge variant='outline' className={getPriorityColor(lead.priority)}>
-                    {lead.priority} Priority
+                    {lead.priority}
                   </Badge>
                 </>
               )}
