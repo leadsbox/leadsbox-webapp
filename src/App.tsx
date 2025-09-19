@@ -29,6 +29,7 @@ import Terms from "./pages/Terms";
 // Dashboard Pages
 import InboxPage from "./features/inbox/InboxPage";
 import LeadsPage from "./features/leads/LeadsPage";
+import LeadDetailPage from "./features/leads/LeadDetailPage";
 import PipelinePage from "./features/pipeline/PipelinePage";
 import TasksPage from "./features/tasks/TasksPage";
 import AnalyticsPage from "./features/analytics/AnalyticsPage";
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="receipts/:receiptId" element={<ReceiptPage />} />
                 <Route path="inbox" element={<InboxPage />} />
                 <Route path="leads" element={<LeadsPage />} />
+                <Route path="leads/:leadId" element={<LeadDetailPage />} />
                 <Route path="pipeline" element={<PipelinePage />} />
                 <Route path="tasks" element={<TasksPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
