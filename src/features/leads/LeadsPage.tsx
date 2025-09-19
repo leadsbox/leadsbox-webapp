@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../../components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -66,6 +66,7 @@ const LeadsPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Lead>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const labelToStage = (label?: string): Stage => {
     switch ((label || '').toUpperCase()) {
@@ -192,6 +193,22 @@ const LeadsPage: React.FC = () => {
 
   const getAssignedUser = (userId: string) => {
     return mockUsers.find((user) => user.id === userId);
+  };
+
+  const handleLeadSelection = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsEditing(false);
+    setEditForm({});
+    setIsSheetOpen(true);
+  };
+
+  const handleSheetOpenChange = (open: boolean) => {
+    setIsSheetOpen(open);
+    if (!open) {
+      setIsEditing(false);
+      setEditForm({});
+      setSelectedLead(null);
+    }
   };
 
   const handleEditLead = (lead: Lead) => {
@@ -369,7 +386,7 @@ const LeadsPage: React.FC = () => {
                 const assignedUser = getAssignedUser(lead.assignedTo || '');
 
                 return (
-                  <TableRow key={lead.id} className='cursor-pointer hover:bg-muted/50'>
+                  <TableRow key={lead.id} className='cursor-pointer hover:bg-muted/50' onClick={() => handleLeadSelection(lead)}>
                     <TableCell>
                       <div className='flex items-center space-x-3'>
                         <Avatar className='h-8 w-8'>
@@ -443,308 +460,16 @@ const LeadsPage: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Sheet>
-                        <SheetTrigger asChild>
-                          <Button variant='ghost' size='icon' onClick={() => setSelectedLead(lead)}>
-                            <ExternalLink className='h-4 w-4' />
-                          </Button>
-                        </SheetTrigger>
-                        <SheetContent className='w-[600px] sm:w-[600px]'>
-                          <SheetHeader>
-                            <SheetTitle>Lead Profile</SheetTitle>
-                            <SheetDescription>View and manage lead information</SheetDescription>
-                          </SheetHeader>
-
-                          {selectedLead && (
-                            <div className='mt-6 space-y-6'>
-                              {/* Header with Edit Toggle */}
-                              <div className='flex items-center justify-between'>
-                                <div className='flex items-center space-x-4'>
-                                  <Avatar className='h-16 w-16'>
-                                    <AvatarFallback className='bg-primary text-primary-foreground text-2xl'>
-                                      {(isEditing ? editForm.name : selectedLead.name)?.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className='flex-1'>
-                                    {isEditing ? (
-                                      <div className='space-y-2'>
-                                        <Input
-                                          value={editForm.name || ''}
-                                          onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                                          placeholder='Lead name'
-                                          className='text-xl font-semibold'
-                                        />
-                                        <div className='flex space-x-2'>
-                                          <Input
-                                            value={editForm.email || ''}
-                                            onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
-                                            placeholder='Email'
-                                            type='email'
-                                          />
-                                          <Input
-                                            value={editForm.phone || ''}
-                                            onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
-                                            placeholder='Phone'
-                                          />
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <h2 className='text-2xl font-semibold'>{selectedLead.name}</h2>
-                                        <div className='flex items-center space-x-4 mt-1'>
-                                          <span className='text-muted-foreground'>{selectedLead.email}</span>
-                                          {selectedLead.phone && <span className='text-muted-foreground'>{selectedLead.phone}</span>}
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className='flex space-x-2'>
-                                  {isEditing ? (
-                                    <>
-                                      <Button variant='outline' size='sm' onClick={handleCancelEdit}>
-                                        <X className='h-4 w-4 mr-2' />
-                                        Cancel
-                                      </Button>
-                                      <Button size='sm' onClick={handleSaveLead} disabled={isSaving}>
-                                        <Save className='h-4 w-4 mr-2' />
-                                        {isSaving ? 'Saving...' : 'Save'}
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Button variant='outline' size='sm' onClick={() => handleEditLead(selectedLead)}>
-                                      <Edit className='h-4 w-4 mr-2' />
-                                      Edit
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Status and Priority */}
-                              <div className='flex items-center space-x-4'>
-                                {isEditing ? (
-                                  <>
-                                    <Select
-                                      value={editForm.stage || selectedLead.stage}
-                                      onValueChange={(value: Stage) => setEditForm((prev) => ({ ...prev, stage: value }))}
-                                    >
-                                      <SelectTrigger className='w-[140px]'>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value='NEW'>New</SelectItem>
-                                        <SelectItem value='QUALIFIED'>Qualified</SelectItem>
-                                        <SelectItem value='IN_PROGRESS'>In Progress</SelectItem>
-                                        <SelectItem value='WON'>Won</SelectItem>
-                                        <SelectItem value='LOST'>Lost</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <Select
-                                      value={editForm.priority || selectedLead.priority}
-                                      onValueChange={(value: 'HIGH' | 'MEDIUM' | 'LOW') => setEditForm((prev) => ({ ...prev, priority: value }))}
-                                    >
-                                      <SelectTrigger className='w-[120px]'>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value='HIGH'>High</SelectItem>
-                                        <SelectItem value='MEDIUM'>Medium</SelectItem>
-                                        <SelectItem value='LOW'>Low</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Badge variant='outline' className={getStageColor(selectedLead.stage)}>
-                                      {selectedLead.stage}
-                                    </Badge>
-                                    <Badge variant='outline' className={getPriorityColor(selectedLead.priority)}>
-                                      {selectedLead.priority}
-                                    </Badge>
-                                  </>
-                                )}
-                                <div className='flex items-center text-sm text-muted-foreground'>
-                                  <span className='mr-1'>{getSourceIcon(selectedLead.source)}</span>
-                                  <span className='capitalize'>{selectedLead.source}</span>
-                                </div>
-                              </div>
-
-                              {/* Lead Details */}
-                              <div className='grid grid-cols-2 gap-4'>
-                                <Card>
-                                  <CardHeader className='pb-3'>
-                                    <CardTitle className='text-sm'>Company</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    {isEditing ? (
-                                      <Input
-                                        value={editForm.company || ''}
-                                        onChange={(e) => setEditForm((prev) => ({ ...prev, company: e.target.value }))}
-                                        placeholder='Company name'
-                                      />
-                                    ) : (
-                                      <div className='flex items-center'>
-                                        <Building className='h-4 w-4 mr-2 text-muted-foreground' />
-                                        <span>{selectedLead.company || 'Not specified'}</span>
-                                      </div>
-                                    )}
-                                  </CardContent>
-                                </Card>
-
-                                <Card>
-                                  <CardHeader className='pb-3'>
-                                    <CardTitle className='text-sm'>Value</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    {isEditing ? (
-                                      <Input
-                                        type='number'
-                                        value={editForm.value || ''}
-                                        onChange={(e) => setEditForm((prev) => ({ ...prev, value: parseFloat(e.target.value) || undefined }))}
-                                        placeholder='Lead value'
-                                      />
-                                    ) : (
-                                      <div className='flex items-center'>
-                                        <DollarSign className='h-4 w-4 mr-2 text-muted-foreground' />
-                                        <span className='font-semibold'>
-                                          {selectedLead.value ? `$${selectedLead.value.toLocaleString()}` : 'Not set'}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </CardContent>
-                                </Card>
-
-                                <Card>
-                                  <CardHeader className='pb-3'>
-                                    <CardTitle className='text-sm'>Created</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className='flex items-center'>
-                                      <Calendar className='h-4 w-4 mr-2 text-muted-foreground' />
-                                      <span>{formatDistanceToNow(new Date(selectedLead.createdAt), { addSuffix: true })}</span>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-
-                                <Card>
-                                  <CardHeader className='pb-3'>
-                                    <CardTitle className='text-sm'>Assigned To</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    {isEditing ? (
-                                      <Select
-                                        value={editForm.assignedTo || ''}
-                                        onValueChange={(value) => setEditForm((prev) => ({ ...prev, assignedTo: value }))}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder='Select user' />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value=''>Unassigned</SelectItem>
-                                          {mockUsers.map((user) => (
-                                            <SelectItem key={user.id} value={user.id}>
-                                              {user.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    ) : (
-                                      <>
-                                        {selectedLead.assignedTo ? (
-                                          <div className='flex items-center'>
-                                            <Avatar className='h-6 w-6 mr-2'>
-                                              <AvatarImage src={getAssignedUser(selectedLead.assignedTo)?.avatar} />
-                                              <AvatarFallback className='text-xs'>
-                                                {getAssignedUser(selectedLead.assignedTo)?.name.charAt(0).toUpperCase()}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <span>{getAssignedUser(selectedLead.assignedTo)?.name}</span>
-                                          </div>
-                                        ) : (
-                                          <span className='text-muted-foreground'>Unassigned</span>
-                                        )}
-                                      </>
-                                    )}
-                                  </CardContent>
-                                </Card>
-                              </div>
-
-                              {/* Tags */}
-                              <Card>
-                                <CardHeader className='pb-3'>
-                                  <CardTitle className='text-sm flex items-center'>
-                                    <Tag className='h-4 w-4 mr-2' />
-                                    Tags
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                  {isEditing ? (
-                                    <Input
-                                      value={editForm.tags?.join(', ') || ''}
-                                      onChange={(e) =>
-                                        setEditForm((prev) => ({
-                                          ...prev,
-                                          tags: e.target.value
-                                            .split(',')
-                                            .map((tag) => tag.trim())
-                                            .filter((tag) => tag),
-                                        }))
-                                      }
-                                      placeholder='Enter tags separated by commas'
-                                    />
-                                  ) : (
-                                    <div className='flex flex-wrap gap-2'>
-                                      {selectedLead.tags.length > 0 ? (
-                                        selectedLead.tags.map((tag) => (
-                                          <Badge key={tag} variant='secondary'>
-                                            {tag}
-                                          </Badge>
-                                        ))
-                                      ) : (
-                                        <span className='text-muted-foreground text-sm'>No tags</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </CardContent>
-                              </Card>
-
-                              {/* Notes */}
-                              <Card>
-                                <CardHeader className='pb-3'>
-                                  <CardTitle className='text-sm'>Notes</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                  {isEditing ? (
-                                    <Textarea
-                                      value={editForm.notes || ''}
-                                      onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
-                                      placeholder='Add notes about this lead...'
-                                      rows={3}
-                                    />
-                                  ) : (
-                                    <p className='text-sm text-muted-foreground whitespace-pre-wrap'>{selectedLead.notes || 'No notes'}</p>
-                                  )}
-                                </CardContent>
-                              </Card>
-
-                              {/* Actions */}
-                              {!isEditing && (
-                                <div className='flex space-x-2 pt-4 border-t'>
-                                  {selectedLead.source === 'whatsapp' && (selectedLead.conversationId || selectedLead.providerId) && (
-                                    <Button className='flex-1' onClick={() => handleWhatsAppClick(selectedLead)}>
-                                      <WhatsAppIcon className='h-4 w-4 mr-2' />
-                                      Open WhatsApp Chat
-                                    </Button>
-                                  )}
-                                  <Button variant='outline' size='icon'>
-                                    <MoreHorizontal className='h-4 w-4' />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </SheetContent>
-                      </Sheet>
+                      <Button
+                        variant='ghost'
+                        size='icon'
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleLeadSelection(lead);
+                        }}
+                      >
+                        <ExternalLink className='h-4 w-4' />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
@@ -753,6 +478,323 @@ const LeadsPage: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+      <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className='w-[600px] sm:w-[600px] flex h-full flex-col overflow-hidden'>
+          <SheetHeader>
+            <SheetTitle>Lead Profile</SheetTitle>
+            <SheetDescription>View and manage lead information</SheetDescription>
+          </SheetHeader>
+
+          {selectedLead && (
+            <div className='mt-6 flex-1 space-y-6 overflow-y-auto pr-4 pb-6'>
+              {/* Header with Edit Toggle */}
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center space-x-4'>
+                  <Avatar className='h-16 w-16'>
+                    <AvatarFallback className='bg-primary text-primary-foreground text-2xl'>
+                      {(isEditing ? editForm.name : selectedLead.name)?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className='flex-1'>
+                    {isEditing ? (
+                      <div className='space-y-2'>
+                        <Input
+                          value={editForm.name || ''}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                          placeholder='Lead name'
+                          className='text-xl font-semibold'
+                        />
+                        <div className='flex space-x-2'>
+                          <Input
+                            value={editForm.email || ''}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                            placeholder='Email'
+                            type='email'
+                          />
+                          <Input
+                            value={editForm.phone || ''}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                            placeholder='Phone'
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <h2 className='text-2xl font-semibold'>{selectedLead.name}</h2>
+                        <div className='flex items-center space-x-4 mt-1'>
+                          <span className='text-muted-foreground'>{selectedLead.email}</span>
+                          {selectedLead.phone && <span className='text-muted-foreground'>{selectedLead.phone}</span>}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className='flex space-x-2'>
+                  {isEditing ? (
+                    <>
+                      <Button variant='outline' size='sm' onClick={handleCancelEdit}>
+                        <X className='h-4 w-4 mr-2' />
+                        Cancel
+                      </Button>
+                      <Button size='sm' onClick={handleSaveLead} disabled={isSaving}>
+                        <Save className='h-4 w-4 mr-2' />
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant='outline' size='sm' onClick={() => handleEditLead(selectedLead)}>
+                      <Edit className='h-4 w-4 mr-2' />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status and Priority */}
+              <div className='flex items-center space-x-4'>
+                {isEditing ? (
+                  <>
+                    <Select
+                      value={editForm.stage || selectedLead.stage}
+                      onValueChange={(value: Stage) => setEditForm((prev) => ({ ...prev, stage: value }))}
+                    >
+                      <SelectTrigger className='w-[140px]'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='NEW'>New</SelectItem>
+                        <SelectItem value='QUALIFIED'>Qualified</SelectItem>
+                        <SelectItem value='IN_PROGRESS'>In Progress</SelectItem>
+                        <SelectItem value='WON'>Won</SelectItem>
+                        <SelectItem value='LOST'>Lost</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={editForm.priority || selectedLead.priority}
+                      onValueChange={(value: 'HIGH' | 'MEDIUM' | 'LOW') => setEditForm((prev) => ({ ...prev, priority: value }))}
+                    >
+                      <SelectTrigger className='w-[140px]'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='HIGH'>High</SelectItem>
+                        <SelectItem value='MEDIUM'>Medium</SelectItem>
+                        <SelectItem value='LOW'>Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </>
+                ) : (
+                  <>
+                    <Badge variant='outline' className={getStageColor(selectedLead.stage)}>
+                      {selectedLead.stage}
+                    </Badge>
+                    <Badge variant='outline' className={getPriorityColor(selectedLead.priority)}>
+                      {selectedLead.priority}
+                    </Badge>
+                  </>
+                )}
+              </div>
+
+              {/* Contact Info */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <Card>
+                  <CardHeader className='pb-3'>
+                    <CardTitle className='text-sm flex items-center'>
+                      <Mail className='h-4 w-4 mr-2' />
+                      Contact Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className='space-y-2'>
+                    <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                      <Mail className='h-4 w-4' />
+                      <span>{selectedLead.email || 'No email provided'}</span>
+                    </div>
+                    <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                      <Phone className='h-4 w-4' />
+                      <span>{selectedLead.phone || 'No phone provided'}</span>
+                    </div>
+                    <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                      <Building className='h-4 w-4' />
+                      <span>{selectedLead.company || 'No company specified'}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className='pb-3'>
+                    <CardTitle className='text-sm flex items-center'>
+                      <Calendar className='h-4 w-4 mr-2' />
+                      Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className='space-y-2 text-sm text-muted-foreground'>
+                    <div className='flex items-center space-x-2'>
+                      <Calendar className='h-4 w-4' />
+                      <span>Created {formatDistanceToNow(new Date(selectedLead.createdAt), { addSuffix: true })}</span>
+                    </div>
+                    <div className='flex items-center space-x-2'>
+                      <Calendar className='h-4 w-4' />
+                      <span>Updated {formatDistanceToNow(new Date(selectedLead.updatedAt), { addSuffix: true })}</span>
+                    </div>
+                    <div className='flex items-center space-x-2'>
+                      <DollarSign className='h-4 w-4' />
+                      <span>{selectedLead.value ? `$${selectedLead.value.toLocaleString()}` : 'No deal value'}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Assigned To */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <Card>
+                  <CardHeader className='pb-3'>
+                    <CardTitle className='text-sm flex items-center'>
+                      <MessageCircle className='h-4 w-4 mr-2' />
+                      Source & Engagement
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className='space-y-2 text-sm text-muted-foreground'>
+                    <div className='flex items-center space-x-2'>
+                      {getSourceIcon(selectedLead.source)}
+                      <span className='capitalize'>{selectedLead.source}</span>
+                    </div>
+                    <div className='flex items-center space-x-2'>
+                      <Calendar className='h-4 w-4' />
+                      <span>
+                        Last activity{' '}
+                        {selectedLead.lastActivity
+                          ? formatDistanceToNow(new Date(selectedLead.lastActivity), { addSuffix: true })
+                          : 'No activity recorded'}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className='pb-3'>
+                    <CardTitle className='text-sm flex items-center'>
+                      <Tag className='h-4 w-4 mr-2' />
+                      Assignment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isEditing ? (
+                      <Select
+                        value={editForm.assignedTo || selectedLead.assignedTo || ''}
+                        onValueChange={(value) => setEditForm((prev) => ({ ...prev, assignedTo: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder='Assign to user' />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mockUsers.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className='flex items-center space-x-2'>
+                                <Avatar className='h-6 w-6'>
+                                  <AvatarImage src={user.avatar} />
+                                  <AvatarFallback className='text-xs'>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span>{user.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <>
+                        {selectedLead.assignedTo ? (
+                          <div className='flex items-center space-x-2'>
+                            <Avatar className='h-8 w-8'>
+                              <AvatarImage src={getAssignedUser(selectedLead.assignedTo)?.avatar} />
+                              <AvatarFallback className='text-xs'>
+                                {getAssignedUser(selectedLead.assignedTo)?.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{getAssignedUser(selectedLead.assignedTo)?.name}</span>
+                          </div>
+                        ) : (
+                          <span className='text-muted-foreground'>Unassigned</span>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Tags */}
+              <Card>
+                <CardHeader className='pb-3'>
+                  <CardTitle className='text-sm flex items-center'>
+                    <Tag className='h-4 w-4 mr-2' />
+                    Tags
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isEditing ? (
+                    <Input
+                      value={editForm.tags?.join(', ') || ''}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          tags: e.target.value
+                            .split(',')
+                            .map((tag) => tag.trim())
+                            .filter((tag) => tag),
+                        }))
+                      }
+                      placeholder='Enter tags separated by commas'
+                    />
+                  ) : (
+                    <div className='flex flex-wrap gap-2'>
+                      {selectedLead.tags.length > 0 ? (
+                        selectedLead.tags.map((tag) => (
+                          <Badge key={tag} variant='secondary'>
+                            {tag}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className='text-muted-foreground text-sm'>No tags</span>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              <Card>
+                <CardHeader className='pb-3'>
+                  <CardTitle className='text-sm'>Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isEditing ? (
+                    <Textarea
+                      value={editForm.notes || ''}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder='Add notes about this lead...'
+                      rows={3}
+                    />
+                  ) : (
+                    <p className='text-sm text-muted-foreground whitespace-pre-wrap'>{selectedLead.notes || 'No notes'}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              {!isEditing && (
+                <div className='flex space-x-2 pt-4 border-t'>
+                  {selectedLead.source === 'whatsapp' && (selectedLead.conversationId || selectedLead.providerId) && (
+                    <Button className='flex-1' onClick={() => handleWhatsAppClick(selectedLead)}>
+                      <WhatsAppIcon className='h-4 w-4 mr-2' />
+                      Open WhatsApp Chat
+                    </Button>
+                  )}
+                  <Button variant='outline' size='icon'>
+                    <MoreHorizontal className='h-4 w-4' />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
