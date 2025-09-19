@@ -230,7 +230,9 @@ const ContactDetailPage: React.FC = () => {
           <div className='flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6'>
             <Avatar className='h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 mx-auto sm:mx-0'>
               <AvatarFallback className='bg-primary text-primary-foreground text-2xl sm:text-3xl lg:text-4xl'>
-                {getDisplayName(isEditing ? { ...contact, ...editForm } : contact).charAt(0).toUpperCase()}
+                {getDisplayName(isEditing ? { ...contact, ...editForm } : contact)
+                  .charAt(0)
+                  .toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className='flex-1 text-center sm:text-left'>
@@ -360,9 +362,7 @@ const ContactDetailPage: React.FC = () => {
                       </Badge>
                     </div>
                   ))}
-                  {contact.Thread.length === 0 && (
-                    <span className='text-sm text-muted-foreground'>No active conversations</span>
-                  )}
+                  {contact.Thread.length === 0 && <span className='text-sm text-muted-foreground'>No active conversations</span>}
                 </div>
               </CardContent>
             </Card>
@@ -376,9 +376,7 @@ const ContactDetailPage: React.FC = () => {
                 <div className='flex items-center justify-between'>
                   <div>
                     <h3 className='font-medium'>Lead {lead.id.slice(0, 8)}</h3>
-                    <p className='text-sm text-muted-foreground'>
-                      Created {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
-                    </p>
+                    <p className='text-sm text-muted-foreground'>Created {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}</p>
                   </div>
                   <div className='flex items-center space-x-2'>
                     {lead.label && <Badge variant='outline'>{lead.label}</Badge>}

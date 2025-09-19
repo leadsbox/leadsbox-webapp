@@ -17,55 +17,55 @@ export const endpoints = {
   checkUsername: '/auth/check-username',
   forgotPassword: '/auth/forgot-password',
   resetPassword: '/auth/reset-password',
-  
+
   // Orgs (backend path is /orgs)
   orgs: '/orgs',
-  
+
   // OAuth & Social Auth
   google: {
     login: '/auth/google',
     callback: '/auth/google/callback',
   },
-  
+
   // User & Organization (legacy keys kept for compatibility)
   profile: '/user/profile', // not used by this backend; left for compat
   organization: '/organization', // use endpoints.orgs instead
   members: '/organization/members',
-  
+
   // Leads
   leads: '/leads',
   lead: (id: string) => `/leads/${id}`,
-  
+
   // Contacts (central contact management)
   contacts: '/contacts',
   contact: (id: string) => `/contacts/${id}`,
-  
+
   // Threads & Messages
   threads: '/threads',
   thread: (id: string) => `/threads/${id}`,
   threadMessages: (threadId: string) => `/threads/${threadId}/messages`,
   threadReply: (threadId: string) => `/threads/${threadId}/reply`,
   threadStart: '/threads/start',
-  
+
   // Tasks
   tasks: '/tasks',
   task: (id: string) => `/tasks/${id}`,
-  
+
   // Pipeline
   pipeline: '/pipeline',
   moveLead: '/pipeline/move',
-  
+
   // Analytics
   analytics: '/analytics',
   analyticsOverview: '/analytics/overview',
   analyticsTrends: '/analytics/trends',
   analyticsPerformance: '/analytics/performance',
-  
+
   // Settings
   settings: '/settings',
   notifications: '/settings/notifications',
   integrations: '/settings/integrations',
-  
+
   // Integrations
   whatsapp: {
     connect: '/integrations/whatsapp/connect',
@@ -77,7 +77,7 @@ export const endpoints = {
     disconnect: '/integrations/telegram/disconnect',
     status: '/integrations/telegram/status',
   },
-  
+
   // Tags & Templates
   tags: '/tags',
   templates: '/templates',
@@ -95,7 +95,7 @@ export const HTTP_METHODS = {
 // Request headers
 export const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
-  'Accept': 'application/json',
+  Accept: 'application/json',
 } as const;
 
 // API Status Codes
