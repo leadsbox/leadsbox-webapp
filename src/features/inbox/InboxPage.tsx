@@ -68,7 +68,22 @@ const InboxPage: React.FC = () => {
   type ApiThread = {
     id: string;
     organizationId: string;
-    contact: { id: string; displayName?: string | null; phone?: string | null };
+    contact: {
+      id: string;
+      organizationId: string;
+      displayName?: string | null;
+      phone?: string | null;
+      waId?: string | null; // WhatsApp ID
+      igUsername?: string | null;
+      fbPsid?: string | null;
+      email?: string | null;
+      country?: string | null;
+      identityConfidence?: number;
+      mergedIntoId?: string | null;
+      lastSeenAt?: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
     channel: { id: string; type: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'; displayName?: string | null };
     status: string;
     lastMessageAt: string;
@@ -89,12 +104,26 @@ const InboxPage: React.FC = () => {
     return 'whatsapp';
   };
   const toUiLead = (api: ApiThread): Thread['lead'] => {
-    const name = api.contact.displayName || api.contact.phone || 'Contact';
+    // Extract the meaningful contact information
+    const displayName = api.contact.displayName;
+    const phone = api.contact.phone || api.contact.waId; // Use waId if phone is null
+    const email = api.contact.email;
+    
+    // Build a proper name - prioritize displayName, then format phone number
+    let name = displayName;
+    if (!name && phone) {
+      // Format WhatsApp ID/phone for display
+      name = phone.startsWith('234') ? `+${phone}` : phone;
+    }
+    if (!name) {
+      name = 'Contact';
+    }
+
     return {
       id: api.contact.id,
       name,
-      email: '',
-      phone: api.contact.phone || undefined,
+      email: email || '',
+      phone: phone || undefined,
       source: 'whatsapp',
       stage: 'NEW',
       priority: 'MEDIUM',
@@ -130,14 +159,43 @@ const InboxPage: React.FC = () => {
   const fetchThreads = async () => {
     setLoadingThreads(true);
     try {
-      const res = await client.get(endpoints.threads);
+      // Try to get threads with expanded contact information
+      const res = await client.get(endpoints.threads, {
+        params: {
+          include: 'contact,channel', // Request expanded contact and channel info
+          expandContact: true, // Flag to get full contact details
+        },
+      });
       const list = (res?.data?.data?.threads || []) as ApiThread[];
+
+      // Debug: Log the contact data we're receiving and how it's mapped
+      console.log('API Threads Contact Data:', list.map((t) => ({
+        id: t.id,
+        contact: t.contact,
+        channel: t.channel,
+        contactFields: Object.keys(t.contact || {}),
+      })));
+      
       const ui = list.map(toUiThread);
+      console.log('Mapped UI Leads:', ui.map(thread => ({
+        id: thread.id,
+        leadName: thread.lead.name,
+        leadPhone: thread.lead.phone,
+        leadEmail: thread.lead.email
+      })));
+
+      console.log('Mapped UI Leads:', ui.map(thread => ({
+        id: thread.id,
+        leadName: thread.lead.name,
+        leadPhone: thread.lead.phone,
+        leadEmail: thread.lead.email
+      })));
       setThreads(ui);
       if (!selectedThread && ui.length > 0) setSelectedThread(ui[0]);
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
       toast.error(e?.response?.data?.message || 'Failed to load threads');
+      console.error('Threads API Error:', error);
     } finally {
       setLoadingThreads(false);
     }
@@ -171,13 +229,14 @@ const InboxPage: React.FC = () => {
     () =>
       threads.filter((thread) => {
         const matchesSearch =
-          thread.lead.name.toLowerCase().includes(searchQuery.toLowerCase()) || thread.lead.email.toLowerCase().includes(searchQuery.toLowerCase());
-
+          thread.lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (thread.lead.email && thread.lead.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (thread.lead.phone && thread.lead.phone.toLowerCase().includes(searchQuery.toLowerCase()));
         switch (activeFilter) {
           case 'unread':
             return matchesSearch && thread.isUnread;
           case 'mine':
-            return matchesSearch && thread.assignedTo === '2'; // Current user
+            return matchesSearch && thread.assignedTo; // Any assigned thread
           case 'hot':
             return matchesSearch && thread.priority === 'HIGH';
           default:
@@ -490,19 +549,28 @@ const InboxPage: React.FC = () => {
                   >
                     <ChevronLeft className='h-5 w-5' />
                   </Button>
-                  <Avatar className='h-10 w-10'>
-                    <AvatarImage src={selectedThread.lead.name} />
-                    <AvatarFallback>{selectedThread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <div className='relative'>
+                    <Avatar className='h-10 w-10'>
+                      <AvatarImage src={selectedThread.lead.name} />
+                      <AvatarFallback>{selectedThread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className='absolute -bottom-1 -right-1 text-lg'>{getChannelIcon(selectedThread.channel)}</div>
+                  </div>
                   <div>
                     <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
                     <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
-                      <span>{selectedThread.lead.email}</span>
-                      {selectedThread.lead.phone && (
+                      {selectedThread.lead.phone && selectedThread.lead.email ? (
                         <>
-                          <span>•</span>
                           <span>{selectedThread.lead.phone}</span>
+                          <span>•</span>
+                          <span>{selectedThread.lead.email}</span>
                         </>
+                      ) : selectedThread.lead.phone ? (
+                        <span>{selectedThread.lead.phone}</span>
+                      ) : selectedThread.lead.email ? (
+                        <span>{selectedThread.lead.email}</span>
+                      ) : (
+                        <span>No contact info</span>
                       )}
                     </div>
                   </div>

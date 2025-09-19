@@ -246,13 +246,13 @@ const LeadDetailPage: React.FC = () => {
           <h1 className='text-2xl font-bold'>Lead Details</h1>
           <p className='text-muted-foreground'>View and manage lead information</p>
         </div>
-        <div className='flex items-center justify-start gap-2'>
+        <div className='flex items-center justify-between sm:justify-start gap-2'>
           <Button variant='outline' size='sm' onClick={() => navigate('/dashboard/leads')}>
             <ArrowLeft className='h-4 w-4 mr-2' />
             Back to Leads
           </Button>
           {isEditing ? (
-            <>
+            <div className='flex items-center gap-2'>
               <Button variant='outline' size='sm' onClick={handleCancelEdit}>
                 <X className='h-4 w-4 mr-2' />
                 Cancel
@@ -261,7 +261,7 @@ const LeadDetailPage: React.FC = () => {
                 <Save className='h-4 w-4 mr-2' />
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
-            </>
+            </div>
           ) : (
             <Button variant='outline' size='sm' onClick={() => handleEditLead(lead)}>
               <Edit className='h-4 w-4 mr-2' />
