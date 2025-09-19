@@ -479,14 +479,14 @@ const LeadsPage: React.FC = () => {
         </CardContent>
       </Card>
       <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className='w-[600px] sm:w-[600px] flex h-full flex-col overflow-hidden'>
+        <SheetContent className='w-[800px] sm:w-[800px] flex h-full flex-col overflow-hidden'>
           <SheetHeader>
             <SheetTitle>Lead Profile</SheetTitle>
             <SheetDescription>View and manage lead information</SheetDescription>
           </SheetHeader>
 
           {selectedLead && (
-            <div className='mt-6 flex-1 space-y-6 overflow-y-auto pr-4 pb-6'>
+            <div className='mt-4 flex-1 space-y-4 overflow-y-auto pr-2 pb-4'>
               {/* Header with Edit Toggle */}
               <div className='flex items-center justify-between'>
                 <div className='flex items-center space-x-4'>
@@ -596,15 +596,15 @@ const LeadsPage: React.FC = () => {
               </div>
 
               {/* Contact Info */}
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
                 <Card>
-                  <CardHeader className='pb-3'>
+                  <CardHeader className='pb-2'>
                     <CardTitle className='text-sm flex items-center'>
                       <Mail className='h-4 w-4 mr-2' />
                       Contact Info
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className='space-y-2'>
+                  <CardContent className='space-y-1.5'>
                     <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
                       <Mail className='h-4 w-4' />
                       <span>{selectedLead.email || 'No email provided'}</span>
@@ -620,13 +620,13 @@ const LeadsPage: React.FC = () => {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader className='pb-3'>
+                  <CardHeader className='pb-2'>
                     <CardTitle className='text-sm flex items-center'>
                       <Calendar className='h-4 w-4 mr-2' />
                       Details
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className='space-y-2 text-sm text-muted-foreground'>
+                  <CardContent className='space-y-1.5 text-sm text-muted-foreground'>
                     <div className='flex items-center space-x-2'>
                       <Calendar className='h-4 w-4' />
                       <span>Created {formatDistanceToNow(new Date(selectedLead.createdAt), { addSuffix: true })}</span>
@@ -644,15 +644,15 @@ const LeadsPage: React.FC = () => {
               </div>
 
               {/* Assigned To */}
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
                 <Card>
-                  <CardHeader className='pb-3'>
+                  <CardHeader className='pb-2'>
                     <CardTitle className='text-sm flex items-center'>
                       <MessageCircle className='h-4 w-4 mr-2' />
                       Source & Engagement
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className='space-y-2 text-sm text-muted-foreground'>
+                  <CardContent className='space-y-1.5 text-sm text-muted-foreground'>
                     <div className='flex items-center space-x-2'>
                       {getSourceIcon(selectedLead.source)}
                       <span className='capitalize'>{selectedLead.source}</span>
@@ -721,7 +721,7 @@ const LeadsPage: React.FC = () => {
 
               {/* Tags */}
               <Card>
-                <CardHeader className='pb-3'>
+                <CardHeader className='pb-2'>
                   <CardTitle className='text-sm flex items-center'>
                     <Tag className='h-4 w-4 mr-2' />
                     Tags
@@ -760,7 +760,7 @@ const LeadsPage: React.FC = () => {
 
               {/* Notes */}
               <Card>
-                <CardHeader className='pb-3'>
+                <CardHeader className='pb-2'>
                   <CardTitle className='text-sm'>Notes</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -769,7 +769,7 @@ const LeadsPage: React.FC = () => {
                       value={editForm.notes || ''}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
                       placeholder='Add notes about this lead...'
-                      rows={3}
+                      rows={2}
                     />
                   ) : (
                     <p className='text-sm text-muted-foreground whitespace-pre-wrap'>{selectedLead.notes || 'No notes'}</p>
@@ -779,7 +779,7 @@ const LeadsPage: React.FC = () => {
 
               {/* Actions */}
               {!isEditing && (
-                <div className='flex space-x-2 pt-4 border-t'>
+                <div className='flex space-x-2 pt-3 border-t'>
                   {selectedLead.source === 'whatsapp' && (selectedLead.conversationId || selectedLead.providerId) && (
                     <Button className='flex-1' onClick={() => handleWhatsAppClick(selectedLead)}>
                       <WhatsAppIcon className='h-4 w-4 mr-2' />
