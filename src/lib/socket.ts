@@ -191,11 +191,18 @@ export class SocketIOService {
   sendMessage(threadId: string, text: string, type: string = 'text'): void {
     console.log('=== ATTEMPTING TO SEND MESSAGE ===');
     console.log('Socket connected:', this.socket?.connected);
+    console.log('Socket ID:', this.socket?.id);
+    console.log('Socket readyState:', this.socket?.connected ? 'OPEN' : 'CLOSED');
     console.log('Message data:', { threadId, text, type });
 
     if (this.socket?.connected) {
+      // Emit the message
       this.socket.emit('message:send', { threadId, text, type });
       console.log('✅ Message emitted via Socket.IO:', { threadId, text });
+      
+      // Emit a test thread:join to compare
+      console.log('🔗 Also emitting thread:join for comparison...');
+      this.socket.emit('thread:join', { threadId });
     } else {
       console.error('❌ Socket not connected - cannot send message');
     }
@@ -249,7 +256,7 @@ export class SocketIOService {
   }
 
   // Emit events to registered listeners
-  private emitToListeners(event: string, data: any): void {
+  private emitToListeners(event: string, data: unknown): void {
     const listeners = this.listeners.get(event);
     if (listeners) {
       listeners.forEach((callback) => {
