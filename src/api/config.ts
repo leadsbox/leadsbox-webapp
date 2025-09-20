@@ -1,6 +1,6 @@
 // API Configuration for LeadsBox Dashboard
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3010/api';
 
 export const ORG_HEADER = 'x-org-id';
 

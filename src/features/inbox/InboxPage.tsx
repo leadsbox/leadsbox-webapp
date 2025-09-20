@@ -26,6 +26,7 @@ import { toast } from 'react-toastify';
 import { Thread, Message } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
+import { useSocketIO } from '@/lib/socket';
 
 const InboxPage: React.FC = () => {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -49,6 +50,20 @@ const InboxPage: React.FC = () => {
     phone: string;
   }>({ displayName: '', email: '', phone: '' });
   const [savingContact, setSavingContact] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+
+  // Socket.IO integration
+  const { 
+    isConnected, 
+    error: socketError, 
+    socket,
+    joinThread, 
+    leaveThread, 
+    sendMessage: socketSendMessage,
+    startTyping,
+    stopTyping,
+    on: socketOn 
+  } = useSocketIO();
 
   useEffect(() => {
     document.body.style.overflow = mobileThreadsOpen ? 'hidden' : '';
@@ -241,6 +256,206 @@ const InboxPage: React.FC = () => {
     if (selectedThread?.id) fetchMessages(selectedThread.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThread?.id]);
+
+  // Socket.IO event listeners for real-time updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    console.log('Setting up Socket.IO event listeners');
+
+    // Handle new messages
+    const unsubscribeNewMessage = socketOn('message:new', (data) => {
+      const { message, thread } = data;
+      
+      console.log('Received new message:', message);
+
+      // Update messages if this is the selected thread
+      if (selectedThread?.id === message.threadId) {
+        setMessages(prev => {
+          // Avoid duplicates
+          const exists = prev.some(m => m.id === message.id);
+          if (exists) return prev;
+          
+          return [...prev, message].sort((a, b) => 
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        });
+      }
+
+      // Update thread list
+      setThreads(prev => {
+        const existingIndex = prev.findIndex(t => t.id === thread.id);
+        if (existingIndex >= 0) {
+          // Update existing thread
+          const updated = [...prev];
+          updated[existingIndex] = { ...thread, lastMessage: message };
+          return updated.sort((a, b) => 
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+        } else {
+          // Add new thread
+          return [{ ...thread, lastMessage: message }, ...prev];
+        }
+      });
+
+      // Show toast notification if not the current thread
+      if (selectedThread?.id !== message.threadId) {
+        toast.success(`New message from ${thread.lead.name}`);
+      }
+    });
+
+    // Handle thread updates
+    const unsubscribeThreadUpdate = socketOn('thread:updated', (data) => {
+      const { thread } = data;
+      
+      console.log('Thread updated:', thread);
+      
+      setThreads(prev => {
+        const existingIndex = prev.findIndex(t => t.id === thread.id);
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = thread;
+          return updated;
+        }
+        return prev;
+      });
+
+      // Update selected thread if it's the same
+      if (selectedThread?.id === thread.id) {
+        setSelectedThread(thread);
+      }
+    });
+
+    // Handle new threads
+    const unsubscribeNewThread = socketOn('thread:new', (data) => {
+      const { thread } = data;
+      
+      console.log('New thread:', thread);
+      
+      setThreads(prev => {
+        // Avoid duplicates
+        const exists = prev.some(t => t.id === thread.id);
+        if (exists) return prev;
+        
+        return [thread, ...prev];
+      });
+
+      toast.success(`New conversation from ${thread.lead.name}`);
+    });
+
+    // Handle typing indicators
+    const unsubscribeTypingStart = socketOn('typing:start', (data) => {
+      const { threadId, userId, userName } = data;
+      
+      if (selectedThread?.id === threadId) {
+        setTypingUsers(prev => {
+          const updated = new Map(prev);
+          updated.set(userId, userName);
+          return updated;
+        });
+      }
+    });
+
+    const unsubscribeTypingStop = socketOn('typing:stop', (data) => {
+      const { threadId, userId } = data;
+      
+      if (selectedThread?.id === threadId) {
+        setTypingUsers(prev => {
+          const updated = new Map(prev);
+          updated.delete(userId);
+          return updated;
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeNewMessage();
+      unsubscribeThreadUpdate();
+      unsubscribeNewThread();
+      unsubscribeTypingStart();
+      unsubscribeTypingStop();
+    };
+  }, [isConnected, selectedThread?.id, socketOn]);
+
+  // Join/leave thread rooms when selected thread changes
+  useEffect(() => {
+    if (!isConnected || !selectedThread?.id) return;
+
+    console.log('Joining thread room:', selectedThread.id);
+    joinThread(selectedThread.id);
+
+    return () => {
+      if (selectedThread?.id) {
+        console.log('Leaving thread room:', selectedThread.id);
+        leaveThread(selectedThread.id);
+      }
+    };
+  }, [selectedThread?.id, isConnected, joinThread, leaveThread]);
+
+  // Handle typing indicators for current user
+  useEffect(() => {
+    if (!selectedThread?.id || !isConnected) return;
+
+    let typingTimeout: NodeJS.Timeout;
+
+    const handleTyping = () => {
+      startTyping(selectedThread.id);
+
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        stopTyping(selectedThread.id);
+      }, 1000);
+    };
+
+    // Listen for composer changes
+    if (composer.length > 0) {
+      handleTyping();
+    }
+
+    return () => {
+      clearTimeout(typingTimeout);
+      if (selectedThread?.id) {
+        stopTyping(selectedThread.id);
+      }
+    };
+  }, [composer, selectedThread?.id, isConnected, startTyping, stopTyping]);
+
+  // Enhanced message sending with Socket.IO
+  const handleSendMessage = async () => {
+    if (!selectedThread || !composer.trim()) return;
+
+    const messageText = composer.trim();
+    setComposer('');
+
+    try {
+      if (isConnected) {
+        // Send through Socket.IO for instant delivery
+        socketSendMessage(selectedThread.id, messageText);
+        console.log('Message sent via Socket.IO');
+      } else {
+        // Fallback to REST API
+        await client.post(endpoints.threadReply(selectedThread.id), { 
+          orgId: getOrgId(), 
+          text: messageText 
+        });
+        
+        // Refresh messages manually
+        await fetchMessages(selectedThread.id);
+        console.log('Message sent via REST API (fallback)');
+      }
+
+    } catch (error) {
+      const e = error as AxiosError<{ message?: string }>;
+      const errorMessage = e?.response?.data?.message || 'Failed to send message';
+      
+      if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+        setWhatsappConnectionError(true);
+      }
+      
+      toast.error(errorMessage);
+      setComposer(messageText); // Restore message on error
+    }
+  };
 
   const filteredThreads = useMemo(
     () =>
@@ -751,6 +966,36 @@ const InboxPage: React.FC = () => {
 
             {/* Message Input */}
             <div className='p-3 sm:p-4 border-t border-border bg-card/50'>
+              {/* Typing indicators */}
+              {typingUsers.size > 0 && (
+                <div className='mb-2 text-xs text-muted-foreground flex items-center gap-1'>
+                  <div className='flex space-x-1'>
+                    <div className='w-1 h-1 bg-current rounded-full animate-bounce'></div>
+                    <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
+                    <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  {typingUsers.size === 1 
+                    ? `${Array.from(typingUsers.values())[0]} is typing...` 
+                    : `${typingUsers.size} people are typing...`
+                  }
+                </div>
+              )}
+              
+              {/* Connection status */}
+              <div className='flex items-center justify-between mb-2'>
+                <div className='flex items-center gap-2 text-xs'>
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className='text-muted-foreground'>
+                    {isConnected ? 'Real-time messaging' : 'Offline mode'}
+                  </span>
+                </div>
+                {socketError && (
+                  <div className='text-xs text-red-500'>
+                    Connection error: {socketError}
+                  </div>
+                )}
+              </div>
+
               <div className='flex items-center space-x-2'>
                 <Input
                   placeholder='Type your message...'
@@ -760,42 +1005,16 @@ const InboxPage: React.FC = () => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      if (selectedThread && composer.trim()) {
-                        client
-                          .post(endpoints.threadReply(selectedThread.id), { orgId: getOrgId(), text: composer.trim() })
-                          .then(() => fetchMessages(selectedThread.id))
-                          .catch((error) => {
-                            const e = error as AxiosError<{ message?: string }>;
-                            const errorMessage = e?.response?.data?.message || 'Failed to send message';
-                            if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
-                              setWhatsappConnectionError(true);
-                            }
-                            toast.error(errorMessage);
-                          })
-                          .finally(() => setComposer(''));
-                      }
+                      handleSendMessage();
                     }
                   }}
                 />
                 <Button
                   disabled={!selectedThread || !composer.trim()}
-                  onClick={() => {
-                    if (!selectedThread || !composer.trim()) return;
-                    client
-                      .post(endpoints.threadReply(selectedThread.id), { orgId: getOrgId(), text: composer.trim() })
-                      .then(() => fetchMessages(selectedThread.id))
-                      .catch((error) => {
-                        const e = error as AxiosError<{ message?: string }>;
-                        const errorMessage = e?.response?.data?.message || 'Failed to send message';
-                        if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
-                          setWhatsappConnectionError(true);
-                        }
-                        toast.error(errorMessage);
-                      })
-                      .finally(() => setComposer(''));
-                  }}
+                  onClick={handleSendMessage}
+                  className={isConnected ? 'bg-green-600 hover:bg-green-700' : ''}
                 >
-                  Send
+                  {isConnected ? '⚡ Send' : 'Send'}
                 </Button>
               </div>
             </div>
