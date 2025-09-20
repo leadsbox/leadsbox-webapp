@@ -193,13 +193,20 @@ export class SocketIOService {
     console.log('Socket connected:', this.socket?.connected);
     console.log('Socket ID:', this.socket?.id);
     console.log('Socket readyState:', this.socket?.connected ? 'OPEN' : 'CLOSED');
+    console.log('Socket instance exists:', !!this.socket);
+    console.log('Socket transport:', this.socket?.io?.engine?.transport?.name);
+    console.log('Socket auth:', this.socket?.auth);
     console.log('Message data:', { threadId, text, type });
 
     if (this.socket?.connected) {
-      // Emit the message
-      console.log('🚀 About to emit message:send event...');
-      this.socket.emit('message:send', { threadId, text, type });
-      console.log('✅ Message emitted via Socket.IO:', { threadId, text });
+      // Add unique identifier to track this specific emission
+      const emissionId = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      console.log('🚀 About to emit message:send event with ID:', emissionId);
+      
+      // Emit the message with tracking ID
+      const messageData = { threadId, text, type, emissionId };
+      this.socket.emit('message:send', messageData);
+      console.log('✅ Message emitted via Socket.IO:', { threadId, text, emissionId });
 
       // Add a small delay and check if the event was actually sent
       setTimeout(() => {
@@ -212,6 +219,11 @@ export class SocketIOService {
       console.log('🔗 Also emitting thread:join for comparison...');
       this.socket.emit('thread:join', { threadId });
       console.log('✅ thread:join emitted for comparison');
+
+      // Test if socket can emit another valid event
+      console.log('🏓 Testing socket emission with typing:start...');
+      this.socket.emit('typing:start', { threadId });
+      console.log('✅ typing:start emitted for connectivity test');
     } else {
       console.error('❌ Socket not connected - cannot send message');
     }
