@@ -378,7 +378,7 @@ const InboxPage: React.FC = () => {
       unsubscribeTypingStart();
       unsubscribeTypingStop();
     };
-  }, [isConnected, selectedThread?.id, socketOn]);
+  }, [isConnected, selectedThread?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Join/leave thread rooms when selected thread changes
   useEffect(() => {
@@ -393,7 +393,7 @@ const InboxPage: React.FC = () => {
         leaveThread(selectedThread.id);
       }
     };
-  }, [selectedThread?.id, isConnected, joinThread, leaveThread]);
+  }, [selectedThread?.id, isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle typing indicators for current user
   useEffect(() => {
