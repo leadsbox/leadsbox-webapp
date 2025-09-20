@@ -53,17 +53,24 @@ const InboxPage: React.FC = () => {
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
 
   // Socket.IO integration
-  const { 
-    isConnected, 
-    error: socketError, 
+  const {
+    isConnected,
+    error: socketError,
     socket,
-    joinThread, 
-    leaveThread, 
+    joinThread,
+    leaveThread,
     sendMessage: socketSendMessage,
     startTyping,
     stopTyping,
-    on: socketOn 
+    on: socketOn,
   } = useSocketIO();
+
+  // Debug authentication state
+  React.useEffect(() => {
+    const token = localStorage.getItem('lb_access_token');
+    const orgId = localStorage.getItem('lb_org_id');
+    console.log('Inbox Auth State:', { hasToken: !!token, hasOrgId: !!orgId, socketError, isConnected });
+  }, [socketError, isConnected]);
 
   useEffect(() => {
     document.body.style.overflow = mobileThreadsOpen ? 'hidden' : '';
@@ -266,32 +273,28 @@ const InboxPage: React.FC = () => {
     // Handle new messages
     const unsubscribeNewMessage = socketOn('message:new', (data) => {
       const { message, thread } = data;
-      
+
       console.log('Received new message:', message);
 
       // Update messages if this is the selected thread
       if (selectedThread?.id === message.threadId) {
-        setMessages(prev => {
+        setMessages((prev) => {
           // Avoid duplicates
-          const exists = prev.some(m => m.id === message.id);
+          const exists = prev.some((m) => m.id === message.id);
           if (exists) return prev;
-          
-          return [...prev, message].sort((a, b) => 
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
+
+          return [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         });
       }
 
       // Update thread list
-      setThreads(prev => {
-        const existingIndex = prev.findIndex(t => t.id === thread.id);
+      setThreads((prev) => {
+        const existingIndex = prev.findIndex((t) => t.id === thread.id);
         if (existingIndex >= 0) {
           // Update existing thread
           const updated = [...prev];
           updated[existingIndex] = { ...thread, lastMessage: message };
-          return updated.sort((a, b) => 
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          );
+          return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         } else {
           // Add new thread
           return [{ ...thread, lastMessage: message }, ...prev];
@@ -307,11 +310,11 @@ const InboxPage: React.FC = () => {
     // Handle thread updates
     const unsubscribeThreadUpdate = socketOn('thread:updated', (data) => {
       const { thread } = data;
-      
+
       console.log('Thread updated:', thread);
-      
-      setThreads(prev => {
-        const existingIndex = prev.findIndex(t => t.id === thread.id);
+
+      setThreads((prev) => {
+        const existingIndex = prev.findIndex((t) => t.id === thread.id);
         if (existingIndex >= 0) {
           const updated = [...prev];
           updated[existingIndex] = thread;
@@ -329,14 +332,14 @@ const InboxPage: React.FC = () => {
     // Handle new threads
     const unsubscribeNewThread = socketOn('thread:new', (data) => {
       const { thread } = data;
-      
+
       console.log('New thread:', thread);
-      
-      setThreads(prev => {
+
+      setThreads((prev) => {
         // Avoid duplicates
-        const exists = prev.some(t => t.id === thread.id);
+        const exists = prev.some((t) => t.id === thread.id);
         if (exists) return prev;
-        
+
         return [thread, ...prev];
       });
 
@@ -346,9 +349,9 @@ const InboxPage: React.FC = () => {
     // Handle typing indicators
     const unsubscribeTypingStart = socketOn('typing:start', (data) => {
       const { threadId, userId, userName } = data;
-      
+
       if (selectedThread?.id === threadId) {
-        setTypingUsers(prev => {
+        setTypingUsers((prev) => {
           const updated = new Map(prev);
           updated.set(userId, userName);
           return updated;
@@ -358,9 +361,9 @@ const InboxPage: React.FC = () => {
 
     const unsubscribeTypingStop = socketOn('typing:stop', (data) => {
       const { threadId, userId } = data;
-      
+
       if (selectedThread?.id === threadId) {
-        setTypingUsers(prev => {
+        setTypingUsers((prev) => {
           const updated = new Map(prev);
           updated.delete(userId);
           return updated;
@@ -434,24 +437,23 @@ const InboxPage: React.FC = () => {
         console.log('Message sent via Socket.IO');
       } else {
         // Fallback to REST API
-        await client.post(endpoints.threadReply(selectedThread.id), { 
-          orgId: getOrgId(), 
-          text: messageText 
+        await client.post(endpoints.threadReply(selectedThread.id), {
+          orgId: getOrgId(),
+          text: messageText,
         });
-        
+
         // Refresh messages manually
         await fetchMessages(selectedThread.id);
         console.log('Message sent via REST API (fallback)');
       }
-
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
       const errorMessage = e?.response?.data?.message || 'Failed to send message';
-      
+
       if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
         setWhatsappConnectionError(true);
       }
-      
+
       toast.error(errorMessage);
       setComposer(messageText); // Restore message on error
     }
@@ -974,26 +976,17 @@ const InboxPage: React.FC = () => {
                     <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
                     <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                  {typingUsers.size === 1 
-                    ? `${Array.from(typingUsers.values())[0]} is typing...` 
-                    : `${typingUsers.size} people are typing...`
-                  }
+                  {typingUsers.size === 1 ? `${Array.from(typingUsers.values())[0]} is typing...` : `${typingUsers.size} people are typing...`}
                 </div>
               )}
-              
+
               {/* Connection status */}
               <div className='flex items-center justify-between mb-2'>
                 <div className='flex items-center gap-2 text-xs'>
                   <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className='text-muted-foreground'>
-                    {isConnected ? 'Real-time messaging' : 'Offline mode'}
-                  </span>
+                  <span className='text-muted-foreground'>{isConnected ? 'Real-time messaging' : 'Offline mode'}</span>
                 </div>
-                {socketError && (
-                  <div className='text-xs text-red-500'>
-                    Connection error: {socketError}
-                  </div>
-                )}
+                {socketError && <div className='text-xs text-red-500'>Connection error: {socketError}</div>}
               </div>
 
               <div className='flex items-center space-x-2'>

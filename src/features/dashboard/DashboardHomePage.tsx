@@ -11,6 +11,8 @@ import { mockAnalytics, getTodayTasks, getOverdueTasks, mockLeads, mockOrganizat
 import { IntegrationBadge } from '@/components/ui/integrationbadge';
 import client from '@/api/client';
 import { API_BASE, endpoints } from '@/api/config';
+import { useSocketIO } from '@/lib/socket';
+import { Thread } from '@/types';
 
 // Types for backend data
 interface ChartDataPoint {
@@ -78,6 +80,9 @@ export default function DashboardHomePage() {
   const [recentLeadsData, setRecentLeadsData] = useState<BackendLead[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
+  // Socket.IO integration for real-time updates
+  const { socket, isConnected } = useSocketIO();
+
   const analytics = mockAnalytics;
   const todayTasks = getTodayTasks();
   const overdueTasks = getOverdueTasks();
@@ -87,6 +92,37 @@ export default function DashboardHomePage() {
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
   const apiRoot = useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
+
+  // Helper function to refresh dashboard data (memoized to avoid dependency issues)
+  const fetchDashboardData = React.useCallback(async () => {
+    try {
+      setAnalyticsLoading(true);
+
+      // Fetch leads data for processing
+      const leadsResp = await client.get(endpoints.leads);
+      const leadsList: BackendLead[] = leadsResp?.data?.data?.leads || leadsResp?.data || [];
+
+      // Process leads over time data (group by date)
+      const leadsOverTime = processLeadsOverTime(leadsList);
+      setLeadsOverTimeData(leadsOverTime);
+
+      // Process pipeline data (group by stage/label)
+      const pipelineDistribution = processPipelineData(leadsList);
+      setPipelineData(pipelineDistribution);
+
+      // Get recent leads (last 5, sorted by creation date)
+      const recentLeads = leadsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+      setRecentLeadsData(recentLeads);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      // Fallback to empty arrays
+      setLeadsOverTimeData([]);
+      setPipelineData([]);
+      setRecentLeadsData([]);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
 
   // Helper function to process leads over time data
   const processLeadsOverTime = (leads: BackendLead[]): ChartDataPoint[] => {
@@ -232,13 +268,81 @@ export default function DashboardHomePage() {
     fetchDashboardData();
   }, []);
 
+  // Real-time Socket.IO event listeners for instant dashboard updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    // Handle new leads - update counts and recent leads instantly
+    const handleNewLead = (data: { lead: BackendLead }) => {
+      setActualLeadsCount(prev => prev + 1);
+      
+      // Add to recent leads list (remove oldest if > 5)
+      setRecentLeadsData(prev => {
+        const updated = [data.lead, ...prev];
+        return updated.slice(0, 5);
+      });
+
+      // Refresh charts data to include new lead
+      fetchDashboardData();
+    };
+
+    // Handle lead updates - refresh recent leads and charts
+    const handleLeadUpdate = (data: { lead: BackendLead }) => {
+      setRecentLeadsData(prev => 
+        prev.map(lead => lead.id === data.lead.id ? data.lead : lead)
+      );
+      
+      // Refresh charts data for updated pipeline stages
+      fetchDashboardData();
+    };
+
+    // Handle new threads - update thread count instantly
+    const handleNewThread = (data: { thread: Thread }) => {
+      setActualThreadsCount(prev => prev + 1);
+    };
+
+    // Handle dashboard stats broadcasts (if backend sends aggregated stats)
+    const handleDashboardStats = (data: { totalLeads: number; activeThreads: number; [key: string]: unknown }) => {
+      if (data.totalLeads !== undefined) setActualLeadsCount(data.totalLeads);
+      if (data.activeThreads !== undefined) setActualThreadsCount(data.activeThreads);
+    };
+
+    // Subscribe to real-time events and get unsubscribe functions
+    const unsubscribeNewLead = socket.on('lead:new', handleNewLead);
+    const unsubscribeLeadUpdate = socket.on('lead:updated', handleLeadUpdate);
+    const unsubscribeNewThread = socket.on('thread:new', handleNewThread);
+    const unsubscribeDashboardStats = socket.on('dashboard:stats', handleDashboardStats);
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribeNewLead();
+      unsubscribeLeadUpdate();
+      unsubscribeNewThread();
+      unsubscribeDashboardStats();
+    };
+  }, [socket, isConnected, fetchDashboardData]);
+
+
+
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4'>
         <div>
-          <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Dashboard</h1>
-          <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
+          <div className='flex items-center gap-3'>
+            <div>
+              <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Dashboard</h1>
+              <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
+            </div>
+            
+            {/* Real-time Connection Status */}
+            <div className='flex items-center gap-2 px-3 py-1 rounded-full text-xs border'>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className={isConnected ? 'text-green-700' : 'text-gray-500'}>
+                {isConnected ? '⚡ Real-time' : 'Offline'}
+              </span>
+            </div>
+          </div>
 
           <div className='mt-2 flex items-center gap-2'>
             <IntegrationBadge

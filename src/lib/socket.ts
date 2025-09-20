@@ -11,44 +11,44 @@ export interface ServerToClientEvents {
   'thread:new': (data: { thread: Thread }) => void;
   'thread:updated': (data: { thread: Thread }) => void;
   'thread:deleted': (data: { threadId: string }) => void;
-  
+
   // Message Events
   'message:new': (data: { message: Message; thread: Thread }) => void;
   'message:updated': (data: { message: Message }) => void;
   'message:deleted': (data: { messageId: string; threadId: string }) => void;
-  
+
   // Lead Events
   'lead:new': (data: { lead: any }) => void;
   'lead:updated': (data: { lead: any }) => void;
   'lead:deleted': (data: { leadId: string }) => void;
-  
+
   // Typing Events
   'typing:start': (data: { threadId: string; userId: string; userName: string }) => void;
   'typing:stop': (data: { threadId: string; userId: string }) => void;
-  
+
   // Dashboard Events
   'dashboard:stats': (data: { totalLeads: number; activeThreads: number; [key: string]: any }) => void;
-  
+
   // System Events
-  'connected': () => void;
-  'error': (data: { message: string; code?: string }) => void;
+  connected: () => void;
+  error: (data: { message: string; code?: string }) => void;
 }
 
 export interface ClientToServerEvents {
   // Authentication
-  'auth': (data: { token: string; orgId: string }) => void;
-  
+  auth: (data: { token: string; orgId: string }) => void;
+
   // Thread Management
   'thread:join': (data: { threadId: string }) => void;
   'thread:leave': (data: { threadId: string }) => void;
-  
+
   // Message Sending
   'message:send': (data: { threadId: string; text: string; type?: string }) => void;
-  
+
   // Typing Indicators
   'typing:start': (data: { threadId: string }) => void;
   'typing:stop': (data: { threadId: string }) => void;
-  
+
   // Dashboard Subscriptions
   'dashboard:subscribe': () => void;
   'dashboard:unsubscribe': () => void;
@@ -77,20 +77,33 @@ export class SocketIOService {
       try {
         this.isConnecting = true;
 
-        // Get authentication data
-        const token = localStorage.getItem('auth_token');
-        const orgId = localStorage.getItem('current_organization');
+        // Get authentication data (matching the API client keys)
+        const token = localStorage.getItem('lb_access_token');
+        const orgId = localStorage.getItem('lb_org_id');
 
-        if (!token || !orgId) {
+        console.log('Socket.IO Auth Check:', { 
+          hasToken: !!token, 
+          hasOrgId: !!orgId, 
+          tokenLength: token?.length || 0,
+          orgId: orgId 
+        });
+
+        if (!token) {
           this.isConnecting = false;
-          reject(new Error('No authentication data found'));
+          reject(new Error('No access token found. Please login again.'));
+          return;
+        }
+
+        if (!orgId) {
+          this.isConnecting = false;
+          reject(new Error('No organization selected. Please select an organization.'));
           return;
         }
 
         // Socket.IO server URL
         const serverUrl = import.meta.env.VITE_API_BASE?.replace('/api', '') || 'http://localhost:3010';
-        
-        console.log('Connecting to Socket.IO server:', serverUrl);
+
+        console.log('Connecting to Socket.IO server:', serverUrl, 'with auth:', { orgId });
 
         // Create Socket.IO connection
         this.socket = io(serverUrl, {
@@ -137,7 +150,6 @@ export class SocketIOService {
 
         // Set up event forwarding
         this.setupEventForwarding();
-
       } catch (error) {
         this.isConnecting = false;
         reject(error);
@@ -211,14 +223,11 @@ export class SocketIOService {
   }
 
   // Event listener management
-  on<K extends keyof ServerToClientEvents>(
-    event: K,
-    callback: (data: Parameters<ServerToClientEvents[K]>[0]) => void
-  ): () => void {
+  on<K extends keyof ServerToClientEvents>(event: K, callback: (data: Parameters<ServerToClientEvents[K]>[0]) => void): () => void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    
+
     this.listeners.get(event)!.add(callback);
 
     // Return unsubscribe function
@@ -237,7 +246,7 @@ export class SocketIOService {
   private emitToListeners(event: string, data: any): void {
     const listeners = this.listeners.get(event);
     if (listeners) {
-      listeners.forEach(callback => {
+      listeners.forEach((callback) => {
         try {
           callback(data);
         } catch (error) {
@@ -287,9 +296,9 @@ export class SocketIOService {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
-      
+
       console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      
+
       setTimeout(() => {
         if (!this.socket?.connected) {
           this.connect().catch(console.error);
@@ -297,9 +306,9 @@ export class SocketIOService {
       }, delay);
     } else {
       console.log('Max reconnection attempts reached');
-      this.emitToListeners('error', { 
-        message: 'Connection lost and could not reconnect', 
-        code: 'MAX_RECONNECT_ATTEMPTS' 
+      this.emitToListeners('error', {
+        message: 'Connection lost and could not reconnect',
+        code: 'MAX_RECONNECT_ATTEMPTS',
       });
     }
   }
@@ -327,10 +336,18 @@ export function useSocketIO() {
     // Check connection periodically
     const interval = setInterval(checkConnection, 1000);
 
-    // Ensure connection
-    if (!socketService.isConnected()) {
+    // Check if we have auth data before attempting connection
+    const hasAuth = localStorage.getItem('lb_access_token') && localStorage.getItem('lb_org_id');
+    
+    // Only attempt connection if we have authentication data
+    if (hasAuth && !socketService.isConnected()) {
       socketService.connect().catch((err) => {
-        setError(err.message);
+        // Only show error if it's not an auth issue
+        if (!err.message.includes('authentication') && !err.message.includes('login')) {
+          setError(err.message);
+        } else {
+          console.log('Socket.IO: Waiting for authentication...');
+        }
       });
     }
 
