@@ -73,7 +73,7 @@ export class SocketIOService {
       console.log('Socket already connected:', this.socket.id);
       return;
     }
-    
+
     if (this.isConnecting) {
       console.log('Socket connection already in progress...');
       return;
@@ -211,7 +211,7 @@ export class SocketIOService {
       // Add unique identifier to track this specific emission
       const emissionId = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       console.log('🚀 About to emit message:send event with ID:', emissionId);
-      
+
       // Emit the message with tracking ID
       const messageData = { threadId, text, type, emissionId };
       this.socket.emit('message:send', messageData);
