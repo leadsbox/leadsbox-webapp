@@ -54,13 +54,9 @@ const SettingsPage: React.FC = () => {
     const validTabs = ['profile', 'integrations', 'organization', 'members', 'tags', 'templates', 'notifications', 'appearance'];
     const newTab = validTabs.includes(tabParam || '') ? tabParam! : 'profile';
     
-    // Only update if the tab actually changed to prevent unnecessary re-renders
-    if (newTab !== activeTab) {
-      setActiveTab(newTab);
-    }
-  }, [searchParams]);
-
-  // Load organizations
+    // Update active tab based on URL parameter
+    setActiveTab(newTab);
+  }, [searchParams]);  // Load organizations
   useEffect(() => {
     (async () => {
       try {
