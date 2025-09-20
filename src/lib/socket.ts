@@ -224,15 +224,18 @@ export class SocketIOService {
         console.log('  - Socket ID:', this.socket?.id);
       }, 100);
 
-      // Emit a test thread:join to compare behavior
-      console.log('🔗 Also emitting thread:join for comparison...');
-      this.socket.emit('thread:join', { threadId });
-      console.log('✅ thread:join emitted for comparison');
+      // Add delays between emissions to test rapid-fire theory
+      setTimeout(() => {
+        console.log('🔗 Also emitting thread:join for comparison...');
+        this.socket?.emit('thread:join', { threadId });
+        console.log('✅ thread:join emitted for comparison');
+      }, 500);
 
-      // Test if socket can emit another valid event
-      console.log('🏓 Testing socket emission with typing:start...');
-      this.socket.emit('typing:start', { threadId });
-      console.log('✅ typing:start emitted for connectivity test');
+      setTimeout(() => {
+        console.log('🏓 Testing socket emission with typing:start...');
+        this.socket?.emit('typing:start', { threadId });
+        console.log('✅ typing:start emitted for connectivity test');
+      }, 1000);
     } else {
       console.error('❌ Socket not connected - cannot send message');
     }
