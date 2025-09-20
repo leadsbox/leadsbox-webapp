@@ -14,6 +14,7 @@ import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { toast } from '../../hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { LeadLabel, leadLabelUtils } from '../../types';
 
 interface Contact {
   id: string;
@@ -379,7 +380,11 @@ const ContactDetailPage: React.FC = () => {
                     <p className='text-sm text-muted-foreground'>Created {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}</p>
                   </div>
                   <div className='flex items-center space-x-2'>
-                    {lead.label && <Badge variant='outline'>{lead.label}</Badge>}
+                    {lead.label && (
+                      <Badge variant='outline' className={`bg-${leadLabelUtils.getLabelColor(lead.label as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(lead.label as LeadLabel)}-400`}>
+                        {leadLabelUtils.isValidLabel(lead.label) ? leadLabelUtils.getDisplayName(lead.label as LeadLabel) : lead.label}
+                      </Badge>
+                    )}
                     <Button variant='outline' size='sm' onClick={() => navigate(`/dashboard/leads/${lead.id}`)}>
                       View Lead
                     </Button>

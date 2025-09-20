@@ -111,6 +111,54 @@ export const LEAD_LABELS = [
 
 export type LeadLabel = (typeof LEAD_LABELS)[number];
 
+// Lead label utilities
+export const LEAD_LABEL_DISPLAY_MAP: Record<LeadLabel, string> = {
+  NEW_LEAD: 'New Lead',
+  CLOSED_LOST_TRANSACTION: 'Closed/Lost Transaction',
+  TRANSACTION_SUCCESSFUL: 'Transaction Successful',
+  PAYMENT_PENDING: 'Payment Pending',
+  TRANSACTION_IN_PROGRESS: 'Transaction in Progress',
+  FOLLOW_UP_REQUIRED: 'Follow-Up Required',
+  NEW_INQUIRY: 'New Inquiry',
+  DEMO_REQUEST: 'Demo Request',
+  TECHNICAL_SUPPORT: 'Technical Support',
+  PRICING_INQUIRY: 'Pricing Inquiry',
+  PARTNERSHIP_OPPORTUNITY: 'Partnership Opportunity',
+  FEEDBACK: 'Feedback',
+  ENGAGED: 'Engaged',
+  NOT_A_LEAD: 'Not a Lead',
+};
+
+// Utility functions for lead labels
+export const leadLabelUtils = {
+  // Convert backend enum key to display string
+  getDisplayName: (label: LeadLabel): string => LEAD_LABEL_DISPLAY_MAP[label] || label,
+  
+  // Get all available labels as options for dropdowns
+  getAllLabelOptions: () => LEAD_LABELS.map(label => ({
+    value: label,
+    label: LEAD_LABEL_DISPLAY_MAP[label],
+  })),
+  
+  // Check if a label is valid
+  isValidLabel: (label: string): label is LeadLabel => LEAD_LABELS.includes(label as LeadLabel),
+  
+  // Get label color based on type (for UI styling)
+  getLabelColor: (label: LeadLabel): string => {
+    switch (label) {
+      case 'NEW_LEAD': return 'blue';
+      case 'TRANSACTION_SUCCESSFUL': return 'green';
+      case 'CLOSED_LOST_TRANSACTION': return 'red';
+      case 'PAYMENT_PENDING': return 'yellow';
+      case 'TRANSACTION_IN_PROGRESS': return 'orange';
+      case 'FOLLOW_UP_REQUIRED': return 'purple';
+      case 'ENGAGED': return 'teal';
+      case 'NOT_A_LEAD': return 'gray';
+      default: return 'slate';
+    }
+  }
+};
+
 export interface Pipeline {
   stages: {
     [K in Stage]: {

@@ -22,7 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { mockUsers } from '../../data/mockData';
-import { Lead, Stage, LEAD_LABELS, LeadLabel } from '../../types';
+import { Lead, Stage, LEAD_LABELS, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
@@ -890,12 +890,9 @@ const LeadDetailPage: React.FC = () => {
                     <SelectValue placeholder='Select lead type' />
                   </SelectTrigger>
                   <SelectContent>
-                    {LEAD_LABELS.map((label) => (
-                      <SelectItem key={label} value={label}>
-                        {label
-                          .replace(/_/g, ' ')
-                          .toLowerCase()
-                          .replace(/\b\w/g, (l) => l.toUpperCase())}
+                    {leadLabelUtils.getAllLabelOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -904,11 +901,8 @@ const LeadDetailPage: React.FC = () => {
                 <div className='flex flex-wrap gap-2'>
                   {lead.tags.length > 0 ? (
                     lead.tags.map((tag) => (
-                      <Badge key={tag} variant='secondary'>
-                        {tag
-                          .replace(/_/g, ' ')
-                          .toLowerCase()
-                          .replace(/\b\w/g, (l) => l.toUpperCase())}
+                      <Badge key={tag} variant='secondary' className={`bg-${leadLabelUtils.getLabelColor(tag as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(tag as LeadLabel)}-400`}>
+                        {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                       </Badge>
                     ))
                   ) : (
