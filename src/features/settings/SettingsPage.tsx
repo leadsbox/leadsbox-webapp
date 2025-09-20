@@ -53,10 +53,10 @@ const SettingsPage: React.FC = () => {
     const tabParam = searchParams.get('tab');
     const validTabs = ['profile', 'integrations', 'organization', 'members', 'tags', 'templates', 'notifications', 'appearance'];
     const newTab = validTabs.includes(tabParam || '') ? tabParam! : 'profile';
-    
+
     // Update active tab based on URL parameter
     setActiveTab(newTab);
-  }, [searchParams]);  // Load organizations
+  }, [searchParams]); // Load organizations
   useEffect(() => {
     (async () => {
       try {
