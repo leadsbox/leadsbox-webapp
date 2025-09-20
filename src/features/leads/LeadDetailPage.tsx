@@ -120,6 +120,28 @@ const LeadDetailPage: React.FC = () => {
     }
   };
 
+  const labelToPriority = (label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+    const labelUpper = (label || '').toUpperCase();
+
+    // High priority labels that need immediate attention
+    if (
+      labelUpper.includes('PAYMENT_PENDING') ||
+      labelUpper.includes('FOLLOW_UP_REQUIRED') ||
+      labelUpper.includes('DEMO_REQUEST') ||
+      labelUpper.includes('TECHNICAL_SUPPORT')
+    ) {
+      return 'HIGH';
+    }
+
+    // Low priority labels
+    if (labelUpper.includes('FEEDBACK') || labelUpper.includes('NOT_A_LEAD') || labelUpper.includes('CLOSED_LOST_TRANSACTION')) {
+      return 'LOW';
+    }
+
+    // Default to medium for everything else
+    return 'MEDIUM';
+  };
+
   const getAssignedUser = (userId: string) => {
     return mockUsers.find((user) => user.id === userId);
   };
@@ -280,7 +302,7 @@ const LeadDetailPage: React.FC = () => {
             company: undefined,
             source,
             stage: labelToStage(backendLead.label),
-            priority: 'MEDIUM',
+            priority: labelToPriority(backendLead.label),
             tags: backendLead.label ? [backendLead.label] : [],
             assignedTo: mockUsers[0]?.id,
             createdAt: backendLead.createdAt,
@@ -719,6 +741,17 @@ const LeadDetailPage: React.FC = () => {
                   <Badge variant='outline' className={getPriorityColor(lead.priority)}>
                     {lead.priority}
                   </Badge>
+                  {lead.tags.length > 0 && (
+                    <Badge
+                      variant='secondary'
+                      className={`bg-${leadLabelUtils.getLabelColor(lead.tags[0] as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(
+                        lead.tags[0] as LeadLabel
+                      )}-400`}
+                    >
+                      <Tag className='h-3 w-3 mr-1' />
+                      {leadLabelUtils.isValidLabel(lead.tags[0]) ? leadLabelUtils.getDisplayName(lead.tags[0] as LeadLabel) : lead.tags[0]}
+                    </Badge>
+                  )}
                 </>
               )}
             </div>

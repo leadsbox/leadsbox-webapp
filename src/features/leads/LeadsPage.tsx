@@ -78,6 +78,28 @@ const LeadsPage: React.FC = () => {
     }
   };
 
+  const labelToPriority = (label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+    const labelUpper = (label || '').toUpperCase();
+
+    // High priority labels that need immediate attention
+    if (
+      labelUpper.includes('PAYMENT_PENDING') ||
+      labelUpper.includes('FOLLOW_UP_REQUIRED') ||
+      labelUpper.includes('DEMO_REQUEST') ||
+      labelUpper.includes('TECHNICAL_SUPPORT')
+    ) {
+      return 'HIGH';
+    }
+
+    // Low priority labels
+    if (labelUpper.includes('FEEDBACK') || labelUpper.includes('NOT_A_LEAD') || labelUpper.includes('CLOSED_LOST_TRANSACTION')) {
+      return 'LOW';
+    }
+
+    // Default to medium for everything else
+    return 'MEDIUM';
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -91,7 +113,7 @@ const LeadsPage: React.FC = () => {
           company: undefined,
           source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
           stage: labelToStage(l.label),
-          priority: 'MEDIUM',
+          priority: labelToPriority(l.label),
           tags: l.label ? [l.label] : [], // Show the actual lead classification as a tag
           assignedTo: '',
           value: undefined,
