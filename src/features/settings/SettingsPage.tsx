@@ -1,6 +1,7 @@
 // Settings Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { mockOrganization } from '../../data/mockData';
 import { Org, Organization, OrgSettings } from './types';
@@ -18,7 +19,13 @@ import { toast } from 'react-toastify';
 // brand icons imported in child tabs as needed
 
 const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('profile');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    // Initialize tab from URL parameter, default to 'profile'
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['profile', 'integrations', 'organization', 'members', 'tags', 'templates', 'notifications', 'appearance'];
+    return validTabs.includes(tabParam || '') ? tabParam! : 'profile';
+  });
   const [organization, setOrganization] = useState<Organization>({
     ...mockOrganization,
     settings: {
@@ -31,6 +38,15 @@ const SettingsPage: React.FC = () => {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [orgLoading, setOrgLoading] = useState(false);
   const { setOrg } = useAuth();
+
+  // Handle tab changes and update URL
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    // Update URL parameter
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('tab', newTab);
+    setSearchParams(newSearchParams, { replace: true });
+  };
 
   // Load organizations
   useEffect(() => {
@@ -71,7 +87,7 @@ const SettingsPage: React.FC = () => {
         setOrgLoading(false);
       }
     })();
-  }, []);
+  }, [setOrg]);
 
   // All profile, members, and integrations logic moved to child tabs
 
@@ -107,7 +123,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Settings Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className='w-full overflow-x-auto flex gap-2 sm:grid sm:grid-cols-8'>
           <TabsTrigger value='profile'>Profile</TabsTrigger>
           <TabsTrigger value='integrations'>Integrations</TabsTrigger>
