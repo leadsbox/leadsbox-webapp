@@ -18,6 +18,25 @@ import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { toast } from '../../hooks/use-toast';
 
+// Safe date formatting helper to prevent Invalid time value errors
+const safeFormatDistance = (dateValue: string | Date | null | undefined): string => {
+  if (!dateValue) return 'N/A';
+
+  try {
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+
+    return formatDistanceToNow(date, { addSuffix: true });
+  } catch (error) {
+    console.warn('Date formatting error:', error, 'for value:', dateValue);
+    return 'Invalid date';
+  }
+};
+
 // Backend lead type
 interface BackendLead {
   id: string;
@@ -37,6 +56,13 @@ interface BackendLead {
   };
   thread?: {
     id: string;
+    contact?: {
+      id: string;
+      displayName?: string;
+      phone?: string;
+      email?: string;
+      waId?: string;
+    };
   };
 }
 
@@ -123,20 +149,99 @@ const LeadDetailPage: React.FC = () => {
 
       try {
         setIsLoading(true);
-        const resp = await client.get(endpoints.lead(leadId));
-        const backendLead: BackendLead = resp?.data?.lead || resp?.data;
+
+        // First try to get the lead with contact data using threads endpoint
+        // which works well in the inbox page
+        let backendLead: BackendLead | null = null;
+
+        try {
+          // Try threads endpoint first as it has better contact data
+          const threadsResp = await client.get(endpoints.threads, {
+            params: {
+              include: 'contact,channel',
+              expandContact: true,
+            },
+          });
+
+          const threads = threadsResp?.data?.data?.threads || [];
+          interface ThreadContact {
+            id: string;
+            displayName?: string;
+            phone?: string;
+            waId?: string;
+            email?: string;
+          }
+
+          interface ThreadData {
+            id: string;
+            contact: ThreadContact;
+            channel: { type: string };
+            lastMessageAt: string;
+          }
+
+          const matchingThread = threads.find(
+            (t: ThreadData) => t.contact?.id === leadId || t.id === leadId || (t.contact && (t.contact.phone === leadId || t.contact.waId === leadId))
+          );
+
+          if (matchingThread) {
+            // Convert thread data to lead format
+            backendLead = {
+              id: matchingThread.contact.id,
+              conversationId: matchingThread.id,
+              providerId: matchingThread.contact.phone || matchingThread.contact.waId,
+              provider: matchingThread.channel?.type?.toLowerCase() || 'whatsapp',
+              label: 'OPEN',
+              createdAt: matchingThread.lastMessageAt,
+              updatedAt: matchingThread.lastMessageAt,
+              lastMessageAt: matchingThread.lastMessageAt,
+              contact: matchingThread.contact,
+              thread: {
+                id: matchingThread.id,
+                contact: matchingThread.contact,
+              },
+            };
+          }
+        } catch (threadsError) {
+          // Silently fall back to lead API if threads endpoint fails
+        }
+
+        // If threads didn't work, try the lead endpoint
+        if (!backendLead) {
+          const resp = await client.get(endpoints.lead(leadId));
+          backendLead = resp?.data?.lead || resp?.data;
+        }
 
         if (backendLead) {
-          // Use contact information if available
-          const contact = backendLead.contact;
+          // Use contact information if available - check both direct contact and thread contact
+          const contact = backendLead.contact || backendLead.thread?.contact;
+
           const displayName = contact?.displayName;
-          const phone = contact?.phone || contact?.waId;
-          const email = contact?.email;
+          let phone = contact?.phone || contact?.waId;
+          let email = contact?.email;
+
+          // If we don't have contact data, try to fetch it from the thread/lead
+          if (!contact || (!displayName && !phone && !email)) {
+            // Try to extract contact info from other fields
+            if (backendLead.providerId && backendLead.providerId.includes('@')) {
+              email = backendLead.providerId;
+            } else if (backendLead.providerId && /^\d+$/.test(backendLead.providerId)) {
+              phone = backendLead.providerId;
+            }
+          }
 
           // Build proper name from contact data
           let name = displayName;
           if (!name && phone) {
+            // Format phone number properly
             name = phone.startsWith('234') ? `+${phone}` : phone;
+            // If it's a Nigerian number, try to make it more readable
+            if (phone.startsWith('234') && phone.length > 3) {
+              name = `+${phone}`;
+            }
+          }
+          if (!name && email) {
+            // Use email username as name
+            name = email.split('@')[0];
           }
           if (!name) {
             name = backendLead.providerId || backendLead.conversationId || 'Contact';
@@ -502,14 +607,14 @@ const LeadDetailPage: React.FC = () => {
               <Calendar className='h-4 w-4 text-muted-foreground' />
               <div>
                 <div className='text-sm font-medium'>Created</div>
-                <div className='text-sm text-muted-foreground'>{formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}</div>
+                <div className='text-sm text-muted-foreground'>{safeFormatDistance(lead.createdAt)}</div>
               </div>
             </div>
             <div className='flex items-center space-x-3'>
               <Calendar className='h-4 w-4 text-muted-foreground' />
               <div>
                 <div className='text-sm font-medium'>Last Updated</div>
-                <div className='text-sm text-muted-foreground'>{formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}</div>
+                <div className='text-sm text-muted-foreground'>{safeFormatDistance(lead.updatedAt)}</div>
               </div>
             </div>
             <div className='flex items-center space-x-3'>
@@ -524,7 +629,7 @@ const LeadDetailPage: React.FC = () => {
               <div>
                 <div className='text-sm font-medium'>Last Activity</div>
                 <div className='text-sm text-muted-foreground'>
-                  {lead.lastActivity ? formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true }) : 'No activity recorded'}
+                  {lead.lastActivity ? safeFormatDistance(lead.lastActivity) : 'No activity recorded'}
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -18,8 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
+
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
@@ -636,45 +635,88 @@ const InboxPage: React.FC = () => {
                     </Avatar>
                     <div className='absolute -bottom-1 -right-1 text-lg'>{getChannelIcon(selectedThread.channel)}</div>
                   </div>
-                  <div>
-                    <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
-                    <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
-                      {selectedThread.lead.phone && selectedThread.lead.email ? (
-                        <>
-                          <span>{selectedThread.lead.phone}</span>
-                          <span>•</span>
-                          <span>{selectedThread.lead.email}</span>
-                        </>
-                      ) : selectedThread.lead.phone ? (
-                        <span>{selectedThread.lead.phone}</span>
-                      ) : selectedThread.lead.email ? (
-                        <span>{selectedThread.lead.email}</span>
-                      ) : (
-                        <span>No contact info</span>
-                      )}
-                    </div>
+                  <div className='flex-1 min-w-0'>
+                    {editingContact ? (
+                      <div className='space-y-2'>
+                        <Input
+                          value={contactForm.displayName}
+                          onChange={(e) => setContactForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                          placeholder='Contact name'
+                          className='text-lg font-semibold h-8'
+                        />
+                        <div className='flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2'>
+                          <Input
+                            value={contactForm.phone}
+                            onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
+                            placeholder='+234xxxxxxxxxx'
+                            className='text-sm h-7 flex-1 w-full'
+                          />
+                          <Input
+                            type='email'
+                            value={contactForm.email}
+                            onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
+                            placeholder='contact@example.com'
+                            className='text-sm h-7 flex-1 w-full'
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
+                        <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                          {selectedThread.lead.phone && selectedThread.lead.email ? (
+                            <>
+                              <span>{selectedThread.lead.phone}</span>
+                              <span>•</span>
+                              <span>{selectedThread.lead.email}</span>
+                            </>
+                          ) : selectedThread.lead.phone ? (
+                            <span>{selectedThread.lead.phone}</span>
+                          ) : selectedThread.lead.email ? (
+                            <span>{selectedThread.lead.email}</span>
+                          ) : (
+                            <span>No contact info</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className='flex items-center space-x-2'>
-                  <Button variant='outline' size='icon'>
-                    <Phone className='h-4 w-4' />
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant='outline' size='icon'>
-                        <MoreHorizontal className='h-4 w-4' />
+                  {editingContact ? (
+                    <>
+                      <Button variant='outline' size='sm' onClick={handleCancelEditContact}>
+                        <X className='h-4 w-4 mr-1' />
+                        Cancel
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='end'>
-                      <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleEditContact}>Edit Contact Details</DropdownMenuItem>
-                      <DropdownMenuItem>View Lead Profile</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>Archive Conversation</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <Button size='sm' onClick={handleSaveContact} disabled={savingContact}>
+                        <Save className='h-4 w-4 mr-1' />
+                        {savingContact ? 'Saving...' : 'Save'}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant='outline' size='icon'>
+                        <Phone className='h-4 w-4' />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant='outline' size='icon'>
+                            <MoreHorizontal className='h-4 w-4' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end'>
+                          <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={handleEditContact}>Edit Contact Details</DropdownMenuItem>
+                          <DropdownMenuItem>View Lead Profile</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>Archive Conversation</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -864,62 +906,7 @@ const InboxPage: React.FC = () => {
         </aside>
       </div>
 
-      {/* Contact Edit Dialog */}
-      <Dialog open={editingContact} onOpenChange={setEditingContact}>
-        <DialogContent className='sm:max-w-[425px]'>
-          <DialogHeader>
-            <DialogTitle>Edit Contact Details</DialogTitle>
-            <DialogDescription>Update the contact information. Changes will be reflected across both inbox and leads.</DialogDescription>
-          </DialogHeader>
-          <div className='grid gap-4 py-4'>
-            <div className='grid grid-cols-4 items-center gap-4'>
-              <Label htmlFor='displayName' className='text-right'>
-                Name
-              </Label>
-              <Input
-                id='displayName'
-                value={contactForm.displayName}
-                onChange={(e) => setContactForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                className='col-span-3'
-                placeholder='Contact name'
-              />
-            </div>
-            <div className='grid grid-cols-4 items-center gap-4'>
-              <Label htmlFor='email' className='text-right'>
-                Email
-              </Label>
-              <Input
-                id='email'
-                type='email'
-                value={contactForm.email}
-                onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
-                className='col-span-3'
-                placeholder='contact@example.com'
-              />
-            </div>
-            <div className='grid grid-cols-4 items-center gap-4'>
-              <Label htmlFor='phone' className='text-right'>
-                Phone
-              </Label>
-              <Input
-                id='phone'
-                value={contactForm.phone}
-                onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
-                className='col-span-3'
-                placeholder='+234xxxxxxxxxx'
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant='outline' onClick={handleCancelEditContact}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveContact} disabled={savingContact}>
-              {savingContact ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 };
