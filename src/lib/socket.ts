@@ -69,7 +69,13 @@ export class SocketIOService {
 
   // Connect to Socket.IO server
   async connect(): Promise<void> {
-    if (this.socket?.connected || this.isConnecting) {
+    if (this.socket?.connected) {
+      console.log('Socket already connected:', this.socket.id);
+      return;
+    }
+    
+    if (this.isConnecting) {
+      console.log('Socket connection already in progress...');
       return;
     }
 
@@ -128,6 +134,7 @@ export class SocketIOService {
         this.socket.on('connect_error', (error) => {
           console.error('Socket.IO connection error:', error);
           this.isConnecting = false;
+          this.socket = null; // Clear failed socket
           reject(error);
         });
 
@@ -160,9 +167,11 @@ export class SocketIOService {
   // Disconnect from Socket.IO server
   disconnect(): void {
     if (this.socket) {
+      console.log('Disconnecting socket:', this.socket.id);
       this.socket.disconnect();
       this.socket = null;
     }
+    this.isConnecting = false;
     this.listeners.clear();
   }
 
@@ -373,8 +382,9 @@ export function useSocketIO() {
     // Check if we have auth data before attempting connection
     const hasAuth = localStorage.getItem('lb_access_token') && localStorage.getItem('lb_org_id');
 
-    // Only attempt connection if we have authentication data
-    if (hasAuth && !socketService.isConnected()) {
+    // Only attempt connection ONCE if we have authentication data and no connection exists
+    if (hasAuth && !socketService.isConnected() && !socketService['isConnecting']) {
+      console.log('useSocketIO: Attempting single connection...');
       socketService.connect().catch((err) => {
         // Only show error if it's not an auth issue
         if (!err.message.includes('authentication') && !err.message.includes('login')) {
@@ -383,6 +393,10 @@ export function useSocketIO() {
           console.log('Socket.IO: Waiting for authentication...');
         }
       });
+    } else if (socketService.isConnected()) {
+      console.log('useSocketIO: Socket already connected, skipping connection attempt');
+    } else if (socketService['isConnecting']) {
+      console.log('useSocketIO: Connection already in progress, skipping');
     }
 
     return () => {
