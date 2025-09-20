@@ -179,7 +179,7 @@ export const leadLabelUtils = {
         return 'slate';
     }
   },
-  
+
   // Get comprehensive styling for lead labels with proper outlines and backgrounds
   getLabelStyling: (label: LeadLabel): string => {
     const color = leadLabelUtils.getLabelColor(label);

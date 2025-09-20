@@ -383,11 +383,7 @@ const LeadsPage: React.FC = () => {
                     <TableCell>
                       <div className='flex flex-wrap gap-1'>
                         {lead.tags.map((tag, index) => (
-                          <Badge 
-                            key={index} 
-                            variant='outline' 
-                            className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}
-                          >
+                          <Badge key={index} variant='outline' className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
                             {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                           </Badge>
                         ))}

@@ -381,10 +381,7 @@ const ContactDetailPage: React.FC = () => {
                   </div>
                   <div className='flex items-center space-x-2'>
                     {lead.label && (
-                      <Badge
-                        variant='outline'
-                        className={leadLabelUtils.getLabelStyling(lead.label as LeadLabel)}
-                      >
+                      <Badge variant='outline' className={leadLabelUtils.getLabelStyling(lead.label as LeadLabel)}>
                         {leadLabelUtils.isValidLabel(lead.label) ? leadLabelUtils.getDisplayName(lead.label as LeadLabel) : lead.label}
                       </Badge>
                     )}
