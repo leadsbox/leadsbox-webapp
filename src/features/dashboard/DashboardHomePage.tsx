@@ -68,7 +68,7 @@ export default function DashboardHomePage() {
     const checkIntegrationStatus = async () => {
       try {
         setIntegrationLoading(true);
-        
+
         // Check WhatsApp status
         try {
           const whatsappResp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
@@ -82,7 +82,6 @@ export default function DashboardHomePage() {
         // Check Telegram status (using mock for now since endpoint may not exist)
         // TODO: Replace with actual Telegram status endpoint when available
         setTelegramConnected(!!mockOrganization?.settings?.integrations?.telegram?.botToken);
-        
       } catch (error) {
         console.error('Error checking integration status:', error);
       } finally {
@@ -102,19 +101,19 @@ export default function DashboardHomePage() {
           <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
 
           <div className='mt-2 flex items-center gap-2'>
-            <IntegrationBadge 
-              icon={Globe} 
-              label='WhatsApp' 
-              connected={whatsappConnected} 
+            <IntegrationBadge
+              icon={Globe}
+              label='WhatsApp'
+              connected={whatsappConnected}
               loading={integrationLoading}
-              to='/dashboard/settings?tab=integrations' 
+              to='/dashboard/settings?tab=integrations'
             />
-            <IntegrationBadge 
-              icon={Send} 
-              label='Telegram' 
-              connected={telegramConnected} 
+            <IntegrationBadge
+              icon={Send}
+              label='Telegram'
+              connected={telegramConnected}
               loading={integrationLoading}
-              to='/dashboard/settings?tab=integrations' 
+              to='/dashboard/settings?tab=integrations'
             />
           </div>
         </div>
@@ -122,7 +121,12 @@ export default function DashboardHomePage() {
         {/* Quick Actions */}
         <div className='flex flex-wrap gap-2'>
           {quickActions.map((action) => (
-            <Button key={action.title} asChild aria-label={action.title} className={`${action.color} text-white border-0 hover:shadow-lg transition-all duration-200`}> 
+            <Button
+              key={action.title}
+              asChild
+              aria-label={action.title}
+              className={`${action.color} text-white border-0 hover:shadow-lg transition-all duration-200`}
+            >
               <Link to={action.href} className='flex items-center gap-2'>
                 <action.icon className='h-4 w-4' />
                 <span className='hidden sm:inline'>{action.title}</span>
