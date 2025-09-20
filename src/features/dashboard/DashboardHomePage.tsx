@@ -274,10 +274,10 @@ export default function DashboardHomePage() {
 
     // Handle new leads - update counts and recent leads instantly
     const handleNewLead = (data: { lead: BackendLead }) => {
-      setActualLeadsCount(prev => prev + 1);
-      
+      setActualLeadsCount((prev) => prev + 1);
+
       // Add to recent leads list (remove oldest if > 5)
-      setRecentLeadsData(prev => {
+      setRecentLeadsData((prev) => {
         const updated = [data.lead, ...prev];
         return updated.slice(0, 5);
       });
@@ -288,17 +288,15 @@ export default function DashboardHomePage() {
 
     // Handle lead updates - refresh recent leads and charts
     const handleLeadUpdate = (data: { lead: BackendLead }) => {
-      setRecentLeadsData(prev => 
-        prev.map(lead => lead.id === data.lead.id ? data.lead : lead)
-      );
-      
+      setRecentLeadsData((prev) => prev.map((lead) => (lead.id === data.lead.id ? data.lead : lead)));
+
       // Refresh charts data for updated pipeline stages
       fetchDashboardData();
     };
 
     // Handle new threads - update thread count instantly
     const handleNewThread = (data: { thread: Thread }) => {
-      setActualThreadsCount(prev => prev + 1);
+      setActualThreadsCount((prev) => prev + 1);
     };
 
     // Handle dashboard stats broadcasts (if backend sends aggregated stats)
@@ -322,8 +320,6 @@ export default function DashboardHomePage() {
     };
   }, [socket, isConnected, fetchDashboardData]);
 
-
-
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
@@ -334,13 +330,11 @@ export default function DashboardHomePage() {
               <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Dashboard</h1>
               <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
             </div>
-            
+
             {/* Real-time Connection Status */}
             <div className='flex items-center gap-2 px-3 py-1 rounded-full text-xs border'>
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-              <span className={isConnected ? 'text-green-700' : 'text-gray-500'}>
-                {isConnected ? '⚡ Real-time' : 'Offline'}
-              </span>
+              <span className={isConnected ? 'text-green-700' : 'text-gray-500'}>{isConnected ? '⚡ Real-time' : 'Offline'}</span>
             </div>
           </div>
 

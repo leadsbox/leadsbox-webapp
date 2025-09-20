@@ -81,11 +81,11 @@ export class SocketIOService {
         const token = localStorage.getItem('lb_access_token');
         const orgId = localStorage.getItem('lb_org_id');
 
-        console.log('Socket.IO Auth Check:', { 
-          hasToken: !!token, 
-          hasOrgId: !!orgId, 
+        console.log('Socket.IO Auth Check:', {
+          hasToken: !!token,
+          hasOrgId: !!orgId,
           tokenLength: token?.length || 0,
-          orgId: orgId 
+          orgId: orgId,
         });
 
         if (!token) {
@@ -338,7 +338,7 @@ export function useSocketIO() {
 
     // Check if we have auth data before attempting connection
     const hasAuth = localStorage.getItem('lb_access_token') && localStorage.getItem('lb_org_id');
-    
+
     // Only attempt connection if we have authentication data
     if (hasAuth && !socketService.isConnected()) {
       socketService.connect().catch((err) => {
