@@ -2,16 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Save, X, Mail, Phone, Building, Tag, Calendar, DollarSign, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Mail, Phone, Building, Tag, Calendar, DollarSign, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { mockUsers } from '../../data/mockData';
-import { Lead, Stage } from '../../types';
+import { Lead, Stage, LEAD_LABELS, LeadLabel } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
@@ -316,6 +317,14 @@ const LeadDetailPage: React.FC = () => {
         });
       }
 
+      // Update lead information if tags (lead type) changed
+      if (editForm.tags && editForm.tags.length > 0) {
+        const leadType = editForm.tags[0] as LeadLabel;
+        await client.put(endpoints.lead(lead.id), {
+          label: leadType,
+        });
+      }
+
       // Update local state
       const updatedLead = { ...lead, ...editForm };
       setLead(updatedLead);
@@ -335,6 +344,29 @@ const LeadDetailPage: React.FC = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteLead = async () => {
+    if (!lead) return;
+
+    try {
+      await client.delete(endpoints.deleteLead(lead.id));
+      
+      toast({
+        title: 'Success',
+        description: 'Lead deleted successfully',
+      });
+      
+      // Navigate back to leads list
+      navigate('/dashboard/leads');
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete lead',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -402,10 +434,34 @@ const LeadDetailPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <Button variant='outline' size='sm' onClick={() => handleEditLead(lead)}>
-              <Edit className='h-4 w-4 mr-2' />
-              Edit Lead
-            </Button>
+            <div className='flex items-center gap-2'>
+              <Button variant='outline' size='sm' onClick={() => handleEditLead(lead)}>
+                <Edit className='h-4 w-4 mr-2' />
+                Edit Lead
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant='outline' size='sm' className='text-red-600 hover:text-red-700'>
+                    <Trash2 className='h-4 w-4 mr-2' />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete lead "<strong>{lead.name}</strong>"? This action cannot be undone and will permanently remove all lead data and related conversations.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteLead} className='bg-red-600 hover:bg-red-700'>
+                      Delete Lead
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           )}
         </div>
       </div>
@@ -687,31 +743,68 @@ const LeadDetailPage: React.FC = () => {
             </div>
 
             <div>
-              <div className='text-sm font-medium mb-2'>Tags</div>
+              <div className='text-sm font-medium mb-2'>Lead Type</div>
               {isEditing ? (
-                <Input
-                  value={editForm.tags?.join(', ') || ''}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      tags: e.target.value
-                        .split(',')
-                        .map((tag) => tag.trim())
-                        .filter((tag) => tag),
-                    }))
-                  }
-                  placeholder='Enter tags separated by commas'
-                />
+                <Select
+                  value={editForm.tags?.[0] || lead.tags[0] || 'NEW_LEAD'}
+                  onValueChange={(value: LeadLabel) => setEditForm((prev) => ({ ...prev, tags: [value] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select lead type' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEAD_LABELS.map((label) => (
+                      <SelectItem key={label} value={label}>
+                        {label.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
                 <div className='flex flex-wrap gap-2'>
                   {lead.tags.length > 0 ? (
                     lead.tags.map((tag) => (
                       <Badge key={tag} variant='secondary'>
+                        {tag.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                      </Badge>
+                    ))
+                  ) : (
+                    <Badge variant='secondary'>
+                      New Lead
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className='text-sm font-medium mb-2'>Custom Tags</div>
+              {isEditing ? (
+                <Input
+                  value={editForm.tags?.slice(1).join(', ') || ''}
+                  onChange={(e) => {
+                    const customTags = e.target.value
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag);
+                    const leadType = editForm.tags?.[0] || lead.tags[0] || 'NEW_LEAD';
+                    setEditForm((prev) => ({
+                      ...prev,
+                      tags: [leadType, ...customTags],
+                    }));
+                  }}
+                  placeholder='Enter custom tags separated by commas'
+                />
+              ) : (
+                <div className='flex flex-wrap gap-2'>
+                  {lead.tags.slice(1).length > 0 ? (
+                    lead.tags.slice(1).map((tag) => (
+                      <Badge key={tag} variant='outline'>
                         {tag}
                       </Badge>
                     ))
                   ) : (
-                    <span className='text-sm text-muted-foreground'>No tags</span>
+                    <span className='text-sm text-muted-foreground'>No custom tags</span>
                   )}
                 </div>
               )}

@@ -35,6 +35,7 @@ export const endpoints = {
   // Leads
   leads: '/leads',
   lead: (id: string) => `/leads/${id}`,
+  deleteLead: (id: string) => `/leads/${id}`,
 
   // Contacts (central contact management)
   contacts: '/contacts',
