@@ -73,9 +73,7 @@ export const DashboardLayout: React.FC = () => {
     }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState<boolean>(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
-  );
+  const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false));
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
   const location = useLocation();
@@ -159,10 +157,7 @@ export const DashboardLayout: React.FC = () => {
     <div className='dashboard-container flex h-screen overflow-hidden'>
       {/* Desktop Sidebar */}
       <aside
-        className={cn(
-          'dashboard-sidebar hidden md:flex flex-col border-r bg-sidebar transition-[width] duration-300 ease-in-out',
-          sidebarWidth
-        )}
+        className={cn('dashboard-sidebar hidden md:flex flex-col border-r bg-sidebar transition-[width] duration-300 ease-in-out', sidebarWidth)}
         aria-label='Sidebar'
       >
         {/* Sidebar header */}
@@ -211,12 +206,12 @@ export const DashboardLayout: React.FC = () => {
                   {!sidebarCollapsed && (
                     <>
                       <span className='ml-3 flex-1'>{item.title}</span>
-                      {(item.title === 'Inbox' && inboxCount > 0) && (
+                      {item.title === 'Inbox' && inboxCount > 0 && (
                         <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                           {inboxLoading ? '...' : inboxCount}
                         </Badge>
                       )}
-                      {(item.title === 'Tasks' && item.badge) && (
+                      {item.title === 'Tasks' && item.badge && (
                         <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                           {item.badge}
                         </Badge>
@@ -253,19 +248,13 @@ export const DashboardLayout: React.FC = () => {
 
       {/* Mobile Sidebar (Drawer) */}
       <div
-        className={cn(
-          'md:hidden fixed inset-0 z-40',
-          mobileOpen ? 'pointer-events-auto' : 'pointer-events-none'
-        )}
+        className={cn('md:hidden fixed inset-0 z-40', mobileOpen ? 'pointer-events-auto' : 'pointer-events-none')}
         aria-hidden={!mobileOpen}
         id='mobile-sidebar'
       >
         {/* Backdrop */}
         <div
-          className={cn(
-            'absolute inset-0 bg-black/40 transition-opacity',
-            mobileOpen ? 'opacity-100' : 'opacity-0'
-          )}
+          className={cn('absolute inset-0 bg-black/40 transition-opacity', mobileOpen ? 'opacity-100' : 'opacity-0')}
           onClick={() => setMobileOpen(false)}
         />
         {/* Drawer */}

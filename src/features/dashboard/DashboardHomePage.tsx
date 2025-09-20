@@ -102,21 +102,21 @@ export default function DashboardHomePage() {
       return acc;
     }, {} as Record<string, number>);
 
-    return last7Days.map(date => ({
+    return last7Days.map((date) => ({
       date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: leadsByDate[date] || 0
+      value: leadsByDate[date] || 0,
     }));
   };
 
   // Helper function to process pipeline data
   const processPipelineData = (leads: BackendLead[]): ChartDataPoint[] => {
     const stageMap: Record<string, string> = {
-      'NEW': 'New',
-      'QUALIFIED': 'Qualified', 
-      'CUSTOMER': 'Customer',
-      'CONTACTED': 'Contacted',
-      'UNQUALIFIED': 'Unqualified',
-      'LOST': 'Lost'
+      NEW: 'New',
+      QUALIFIED: 'Qualified',
+      CUSTOMER: 'Customer',
+      CONTACTED: 'Contacted',
+      UNQUALIFIED: 'Unqualified',
+      LOST: 'Lost',
     };
 
     const leadsByStage = leads.reduce((acc, lead) => {
@@ -129,7 +129,7 @@ export default function DashboardHomePage() {
     return Object.entries(leadsByStage).map(([stage, count]) => ({
       date: stage,
       value: count,
-      label: stage
+      label: stage,
     }));
   };
 
@@ -216,11 +216,8 @@ export default function DashboardHomePage() {
         setPipelineData(pipelineDistribution);
 
         // Get recent leads (last 5, sorted by creation date)
-        const recentLeads = leadsList
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 5);
+        const recentLeads = leadsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
         setRecentLeadsData(recentLeads);
-
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         // Fallback to empty arrays
@@ -419,12 +416,14 @@ export default function DashboardHomePage() {
                 const leadName = lead.providerId ? `Lead ${String(lead.providerId).slice(0, 6)}` : lead.conversationId || 'Lead';
                 const leadStage = lead.label?.toUpperCase() || 'NEW';
                 const provider = lead.provider || 'manual';
-                
+
                 return (
                   <div key={lead.id} className='flex items-center justify-between'>
                     <div className='space-y-1'>
                       <div className='font-medium'>{leadName}</div>
-                      <div className='text-sm text-muted-foreground capitalize'>{provider} • {new Date(lead.createdAt).toLocaleDateString()}</div>
+                      <div className='text-sm text-muted-foreground capitalize'>
+                        {provider} • {new Date(lead.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
                     <div className='text-right'>
                       <Badge
