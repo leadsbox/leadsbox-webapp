@@ -905,8 +905,6 @@ const InboxPage: React.FC = () => {
           </div>
         </aside>
       </div>
-
-
     </div>
   );
 };
