@@ -48,6 +48,18 @@ const SettingsPage: React.FC = () => {
     setSearchParams(newSearchParams, { replace: true });
   };
 
+  // Watch for URL parameter changes and update active tab
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['profile', 'integrations', 'organization', 'members', 'tags', 'templates', 'notifications', 'appearance'];
+    const newTab = validTabs.includes(tabParam || '') ? tabParam! : 'profile';
+    
+    // Only update if the tab actually changed to prevent unnecessary re-renders
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [searchParams]);
+
   // Load organizations
   useEffect(() => {
     (async () => {
