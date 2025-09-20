@@ -41,7 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 import { mockLeads, mockUsers, getLeadsByStage } from '../../data/mockData';
-import { Lead, Stage } from '../../types';
+import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 
 interface SortableLeadCardProps {
@@ -150,12 +150,16 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({ lead }) => {
           {lead.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {lead.tags.slice(0, 2).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
-                  {tag}
+                <Badge 
+                  key={tag} 
+                  variant="outline" 
+                  className={`text-xs px-1 py-0 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}
+                >
+                  {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                 </Badge>
               ))}
               {lead.tags.length > 2 && (
-                <Badge variant="secondary" className="text-xs px-1 py-0">
+                <Badge variant="outline" className="text-xs px-1 py-0 bg-slate-50 text-slate-700 border border-slate-200">
                   +{lead.tags.length - 2}
                 </Badge>
               )}

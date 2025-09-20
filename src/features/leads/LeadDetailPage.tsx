@@ -743,10 +743,8 @@ const LeadDetailPage: React.FC = () => {
                   </Badge>
                   {lead.tags.length > 0 && (
                     <Badge
-                      variant='secondary'
-                      className={`bg-${leadLabelUtils.getLabelColor(lead.tags[0] as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(
-                        lead.tags[0] as LeadLabel
-                      )}-400`}
+                      variant='outline'
+                      className={leadLabelUtils.getLabelStyling(lead.tags[0] as LeadLabel)}
                     >
                       <Tag className='h-3 w-3 mr-1' />
                       {leadLabelUtils.isValidLabel(lead.tags[0]) ? leadLabelUtils.getDisplayName(lead.tags[0] as LeadLabel) : lead.tags[0]}
@@ -936,16 +934,14 @@ const LeadDetailPage: React.FC = () => {
                     lead.tags.map((tag) => (
                       <Badge
                         key={tag}
-                        variant='secondary'
-                        className={`bg-${leadLabelUtils.getLabelColor(tag as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(
-                          tag as LeadLabel
-                        )}-400`}
+                        variant='outline'
+                        className={leadLabelUtils.getLabelStyling(tag as LeadLabel)}
                       >
                         {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                       </Badge>
                     ))
                   ) : (
-                    <Badge variant='secondary'>New Lead</Badge>
+                    <Badge variant='outline' className={leadLabelUtils.getLabelStyling('NEW_LEAD')}>New Lead</Badge>
                   )}
                 </div>
               )}

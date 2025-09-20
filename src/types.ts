@@ -150,22 +150,40 @@ export const leadLabelUtils = {
       case 'NEW_LEAD':
         return 'blue';
       case 'TRANSACTION_SUCCESSFUL':
-        return 'green';
+        return 'emerald';
       case 'CLOSED_LOST_TRANSACTION':
         return 'red';
       case 'PAYMENT_PENDING':
-        return 'yellow';
+        return 'amber';
       case 'TRANSACTION_IN_PROGRESS':
         return 'orange';
       case 'FOLLOW_UP_REQUIRED':
-        return 'purple';
-      case 'ENGAGED':
+        return 'violet';
+      case 'NEW_INQUIRY':
+        return 'cyan';
+      case 'DEMO_REQUEST':
+        return 'indigo';
+      case 'TECHNICAL_SUPPORT':
+        return 'rose';
+      case 'PRICING_INQUIRY':
+        return 'lime';
+      case 'PARTNERSHIP_OPPORTUNITY':
+        return 'pink';
+      case 'FEEDBACK':
         return 'teal';
+      case 'ENGAGED':
+        return 'sky';
       case 'NOT_A_LEAD':
         return 'gray';
       default:
         return 'slate';
     }
+  },
+  
+  // Get comprehensive styling for lead labels with proper outlines and backgrounds
+  getLabelStyling: (label: LeadLabel): string => {
+    const color = leadLabelUtils.getLabelColor(label);
+    return `bg-${color}-50 text-${color}-700 border border-${color}-200 ring-1 ring-${color}-200/50 hover:bg-${color}-100 hover:border-${color}-300`;
   },
 };
 

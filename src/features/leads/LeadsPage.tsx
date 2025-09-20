@@ -35,7 +35,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { mockUsers } from '../../data/mockData';
-import { Lead, Stage } from '../../types';
+import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
@@ -383,8 +383,12 @@ const LeadsPage: React.FC = () => {
                     <TableCell>
                       <div className='flex flex-wrap gap-1'>
                         {lead.tags.map((tag, index) => (
-                          <Badge key={index} variant='secondary' className='text-xs'>
-                            {tag}
+                          <Badge 
+                            key={index} 
+                            variant='outline' 
+                            className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}
+                          >
+                            {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                           </Badge>
                         ))}
                         {lead.tags.length === 0 && <span className='text-sm text-muted-foreground'>—</span>}

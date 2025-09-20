@@ -383,9 +383,7 @@ const ContactDetailPage: React.FC = () => {
                     {lead.label && (
                       <Badge
                         variant='outline'
-                        className={`bg-${leadLabelUtils.getLabelColor(lead.label as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(
-                          lead.label as LeadLabel
-                        )}-400`}
+                        className={leadLabelUtils.getLabelStyling(lead.label as LeadLabel)}
                       >
                         {leadLabelUtils.isValidLabel(lead.label) ? leadLabelUtils.getDisplayName(lead.label as LeadLabel) : lead.label}
                       </Badge>
