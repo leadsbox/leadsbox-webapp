@@ -189,9 +189,15 @@ export class SocketIOService {
 
   // Send a message
   sendMessage(threadId: string, text: string, type: string = 'text'): void {
+    console.log('=== ATTEMPTING TO SEND MESSAGE ===');
+    console.log('Socket connected:', this.socket?.connected);
+    console.log('Message data:', { threadId, text, type });
+    
     if (this.socket?.connected) {
       this.socket.emit('message:send', { threadId, text, type });
-      console.log('Message sent via Socket.IO:', { threadId, text });
+      console.log('✅ Message emitted via Socket.IO:', { threadId, text });
+    } else {
+      console.error('❌ Socket not connected - cannot send message');
     }
   }
 
