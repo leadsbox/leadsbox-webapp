@@ -199,7 +199,7 @@ export class SocketIOService {
       // Emit the message
       this.socket.emit('message:send', { threadId, text, type });
       console.log('✅ Message emitted via Socket.IO:', { threadId, text });
-      
+
       // Emit a test thread:join to compare
       console.log('🔗 Also emitting thread:join for comparison...');
       this.socket.emit('thread:join', { threadId });
