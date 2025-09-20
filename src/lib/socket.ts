@@ -197,12 +197,21 @@ export class SocketIOService {
 
     if (this.socket?.connected) {
       // Emit the message
+      console.log('🚀 About to emit message:send event...');
       this.socket.emit('message:send', { threadId, text, type });
       console.log('✅ Message emitted via Socket.IO:', { threadId, text });
 
-      // Emit a test thread:join to compare
+      // Add a small delay and check if the event was actually sent
+      setTimeout(() => {
+        console.log('🔍 Post-emission check:');
+        console.log('  - Socket still connected:', this.socket?.connected);
+        console.log('  - Socket ID:', this.socket?.id);
+      }, 100);
+
+      // Emit a test thread:join to compare behavior
       console.log('🔗 Also emitting thread:join for comparison...');
       this.socket.emit('thread:join', { threadId });
+      console.log('✅ thread:join emitted for comparison');
     } else {
       console.error('❌ Socket not connected - cannot send message');
     }
