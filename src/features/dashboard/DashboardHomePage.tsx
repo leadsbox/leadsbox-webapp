@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, FileText, Receipt, Users, TrendingUp, MessageSquare, CheckSquare, Calendar, DollarSign, Activity, Globe, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { mockAnalytics, getTodayTasks, getOverdueTasks, mockLeads, mockOrganization } from '@/data/mockData';
 import { IntegrationBadge } from '@/components/ui/integrationbadge';
+import client from '@/api/client';
+import { API_BASE } from '@/api/config';
 
 const quickActions = [
   {
@@ -47,6 +49,10 @@ const chartConfig = {
 
 export default function DashboardHomePage() {
   const [timeRange, setTimeRange] = useState('7d');
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+  const [telegramConnected, setTelegramConnected] = useState(false);
+  const [integrationLoading, setIntegrationLoading] = useState(true);
+
   const analytics = mockAnalytics;
   const todayTasks = getTodayTasks();
   const overdueTasks = getOverdueTasks();
@@ -55,9 +61,37 @@ export default function DashboardHomePage() {
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
-  // NEW: simple derived flags (swap with real API later)
-  const whatsappConnected = !!mockOrganization?.settings?.integrations?.whatsapp?.webhook;
-  const telegramConnected = !!mockOrganization?.settings?.integrations?.telegram?.botToken;
+  const apiRoot = useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
+
+  // Check WhatsApp and Telegram connection status
+  useEffect(() => {
+    const checkIntegrationStatus = async () => {
+      try {
+        setIntegrationLoading(true);
+        
+        // Check WhatsApp status
+        try {
+          const whatsappResp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
+          const whatsappPayload = whatsappResp?.data?.data || {};
+          setWhatsappConnected(!!whatsappPayload?.connected);
+        } catch (error) {
+          console.error('Failed to check WhatsApp status:', error);
+          setWhatsappConnected(false);
+        }
+
+        // Check Telegram status (using mock for now since endpoint may not exist)
+        // TODO: Replace with actual Telegram status endpoint when available
+        setTelegramConnected(!!mockOrganization?.settings?.integrations?.telegram?.botToken);
+        
+      } catch (error) {
+        console.error('Error checking integration status:', error);
+      } finally {
+        setIntegrationLoading(false);
+      }
+    };
+
+    checkIntegrationStatus();
+  }, [apiRoot]);
 
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
@@ -68,8 +102,20 @@ export default function DashboardHomePage() {
           <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
 
           <div className='mt-2 flex items-center gap-2'>
-            <IntegrationBadge icon={Globe} label='WhatsApp' connected={whatsappConnected} to='/dashboard/settings?tab=integrations' />
-            <IntegrationBadge icon={Send} label='Telegram' connected={telegramConnected} to='/dashboard/settings?tab=integrations' />
+            <IntegrationBadge 
+              icon={Globe} 
+              label='WhatsApp' 
+              connected={whatsappConnected} 
+              loading={integrationLoading}
+              to='/dashboard/settings?tab=integrations' 
+            />
+            <IntegrationBadge 
+              icon={Send} 
+              label='Telegram' 
+              connected={telegramConnected} 
+              loading={integrationLoading}
+              to='/dashboard/settings?tab=integrations' 
+            />
           </div>
         </div>
 
