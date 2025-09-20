@@ -49,31 +49,46 @@ const safeFormatDistance = (dateValue: string | Date | null | undefined): string
   }
 };
 
-// Backend lead type
+// Backend lead type matching Prisma schema
 interface BackendLead {
   id: string;
   conversationId?: string;
-  providerId?: string;
+  userId: string;
   provider?: string;
-  label?: string;
+  providerId?: string;
   createdAt: string;
   updatedAt: string;
+  label?: string;
   lastMessageAt?: string;
+  organizationId: string;
+  contactId?: string;
+  threadId?: string;
+  // Included relations
   contact?: {
     id: string;
     displayName?: string;
     phone?: string;
     email?: string;
     waId?: string;
+    igUsername?: string;
+    fbPsid?: string;
+    createdAt: string;
+    updatedAt: string;
   };
   thread?: {
     id: string;
+    status: string;
+    lastMessageAt: string;
     contact?: {
       id: string;
       displayName?: string;
       phone?: string;
       email?: string;
       waId?: string;
+    };
+    channel?: {
+      type: string;
+      displayName?: string;
     };
   };
 }
@@ -161,70 +176,56 @@ const LeadDetailPage: React.FC = () => {
 
       try {
         setIsLoading(true);
+        console.log('Loading lead with ID:', leadId);
 
-        // First try to get the lead with contact data using threads endpoint
-        // which works well in the inbox page
+        // Try to get the lead directly from the leads API
+        // This should return lead with contact and thread relations included
         let backendLead: BackendLead | null = null;
 
         try {
-          // Try threads endpoint first as it has better contact data
-          const threadsResp = await client.get(endpoints.threads, {
-            params: {
-              include: 'contact,channel',
-              expandContact: true,
-            },
-          });
-
-          const threads = threadsResp?.data?.data?.threads || [];
-          interface ThreadContact {
-            id: string;
-            displayName?: string;
-            phone?: string;
-            waId?: string;
-            email?: string;
-          }
-
-          interface ThreadData {
-            id: string;
-            contact: ThreadContact;
-            channel: { type: string };
-            lastMessageAt: string;
-          }
-
-          const matchingThread = threads.find(
-            (t: ThreadData) => t.contact?.id === leadId || t.id === leadId || (t.contact && (t.contact.phone === leadId || t.contact.waId === leadId))
-          );
-
-          console.log('Looking for leadId:', leadId);
-          console.log('Found matching thread:', matchingThread);
-
-          if (matchingThread) {
-            // Convert thread data to lead format
-            // Use leadId from params as the lead ID, and matchingThread.contact.id as the contact ID
-            backendLead = {
-              id: leadId, // Use the leadId from URL params as the main lead ID
-              conversationId: matchingThread.id,
-              providerId: matchingThread.contact.phone || matchingThread.contact.waId,
-              provider: matchingThread.channel?.type?.toLowerCase() || 'whatsapp',
-              label: 'OPEN',
-              createdAt: matchingThread.lastMessageAt,
-              updatedAt: matchingThread.lastMessageAt,
-              lastMessageAt: matchingThread.lastMessageAt,
-              contact: matchingThread.contact,
-              thread: {
-                id: matchingThread.id,
-                contact: matchingThread.contact,
-              },
-            };
-          }
-        } catch (threadsError) {
-          // Silently fall back to lead API if threads endpoint fails
-        }
-
-        // If threads didn't work, try the lead endpoint
-        if (!backendLead) {
+          console.log('Fetching lead from leads API...');
           const resp = await client.get(endpoints.lead(leadId));
-          backendLead = resp?.data?.lead || resp?.data;
+          console.log('Lead API response:', resp?.data);
+          console.log('Lead API response structure keys:', Object.keys(resp?.data || {}));
+
+          // The backend returns {message: '...', data: {...}}
+          // Extract the actual lead data from the nested structure
+          backendLead = resp?.data?.data || resp?.data?.lead || resp?.data;
+          console.log('Extracted backend lead:', backendLead);
+          console.log('Backend lead keys:', Object.keys(backendLead || {}));
+
+          if (backendLead) {
+            console.log('Successfully loaded lead:', backendLead);
+            console.log('Lead contact:', backendLead.contact);
+            console.log('Lead thread:', backendLead.thread);
+            console.log('Lead contactId:', backendLead.contactId);
+            console.log('Lead threadId:', backendLead.threadId);
+          }
+        } catch (leadError) {
+          console.log('Lead API failed:', leadError);
+
+          // If lead API fails, this might be a contact ID or thread ID being used as leadId
+          // Let's try to find if there are leads associated with this contact
+          try {
+            console.log('Trying contact API as fallback...');
+            const contactResp = await client.get(endpoints.contact(leadId));
+            console.log('Contact API response:', contactResp?.data);
+
+            const contactData = contactResp?.data?.contact || contactResp?.data;
+            if (contactData && contactData.Lead && contactData.Lead.length > 0) {
+              // If contact has leads, redirect to the first lead
+              const firstLead = contactData.Lead[0];
+              console.log('Found lead via contact, redirecting to:', firstLead.id);
+              navigate(`/dashboard/leads/${firstLead.id}`, { replace: true });
+              return;
+            } else if (contactData) {
+              // Contact exists but no leads - show error
+              throw new Error('This contact does not have any associated leads.');
+            }
+          } catch (contactError) {
+            console.log('Contact API also failed:', contactError);
+            throw leadError; // Re-throw original lead error
+          }
         }
 
         if (backendLead) {
@@ -263,13 +264,21 @@ const LeadDetailPage: React.FC = () => {
             name = backendLead.providerId || backendLead.conversationId || 'Contact';
           }
 
+          // Determine source from provider or thread
+          let source: Lead['source'] = 'manual';
+          if (backendLead.provider) {
+            source = backendLead.provider.toLowerCase() as Lead['source'];
+          } else if (backendLead.thread?.channel?.type) {
+            source = backendLead.thread.channel.type.toLowerCase() as Lead['source'];
+          }
+
           const mappedLead: Lead = {
-            id: backendLead.id || leadId, // Ensure we always have an ID, fallback to leadId from URL
+            id: backendLead.id,
             name,
             email: email || '',
-            phone: phone || backendLead.providerId || backendLead.conversationId,
+            phone: phone || '',
             company: undefined,
-            source: (String(backendLead.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
+            source,
             stage: labelToStage(backendLead.label),
             priority: 'MEDIUM',
             tags: backendLead.label ? [backendLead.label] : [],
@@ -280,9 +289,9 @@ const LeadDetailPage: React.FC = () => {
             notes: '',
             value: 0,
             conversationId: backendLead.conversationId,
+            threadId: backendLead.threadId,
             providerId: backendLead.providerId,
-            // Store contact ID for editing
-            contactId: contact?.id,
+            contactId: backendLead.contactId,
           };
 
           console.log('Final mapped lead:', mappedLead);
@@ -299,11 +308,16 @@ const LeadDetailPage: React.FC = () => {
         }
       } catch (error) {
         console.error('Error loading lead:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load lead details';
+
         toast({
           title: 'Error',
-          description: 'Failed to load lead details',
+          description: errorMessage,
           variant: 'destructive',
         });
+
+        // Navigate back to leads list
+        navigate('/dashboard/leads');
       } finally {
         setIsLoading(false);
       }
@@ -404,42 +418,75 @@ const LeadDetailPage: React.FC = () => {
     }
 
     try {
-      console.log('Attempting to delete lead with ID:', lead.id);
+      console.log('Attempting to delete with ID:', lead.id);
+      console.log('Lead contactId:', lead.contactId);
+      console.log('Lead conversationId:', lead.conversationId);
+      console.log('Lead createdAt:', lead.createdAt);
 
-      // Try to delete the lead
-      const response = await client.delete(endpoints.deleteLead(lead.id));
-      console.log('Delete response:', response);
+      // Check if this is a proper lead with backend relationships
+      const hasProperLeadData = lead.contactId || lead.threadId || lead.conversationId;
+      console.log('Has proper lead data:', hasProperLeadData);
 
-      toast({
-        title: 'Success',
-        description: 'Lead deleted successfully',
-      });
+      if (!hasProperLeadData) {
+        throw new Error('This does not appear to be a valid lead record. Please ensure you are accessing a proper lead.');
+      }
 
-      // Navigate back to leads list
-      navigate('/dashboard/leads');
+      let deleteSuccess = false;
+
+      // Strategy 1: Try deleting as a lead first
+      try {
+        console.log('Trying to delete as lead...');
+        const response = await client.delete(endpoints.deleteLead(lead.id));
+        console.log('Lead delete response:', response);
+        deleteSuccess = true;
+      } catch (leadDeleteError) {
+        console.log('Lead delete failed:', leadDeleteError);
+
+        // Strategy 2: If lead delete fails with 500 error, it might be a contact ID
+        if (leadDeleteError instanceof AxiosError && leadDeleteError.response?.status === 500) {
+          // Backend error suggests this might be a contact ID being treated as lead ID
+          throw new Error('This appears to be contact data rather than a lead. Contact deletion is not currently supported through this interface.');
+        } else {
+          throw leadDeleteError;
+        }
+      }
+
+      if (deleteSuccess) {
+        toast({
+          title: 'Success',
+          description: 'Lead deleted successfully',
+        });
+
+        // Navigate back to leads list
+        navigate('/dashboard/leads');
+      }
     } catch (error) {
-      console.error('Error deleting lead:', error);
+      console.error('Error deleting:', error);
       console.log('Lead data:', lead);
 
       // Handle specific error cases
-      let errorMessage = 'Failed to delete lead';
+      let errorMessage = 'Failed to delete';
       let errorDescription = '';
 
-      if (error instanceof AxiosError && error.response?.data?.message) {
+      if (error instanceof Error && error.message.includes('contact data rather than a lead')) {
+        errorMessage = 'Cannot delete contact';
+        errorDescription =
+          'This appears to be contact information rather than a lead record. Contact deletion is not currently supported. You can edit the contact information instead.';
+      } else if (error instanceof AxiosError && error.response?.data?.message) {
         const backendMessage = error.response.data.message;
         console.log('Backend error message:', backendMessage);
 
         if (backendMessage.includes('not found')) {
-          errorMessage = 'Lead not found';
-          errorDescription = 'This lead may have already been deleted or does not exist in the database.';
+          errorMessage = 'Record not found';
+          errorDescription = 'This record may have already been deleted or does not exist in the database.';
         } else if (backendMessage.includes('depends on one or more records') || backendMessage.includes('foreign key constraint')) {
-          errorMessage = 'Cannot delete lead';
+          errorMessage = 'Cannot delete';
           errorDescription =
-            'This lead has related conversations or data. Would you like to archive it instead? Archiving will hide the lead but preserve all related data.';
+            'This record has related conversations or data. Would you like to archive it instead? Archiving will hide the record but preserve all related data.';
 
           // Show option to archive instead
           setTimeout(() => {
-            if (confirm('Would you like to archive this lead instead of deleting it? This will preserve all related data.')) {
+            if (confirm('Would you like to archive this record instead of deleting it? This will preserve all related data.')) {
               handleArchiveLead();
             }
           }, 2000);
@@ -448,7 +495,7 @@ const LeadDetailPage: React.FC = () => {
           errorDescription = backendMessage;
         }
       } else {
-        errorDescription = 'An unexpected error occurred while trying to delete the lead.';
+        errorDescription = 'An unexpected error occurred while trying to delete the record.';
       }
 
       toast({

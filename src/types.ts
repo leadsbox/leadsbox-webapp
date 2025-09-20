@@ -29,12 +29,12 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   lastActivity?: string;
-  // Additional fields for tracking original conversation
+  // Backend relationship fields
   conversationId?: string;
   providerId?: string;
+  contactId?: string; // References Contact.id
+  threadId?: string; // References Thread.id
   from?: string;
-  // Contact ID for editing contact information
-  contactId?: string;
 }
 
 export interface Thread {
