@@ -381,7 +381,12 @@ const ContactDetailPage: React.FC = () => {
                   </div>
                   <div className='flex items-center space-x-2'>
                     {lead.label && (
-                      <Badge variant='outline' className={`bg-${leadLabelUtils.getLabelColor(lead.label as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(lead.label as LeadLabel)}-400`}>
+                      <Badge
+                        variant='outline'
+                        className={`bg-${leadLabelUtils.getLabelColor(lead.label as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(
+                          lead.label as LeadLabel
+                        )}-400`}
+                      >
                         {leadLabelUtils.isValidLabel(lead.label) ? leadLabelUtils.getDisplayName(lead.label as LeadLabel) : lead.label}
                       </Badge>
                     )}

@@ -901,7 +901,13 @@ const LeadDetailPage: React.FC = () => {
                 <div className='flex flex-wrap gap-2'>
                   {lead.tags.length > 0 ? (
                     lead.tags.map((tag) => (
-                      <Badge key={tag} variant='secondary' className={`bg-${leadLabelUtils.getLabelColor(tag as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(tag as LeadLabel)}-400`}>
+                      <Badge
+                        key={tag}
+                        variant='secondary'
+                        className={`bg-${leadLabelUtils.getLabelColor(tag as LeadLabel)}-500/10 text-${leadLabelUtils.getLabelColor(
+                          tag as LeadLabel
+                        )}-400`}
+                      >
                         {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                       </Badge>
                     ))
