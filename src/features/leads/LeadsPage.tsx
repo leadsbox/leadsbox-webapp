@@ -323,7 +323,6 @@ const LeadsPage: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Lead</TableHead>
-                <TableHead>Company</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>From</TableHead>
                 <TableHead>Stage</TableHead>
@@ -349,16 +348,6 @@ const LeadsPage: React.FC = () => {
                           <div className='font-medium'>{lead.name}</div>
                           <div className='text-sm text-muted-foreground'>{lead.email}</div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className='flex items-center'>
-                        {lead.company && (
-                          <>
-                            <Building className='h-3 w-3 mr-1 text-muted-foreground' />
-                            <span className='text-sm'>{lead.company}</span>
-                          </>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell>

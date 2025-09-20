@@ -7,13 +7,21 @@ import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import DashboardHeader from './DashboardHeader';
+import client from '../api/client';
 
-const sidebarItems = [
+interface SidebarItem {
+  title: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  badge?: number;
+}
+
+const sidebarItems: SidebarItem[] = [
   {
     title: 'Inbox',
     href: '/dashboard/inbox',
     icon: Inbox,
-    badge: 12,
     description: 'Messages and conversations',
   },
   {
@@ -68,7 +76,28 @@ export const DashboardLayout: React.FC = () => {
   const [isMobile, setIsMobile] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
   );
+  const [inboxCount, setInboxCount] = useState<number>(0);
+  const [inboxLoading, setInboxLoading] = useState(true);
   const location = useLocation();
+
+  // Fetch actual inbox count
+  useEffect(() => {
+    const fetchInboxCount = async () => {
+      try {
+        setInboxLoading(true);
+        const threadsResp = await client.get('/threads');
+        const threadsList = threadsResp?.data?.data?.threads || threadsResp?.data || [];
+        setInboxCount(threadsList.length);
+      } catch (error) {
+        console.error('Failed to fetch inbox count:', error);
+        setInboxCount(0);
+      } finally {
+        setInboxLoading(false);
+      }
+    };
+
+    fetchInboxCount();
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
@@ -182,7 +211,12 @@ export const DashboardLayout: React.FC = () => {
                   {!sidebarCollapsed && (
                     <>
                       <span className='ml-3 flex-1'>{item.title}</span>
-                      {item.badge && (
+                      {(item.title === 'Inbox' && inboxCount > 0) && (
+                        <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
+                          {inboxLoading ? '...' : inboxCount}
+                        </Badge>
+                      )}
+                      {(item.title === 'Tasks' && item.badge) && (
                         <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                           {item.badge}
                         </Badge>
@@ -190,7 +224,12 @@ export const DashboardLayout: React.FC = () => {
                     </>
                   )}
 
-                  {sidebarCollapsed && item.badge && (
+                  {sidebarCollapsed && item.title === 'Inbox' && inboxCount > 0 && (
+                    <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
+                      {inboxLoading ? '...' : inboxCount}
+                    </Badge>
+                  )}
+                  {sidebarCollapsed && item.title === 'Tasks' && item.badge && (
                     <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
                       {item.badge}
                     </Badge>
