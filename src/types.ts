@@ -94,7 +94,7 @@ export type Stage = 'NEW' | 'QUALIFIED' | 'IN_PROGRESS' | 'WON' | 'LOST';
 // Available lead labels from backend
 export const LEAD_LABELS = [
   'NEW_LEAD',
-  'CLOSED_LOST_TRANSACTION', 
+  'CLOSED_LOST_TRANSACTION',
   'TRANSACTION_SUCCESSFUL',
   'PAYMENT_PENDING',
   'TRANSACTION_IN_PROGRESS',
@@ -106,10 +106,10 @@ export const LEAD_LABELS = [
   'PARTNERSHIP_OPPORTUNITY',
   'FEEDBACK',
   'ENGAGED',
-  'NOT_A_LEAD'
+  'NOT_A_LEAD',
 ] as const;
 
-export type LeadLabel = typeof LEAD_LABELS[number];
+export type LeadLabel = (typeof LEAD_LABELS)[number];
 
 export interface Pipeline {
   stages: {

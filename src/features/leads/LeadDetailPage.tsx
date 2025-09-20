@@ -8,7 +8,17 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { mockUsers } from '../../data/mockData';
@@ -18,6 +28,7 @@ import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { toast } from '../../hooks/use-toast';
+import { AxiosError } from 'axios';
 
 // Safe date formatting helper to prevent Invalid time value errors
 const safeFormatDistance = (dateValue: string | Date | null | undefined): string => {
@@ -184,10 +195,14 @@ const LeadDetailPage: React.FC = () => {
             (t: ThreadData) => t.contact?.id === leadId || t.id === leadId || (t.contact && (t.contact.phone === leadId || t.contact.waId === leadId))
           );
 
+          console.log('Looking for leadId:', leadId);
+          console.log('Found matching thread:', matchingThread);
+
           if (matchingThread) {
             // Convert thread data to lead format
+            // Use leadId from params as the lead ID, and matchingThread.contact.id as the contact ID
             backendLead = {
-              id: matchingThread.contact.id,
+              id: leadId, // Use the leadId from URL params as the main lead ID
               conversationId: matchingThread.id,
               providerId: matchingThread.contact.phone || matchingThread.contact.waId,
               provider: matchingThread.channel?.type?.toLowerCase() || 'whatsapp',
@@ -249,7 +264,7 @@ const LeadDetailPage: React.FC = () => {
           }
 
           const mappedLead: Lead = {
-            id: backendLead.id,
+            id: backendLead.id || leadId, // Ensure we always have an ID, fallback to leadId from URL
             name,
             email: email || '',
             phone: phone || backendLead.providerId || backendLead.conversationId,
@@ -269,6 +284,10 @@ const LeadDetailPage: React.FC = () => {
             // Store contact ID for editing
             contactId: contact?.id,
           };
+
+          console.log('Final mapped lead:', mappedLead);
+          console.log('Lead ID being set:', mappedLead.id);
+
           setLead(mappedLead);
         } else {
           toast({
@@ -347,24 +366,94 @@ const LeadDetailPage: React.FC = () => {
     }
   };
 
-  const handleDeleteLead = async () => {
+  const handleArchiveLead = async () => {
     if (!lead) return;
 
     try {
-      await client.delete(endpoints.deleteLead(lead.id));
-      
+      // Try to archive the lead instead of deleting
+      await client.put(endpoints.archiveLead(lead.id), { archived: true });
+
+      toast({
+        title: 'Success',
+        description: 'Lead archived successfully',
+      });
+
+      // Navigate back to leads list
+      navigate('/dashboard/leads');
+    } catch (error) {
+      console.error('Error archiving lead:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to archive lead',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteLead = async () => {
+    if (!lead) return;
+
+    // Check if lead ID is valid before attempting deletion
+    if (!lead.id || lead.id === 'undefined') {
+      toast({
+        title: 'Error',
+        description: 'Cannot delete lead: Invalid lead ID. Please refresh the page and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      console.log('Attempting to delete lead with ID:', lead.id);
+
+      // Try to delete the lead
+      const response = await client.delete(endpoints.deleteLead(lead.id));
+      console.log('Delete response:', response);
+
       toast({
         title: 'Success',
         description: 'Lead deleted successfully',
       });
-      
+
       // Navigate back to leads list
       navigate('/dashboard/leads');
     } catch (error) {
       console.error('Error deleting lead:', error);
+      console.log('Lead data:', lead);
+
+      // Handle specific error cases
+      let errorMessage = 'Failed to delete lead';
+      let errorDescription = '';
+
+      if (error instanceof AxiosError && error.response?.data?.message) {
+        const backendMessage = error.response.data.message;
+        console.log('Backend error message:', backendMessage);
+
+        if (backendMessage.includes('not found')) {
+          errorMessage = 'Lead not found';
+          errorDescription = 'This lead may have already been deleted or does not exist in the database.';
+        } else if (backendMessage.includes('depends on one or more records') || backendMessage.includes('foreign key constraint')) {
+          errorMessage = 'Cannot delete lead';
+          errorDescription =
+            'This lead has related conversations or data. Would you like to archive it instead? Archiving will hide the lead but preserve all related data.';
+
+          // Show option to archive instead
+          setTimeout(() => {
+            if (confirm('Would you like to archive this lead instead of deleting it? This will preserve all related data.')) {
+              handleArchiveLead();
+            }
+          }, 2000);
+        } else {
+          errorMessage = 'Delete failed';
+          errorDescription = backendMessage;
+        }
+      } else {
+        errorDescription = 'An unexpected error occurred while trying to delete the lead.';
+      }
+
       toast({
-        title: 'Error',
-        description: 'Failed to delete lead',
+        title: errorMessage,
+        description: errorDescription,
         variant: 'destructive',
       });
     }
@@ -450,7 +539,8 @@ const LeadDetailPage: React.FC = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Lead</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete lead "<strong>{lead.name}</strong>"? This action cannot be undone and will permanently remove all lead data and related conversations.
+                      Are you sure you want to delete lead "<strong>{lead.name}</strong>"? This will permanently remove the lead data. If the lead has
+                      related conversations or data, you'll be offered the option to archive it instead.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -755,7 +845,10 @@ const LeadDetailPage: React.FC = () => {
                   <SelectContent>
                     {LEAD_LABELS.map((label) => (
                       <SelectItem key={label} value={label}>
-                        {label.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                        {label
+                          .replace(/_/g, ' ')
+                          .toLowerCase()
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -765,13 +858,14 @@ const LeadDetailPage: React.FC = () => {
                   {lead.tags.length > 0 ? (
                     lead.tags.map((tag) => (
                       <Badge key={tag} variant='secondary'>
-                        {tag.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                        {tag
+                          .replace(/_/g, ' ')
+                          .toLowerCase()
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}
                       </Badge>
                     ))
                   ) : (
-                    <Badge variant='secondary'>
-                      New Lead
-                    </Badge>
+                    <Badge variant='secondary'>New Lead</Badge>
                   )}
                 </div>
               )}
