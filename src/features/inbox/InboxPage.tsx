@@ -441,24 +441,18 @@ const InboxPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`/api/threads/${selectedThread.id}/reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'X-Org-Id': orgId,
-        },
-        body: JSON.stringify({ text: messageText }),
+      // Use the client instance instead of fetch to get proper base URL and error handling
+      const response = await client.post(endpoints.threadReply(selectedThread.id), {
+        text: messageText,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Network error' }));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      // Check the response structure: { message: "Reply sent", data: { ok: true, externalMsgId: "..." } }
+      if (response.data && response.data.data && response.data.data.ok) {
+        console.log('Message sent via REST API:', response.data);
+        toast.success('Message sent successfully');
+      } else {
+        throw new Error(response.data?.message || 'Failed to send message');
       }
-
-      const result = await response.json();
-      console.log('Message sent via REST API:', result);
-      toast.success('Message sent successfully');
 
       // Refresh messages to show the sent message
       await fetchMessages(selectedThread.id);
