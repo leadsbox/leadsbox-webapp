@@ -1,6 +1,6 @@
 // Inbox Page Component for LeadsBox Dashboard
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
@@ -51,6 +51,16 @@ const InboxPage: React.FC = () => {
   }>({ displayName: '', email: '', phone: '' });
   const [savingContact, setSavingContact] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+
+  // Ref for auto-scrolling to bottom of messages
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to bottom of messages
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   // Socket.IO integration
   const {
@@ -246,6 +256,8 @@ const InboxPage: React.FC = () => {
       const res = await client.get(endpoints.threadMessages(id));
       const list = (res?.data?.data?.messages || []) as ApiMessage[];
       setMessages(list.map(toUiMessage));
+      // Scroll to bottom after messages are loaded
+      setTimeout(scrollToBottom, 100);
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
       toast.error(e?.response?.data?.message || 'Failed to load messages');
@@ -329,7 +341,10 @@ const InboxPage: React.FC = () => {
           }
 
           console.log('✅ Adding new message to thread');
-          return [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          const newMessages = [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          // Scroll to bottom after new message is added
+          setTimeout(scrollToBottom, 100);
+          return newMessages;
         });
       } else {
         console.log('📝 Message is for different thread:', {
@@ -508,6 +523,9 @@ const InboxPage: React.FC = () => {
 
       // Refresh messages to show the sent message
       await fetchMessages(selectedThread.id);
+      
+      // Scroll to bottom after sending message (additional delay for message processing)
+      setTimeout(scrollToBottom, 200);
     } catch (error: unknown) {
       console.error('REST API message send error:', error);
 
@@ -1041,6 +1059,8 @@ const InboxPage: React.FC = () => {
                 ))
               )}
               {messages.length === 0 && <div className='text-center text-muted-foreground'>No messages yet</div>}
+              {/* Invisible element to scroll to */}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
@@ -1072,26 +1092,7 @@ const InboxPage: React.FC = () => {
                       Refresh
                     </Button>
                   )}
-                  {isConnected && selectedThread && (
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      onClick={() => {
-                        console.log('🧪 Testing Socket.IO - emitting test typing events');
-                        startTyping(selectedThread.id);
-                        setTimeout(() => stopTyping(selectedThread.id), 2000);
-
-                        // Also test message refresh
-                        setTimeout(() => {
-                          console.log('🔄 Testing message refresh after socket test');
-                          fetchMessages(selectedThread.id);
-                        }, 1000);
-                      }}
-                      className='ml-2 h-6 text-xs'
-                    >
-                      Test Socket
-                    </Button>
-                  )}
+                  {/* Socket.IO Connection Status */}
                 </div>
                 {socketError && <div className='text-xs text-red-500'>Connection error: {socketError}</div>}
               </div>
