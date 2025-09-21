@@ -1200,6 +1200,8 @@ const InboxPage: React.FC = () => {
             <div className='flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4'>
               {loadingMessages ? (
                 <div className='text-center text-muted-foreground'>Loading messages...</div>
+              ) : messages.length === 0 ? (
+                <div className='text-center text-muted-foreground'>No messages yet</div>
               ) : (
                 messages.map((message) => (
                   <div key={message.id} className={`flex ${message.sender === 'AGENT' ? 'justify-end' : 'justify-start'}`}>
@@ -1221,7 +1223,6 @@ const InboxPage: React.FC = () => {
                   </div>
                 ))
               )}
-              {messages.length === 0 && <div className='text-center text-muted-foreground'>No messages yet</div>}
               {/* Invisible element to scroll to */}
               <div ref={messagesEndRef} />
             </div>
