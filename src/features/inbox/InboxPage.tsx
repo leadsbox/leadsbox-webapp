@@ -423,7 +423,7 @@ const InboxPage: React.FC = () => {
     };
   }, [composer, selectedThread?.id, isConnected, startTyping, stopTyping]);
 
-  // Socket.IO only message sending (no REST fallback)
+  // REST API message sending (reliable fallback from Socket.IO issues)
   const handleSendMessage = async () => {
     if (!selectedThread || !composer.trim()) return;
 
@@ -431,19 +431,41 @@ const InboxPage: React.FC = () => {
     setComposer('');
 
     try {
-      if (isConnected) {
-        // Send through Socket.IO only
-        socketSendMessage(selectedThread.id, messageText);
-        console.log('Message sent via Socket.IO');
-      } else {
-        // No fallback - show error if socket not connected
-        toast.error('Socket.IO not connected. Please refresh the page and try again.');
-        setComposer(messageText); // Restore message
+      // Use REST API for reliable message sending
+      const token = localStorage.getItem('lb_access_token');
+      const orgId = localStorage.getItem('lb_org_id');
+      
+      if (!token || !orgId) {
+        toast.error('Authentication required. Please log in again.');
+        setComposer(messageText);
         return;
       }
+
+      const response = await fetch(`/api/threads/${selectedThread.id}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-Org-Id': orgId,
+        },
+        body: JSON.stringify({ text: messageText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Message sent via REST API:', result);
+      toast.success('Message sent successfully');
+
+      // Refresh messages to show the sent message
+      await fetchMessages(selectedThread.id);
+      
     } catch (error) {
-      console.error('Socket message send error:', error);
-      toast.error('Failed to send message via Socket.IO');
+      console.error('REST API message send error:', error);
+      toast.error(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setComposer(messageText); // Restore message on error
     }
   };
