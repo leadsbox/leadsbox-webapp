@@ -434,7 +434,7 @@ const InboxPage: React.FC = () => {
       // Use REST API for reliable message sending
       const token = localStorage.getItem('lb_access_token');
       const orgId = localStorage.getItem('lb_org_id');
-      
+
       if (!token || !orgId) {
         toast.error('Authentication required. Please log in again.');
         setComposer(messageText);
@@ -456,7 +456,6 @@ const InboxPage: React.FC = () => {
 
       // Refresh messages to show the sent message
       await fetchMessages(selectedThread.id);
-      
     } catch (error) {
       console.error('REST API message send error:', error);
       toast.error(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
