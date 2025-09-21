@@ -383,7 +383,7 @@ const InboxPage: React.FC = () => {
         leadName: thread.lead?.name,
         leadStage: thread.lead?.stage,
         timestamp: new Date().toISOString(),
-        fullThread: thread
+        fullThread: thread,
       });
 
       setThreads((prev) => {
@@ -646,7 +646,7 @@ const InboxPage: React.FC = () => {
       'bg-orange-100 text-orange-800',
       'bg-cyan-100 text-cyan-800',
     ];
-    
+
     // Simple hash function to get consistent color for each tag
     let hash = 0;
     for (let i = 0; i < tag.length; i++) {
@@ -665,7 +665,7 @@ const InboxPage: React.FC = () => {
         return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300';
       case 'ENGAGED':
         return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-300';
-      
+
       // 💰 Transaction & Payment Stages (Green spectrum)
       case 'TRANSACTION_SUCCESSFUL':
         return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300';
@@ -673,13 +673,13 @@ const InboxPage: React.FC = () => {
         return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900 dark:text-amber-300';
       case 'TRANSACTION_IN_PROGRESS':
         return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900 dark:text-emerald-300';
-      
+
       // ❌ Negative Outcomes (Red spectrum)
       case 'CLOSED_LOST_TRANSACTION':
         return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300';
       case 'NOT_A_LEAD':
         return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400';
-      
+
       // 🎯 Interest & Inquiry Stages (Purple/Indigo spectrum)
       case 'PRICING_INQUIRY':
         return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-300';
@@ -687,19 +687,19 @@ const InboxPage: React.FC = () => {
         return 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900 dark:text-indigo-300';
       case 'NEW_INQUIRY':
         return 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900 dark:text-violet-300';
-      
+
       // 🛠️ Support & Service Stages (Orange spectrum)
       case 'TECHNICAL_SUPPORT':
         return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900 dark:text-orange-300';
       case 'FOLLOW_UP_REQUIRED':
         return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300';
-      
+
       // 🤝 Business & Partnership (Teal spectrum)
       case 'PARTNERSHIP_OPPORTUNITY':
         return 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900 dark:text-teal-300';
       case 'FEEDBACK':
         return 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-300';
-      
+
       // Default fallback
       default:
         return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400';
@@ -709,20 +709,20 @@ const InboxPage: React.FC = () => {
   // Format lead stage for display
   const formatLeadStage = (stage: string) => {
     const stageMap: Record<string, string> = {
-      'NEW_LEAD': 'New Lead',
-      'ENGAGED': 'Engaged',
-      'TRANSACTION_SUCCESSFUL': 'Payment Complete',
-      'PAYMENT_PENDING': 'Payment Pending',
-      'TRANSACTION_IN_PROGRESS': 'Processing Order',
-      'CLOSED_LOST_TRANSACTION': 'Closed Lost',
-      'PRICING_INQUIRY': 'Price Inquiry', 
-      'DEMO_REQUEST': 'Demo Request',
-      'NEW_INQUIRY': 'New Inquiry',
-      'TECHNICAL_SUPPORT': 'Tech Support',
-      'FOLLOW_UP_REQUIRED': 'Follow-up',
-      'PARTNERSHIP_OPPORTUNITY': 'Partnership',
-      'FEEDBACK': 'Feedback',
-      'NOT_A_LEAD': 'Not a Lead',
+      NEW_LEAD: 'New Lead',
+      ENGAGED: 'Engaged',
+      TRANSACTION_SUCCESSFUL: 'Payment Complete',
+      PAYMENT_PENDING: 'Payment Pending',
+      TRANSACTION_IN_PROGRESS: 'Processing Order',
+      CLOSED_LOST_TRANSACTION: 'Closed Lost',
+      PRICING_INQUIRY: 'Price Inquiry',
+      DEMO_REQUEST: 'Demo Request',
+      NEW_INQUIRY: 'New Inquiry',
+      TECHNICAL_SUPPORT: 'Tech Support',
+      FOLLOW_UP_REQUIRED: 'Follow-up',
+      PARTNERSHIP_OPPORTUNITY: 'Partnership',
+      FEEDBACK: 'Feedback',
+      NOT_A_LEAD: 'Not a Lead',
     };
     return stageMap[stage] || stage;
   };
@@ -890,7 +890,7 @@ const InboxPage: React.FC = () => {
 
                     <p className='text-sm text-muted-foreground truncate'>{thread.lastMessage?.content || 'No messages yet'}</p>
 
-                    {(thread.tags?.length > 0) && (
+                    {thread.tags?.length > 0 && (
                       <div className='flex flex-wrap gap-1 mt-2'>
                         {thread.tags.slice(0, 2).map((tag) => (
                           <Badge key={tag} className={`text-xs ${getTagColor(tag)}`}>

@@ -89,9 +89,9 @@ export interface Task {
   updatedAt: string;
 }
 
-export type Stage = 
+export type Stage =
   | 'NEW_LEAD'
-  | 'ENGAGED' 
+  | 'ENGAGED'
   | 'TRANSACTION_SUCCESSFUL'
   | 'PAYMENT_PENDING'
   | 'TRANSACTION_IN_PROGRESS'
@@ -105,7 +105,11 @@ export type Stage =
   | 'FEEDBACK'
   | 'NOT_A_LEAD'
   // Legacy support
-  | 'NEW' | 'QUALIFIED' | 'IN_PROGRESS' | 'WON' | 'LOST';
+  | 'NEW'
+  | 'QUALIFIED'
+  | 'IN_PROGRESS'
+  | 'WON'
+  | 'LOST';
 
 // Available lead labels from backend
 export const LEAD_LABELS = [
