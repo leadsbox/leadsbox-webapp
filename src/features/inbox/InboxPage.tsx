@@ -456,9 +456,29 @@ const InboxPage: React.FC = () => {
 
       // Refresh messages to show the sent message
       await fetchMessages(selectedThread.id);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('REST API message send error:', error);
-      toast.error(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Check for specific WhatsApp API errors
+      let userFriendlyMessage = 'Failed to send message';
+      
+      // Check if it's an axios error with response
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const errorMessage = axiosError.response?.data?.message;
+        
+        if (errorMessage && errorMessage.includes('Recipient phone number not in allowed list')) {
+          userFriendlyMessage = 'This phone number is not in your WhatsApp Business allowed list. Please add it to your recipient list in Facebook Business Manager.';
+        } else if (errorMessage && errorMessage.includes('WhatsApp')) {
+          userFriendlyMessage = `WhatsApp API Error: ${errorMessage}`;
+        } else if (errorMessage) {
+          userFriendlyMessage = errorMessage;
+        }
+      } else if (error instanceof Error) {
+        userFriendlyMessage = error.message;
+      }
+      
+      toast.error(userFriendlyMessage);
       setComposer(messageText); // Restore message on error
     }
   };
