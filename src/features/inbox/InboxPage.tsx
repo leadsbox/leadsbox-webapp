@@ -1,6 +1,7 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
@@ -23,12 +24,13 @@ import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
-import { Thread, Message, Stage } from '../../types';
+import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
 
 const InboxPage: React.FC = () => {
+  const navigate = useNavigate();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
@@ -125,6 +127,12 @@ const InboxPage: React.FC = () => {
       updatedAt: string;
     };
     channel: { id: string; type: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'; displayName?: string | null };
+    Lead?: Array<{
+      id: string;
+      label?: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
     status: string;
     lastMessageAt: string;
   };
@@ -143,7 +151,7 @@ const InboxPage: React.FC = () => {
     if (t === 'FACEBOOK') return 'sms';
     return 'whatsapp';
   };
-  const toUiLead = (api: ApiThread, leadStage?: string): Thread['lead'] => {
+  const toUiLead = (api: ApiThread): Thread['lead'] => {
     // Extract the meaningful contact information
     const displayName = api.contact.displayName;
     const phone = api.contact.phone || api.contact.waId; // Use waId if phone is null
@@ -159,33 +167,40 @@ const InboxPage: React.FC = () => {
       name = 'Contact';
     }
 
+    // Get the most recent lead data for this thread
+    const leadData = api.Lead?.[0];
+    const leadLabel = leadData?.label || 'NEW_LEAD';
+
     return {
-      id: api.contact.id,
+      id: leadData?.id || api.contact.id,
       name,
       email: email || '',
       phone: phone || undefined,
       source: 'whatsapp',
-      stage: (leadStage as Stage) || 'NEW_LEAD', // Use provided stage or default to NEW_LEAD
+      stage: (leadLabel as Stage) || 'NEW_LEAD',
       priority: 'MEDIUM',
+      tags: [leadLabel], // Use the actual lead label as the primary tag
+      createdAt: api.lastMessageAt,
+      updatedAt: api.lastMessageAt,
+    };
+  };
+  const toUiThread = (api: ApiThread): Thread => {
+    const leadData = api.Lead?.[0];
+    return {
+      id: api.id,
+      leadId: leadData?.id || api.contact.id, // Use actual lead ID if available
+      lead: toUiLead(api),
+      channel: mapChannel(api.channel.type),
+      status: 'OPEN',
+      priority: 'MEDIUM',
+      isUnread: false,
+      lastMessage: undefined,
+      assignedTo: undefined,
       tags: [],
       createdAt: api.lastMessageAt,
       updatedAt: api.lastMessageAt,
     };
   };
-  const toUiThread = (api: ApiThread): Thread => ({
-    id: api.id,
-    leadId: api.contact.id,
-    lead: toUiLead(api),
-    channel: mapChannel(api.channel.type),
-    status: 'OPEN',
-    priority: 'MEDIUM',
-    isUnread: false,
-    lastMessage: undefined,
-    assignedTo: undefined,
-    tags: [],
-    createdAt: api.lastMessageAt,
-    updatedAt: api.lastMessageAt,
-  });
   const toUiMessage = (m: ApiMessage): Message => ({
     id: m.id,
     threadId: m.threadId,
@@ -326,6 +341,7 @@ const InboxPage: React.FC = () => {
         content: message.content,
         sender: message.sender,
         selectedThreadId: selectedThread?.id,
+        leadTags: thread.lead?.tags,
         leadStage: thread.lead?.stage,
         timestamp: new Date().toISOString(),
       });
@@ -381,6 +397,7 @@ const InboxPage: React.FC = () => {
       console.log('🔄 Thread updated via Socket.IO:', {
         threadId: thread.id,
         leadName: thread.lead?.name,
+        leadTags: thread.lead?.tags,
         leadStage: thread.lead?.stage,
         timestamp: new Date().toISOString(),
         fullThread: thread,
@@ -890,16 +907,16 @@ const InboxPage: React.FC = () => {
 
                     <p className='text-sm text-muted-foreground truncate'>{thread.lastMessage?.content || 'No messages yet'}</p>
 
-                    {thread.tags?.length > 0 && (
+                    {thread.lead.tags?.length > 0 && (
                       <div className='flex flex-wrap gap-1 mt-2'>
-                        {thread.tags.slice(0, 2).map((tag) => (
-                          <Badge key={tag} className={`text-xs ${getTagColor(tag)}`}>
-                            {tag}
+                        {thread.lead.tags.slice(0, 2).map((tag) => (
+                          <Badge key={tag} variant='outline' className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
+                            {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
                           </Badge>
                         ))}
-                        {thread.tags.length > 2 && (
+                        {thread.lead.tags.length > 2 && (
                           <Badge variant='outline' className='text-xs'>
-                            +{thread.tags.length - 2}
+                            +{thread.lead.tags.length - 2}
                           </Badge>
                         )}
                       </div>
@@ -1085,11 +1102,25 @@ const InboxPage: React.FC = () => {
                     ) : (
                       <div>
                         <div className='flex items-center gap-2 mb-1'>
-                          <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
-                          {/* 🏷️ Lead Stage Badge */}
-                          <Badge className={`text-xs px-2 py-1 ${getLeadStageColor(selectedThread.lead.stage)}`}>
-                            {formatLeadStage(selectedThread.lead.stage)}
-                          </Badge>
+                          <h2 
+                            className='text-lg font-semibold text-foreground cursor-pointer hover:text-primary transition-colors'
+                            onClick={() => navigate(`/dashboard/leads/${selectedThread.leadId}`)}
+                          >
+                            {selectedThread.lead.name}
+                          </h2>
+                          {/* 🏷️ Lead Tags Display */}
+                          <div className='flex flex-wrap gap-1'>
+                            {selectedThread.lead.tags.slice(0, 2).map((tag) => (
+                              <Badge key={tag} variant='outline' className={`text-xs px-2 py-1 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
+                                {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
+                              </Badge>
+                            ))}
+                            {selectedThread.lead.tags.length > 2 && (
+                              <Badge variant='outline' className='text-xs px-2 py-1'>
+                                +{selectedThread.lead.tags.length - 2}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0'>
                           <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
