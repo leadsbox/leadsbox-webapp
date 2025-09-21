@@ -516,7 +516,7 @@ const InboxPage: React.FC = () => {
       // Check the response structure: { message: "Reply sent", data: { ok: true, externalMsgId: "..." } }
       if (response.data && response.data.data && response.data.data.ok) {
         console.log('Message sent via REST API:', response.data);
-        toast.success('Message sent successfully');
+        // Success - no toast needed as real-time updates will show the message
       } else {
         throw new Error(response.data?.message || 'Failed to send message');
       }
