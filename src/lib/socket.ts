@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Socket.IO Client Service for Real-time Messaging
 // LeadsBox Dashboard
 

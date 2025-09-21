@@ -423,7 +423,7 @@ const InboxPage: React.FC = () => {
     };
   }, [composer, selectedThread?.id, isConnected, startTyping, stopTyping]);
 
-  // Enhanced message sending with Socket.IO
+  // Socket.IO only message sending (no REST fallback)
   const handleSendMessage = async () => {
     if (!selectedThread || !composer.trim()) return;
 
@@ -432,29 +432,18 @@ const InboxPage: React.FC = () => {
 
     try {
       if (isConnected) {
-        // Send through Socket.IO for instant delivery
+        // Send through Socket.IO only
         socketSendMessage(selectedThread.id, messageText);
         console.log('Message sent via Socket.IO');
       } else {
-        // Fallback to REST API
-        await client.post(endpoints.threadReply(selectedThread.id), {
-          orgId: getOrgId(),
-          text: messageText,
-        });
-
-        // Refresh messages manually
-        await fetchMessages(selectedThread.id);
-        console.log('Message sent via REST API (fallback)');
+        // No fallback - show error if socket not connected
+        toast.error('Socket.IO not connected. Please refresh the page and try again.');
+        setComposer(messageText); // Restore message
+        return;
       }
     } catch (error) {
-      const e = error as AxiosError<{ message?: string }>;
-      const errorMessage = e?.response?.data?.message || 'Failed to send message';
-
-      if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
-        setWhatsappConnectionError(true);
-      }
-
-      toast.error(errorMessage);
+      console.error('Socket message send error:', error);
+      toast.error('Failed to send message via Socket.IO');
       setComposer(messageText); // Restore message on error
     }
   };
