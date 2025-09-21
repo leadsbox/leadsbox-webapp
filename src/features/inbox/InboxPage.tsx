@@ -1102,7 +1102,7 @@ const InboxPage: React.FC = () => {
                     ) : (
                       <div>
                         <div className='flex items-center gap-2 mb-1'>
-                          <h2 
+                          <h2
                             className='text-lg font-semibold text-foreground cursor-pointer hover:text-primary transition-colors'
                             onClick={() => navigate(`/dashboard/leads/${selectedThread.leadId}`)}
                           >
