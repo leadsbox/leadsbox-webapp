@@ -264,26 +264,68 @@ const InboxPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThread?.id]);
 
+  // Periodic message refresh when Socket.IO is not connected (fallback for real-time updates)
+  useEffect(() => {
+    if (!selectedThread?.id || isConnected) return;
+
+    console.log('🔄 Setting up periodic message refresh (Socket.IO fallback)');
+    const interval = setInterval(() => {
+      console.log('⏰ Fetching messages (Socket.IO offline fallback)');
+      fetchMessages(selectedThread.id);
+    }, 5000); // Refresh every 5 seconds when offline
+
+    return () => {
+      console.log('🛑 Clearing periodic message refresh');
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedThread?.id, isConnected]);
+
   // Socket.IO event listeners for real-time updates
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      console.log('⚠️ Socket.IO not connected, skipping event listener setup');
+      return;
+    }
 
-    console.log('Setting up Socket.IO event listeners');
+    console.log('🔌 Setting up Socket.IO event listeners - socket connected:', {
+      isConnected,
+      socketError,
+      selectedThreadId: selectedThread?.id,
+      timestamp: new Date().toISOString()
+    });
 
     // Handle new messages
     const unsubscribeNewMessage = socketOn('message:new', (data) => {
       const { message, thread } = data;
 
-      console.log('Received new message:', message);
+      console.log('🔔 Received new message via Socket.IO:', {
+        messageId: message.id,
+        threadId: message.threadId,
+        content: message.content,
+        sender: message.sender,
+        selectedThreadId: selectedThread?.id,
+        timestamp: new Date().toISOString()
+      });
 
       // Update messages if this is the selected thread
       if (selectedThread?.id === message.threadId) {
+        console.log('📨 Message is for currently selected thread - updating UI');
         setMessages((prev) => {
           // Avoid duplicates
           const exists = prev.some((m) => m.id === message.id);
-          if (exists) return prev;
+          if (exists) {
+            console.log('⚠️ Duplicate message detected, skipping');
+            return prev;
+          }
 
+          console.log('✅ Adding new message to thread');
           return [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        });
+      } else {
+        console.log('📝 Message is for different thread:', {
+          messageThread: message.threadId,
+          currentThread: selectedThread?.id
         });
       }
 
@@ -1010,6 +1052,16 @@ const InboxPage: React.FC = () => {
                 <div className='flex items-center gap-2 text-xs'>
                   <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   <span className='text-muted-foreground'>{isConnected ? 'Real-time messaging' : 'Offline mode'}</span>
+                  {!isConnected && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => selectedThread && fetchMessages(selectedThread.id)}
+                      className="ml-2 h-6 text-xs"
+                    >
+                      Refresh
+                    </Button>
+                  )}
                 </div>
                 {socketError && <div className='text-xs text-red-500'>Connection error: {socketError}</div>}
               </div>
