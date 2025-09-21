@@ -89,7 +89,23 @@ export interface Task {
   updatedAt: string;
 }
 
-export type Stage = 'NEW' | 'QUALIFIED' | 'IN_PROGRESS' | 'WON' | 'LOST';
+export type Stage = 
+  | 'NEW_LEAD'
+  | 'ENGAGED' 
+  | 'TRANSACTION_SUCCESSFUL'
+  | 'PAYMENT_PENDING'
+  | 'TRANSACTION_IN_PROGRESS'
+  | 'CLOSED_LOST_TRANSACTION'
+  | 'PRICING_INQUIRY'
+  | 'DEMO_REQUEST'
+  | 'NEW_INQUIRY'
+  | 'TECHNICAL_SUPPORT'
+  | 'FOLLOW_UP_REQUIRED'
+  | 'PARTNERSHIP_OPPORTUNITY'
+  | 'FEEDBACK'
+  | 'NOT_A_LEAD'
+  // Legacy support
+  | 'NEW' | 'QUALIFIED' | 'IN_PROGRESS' | 'WON' | 'LOST';
 
 // Available lead labels from backend
 export const LEAD_LABELS = [

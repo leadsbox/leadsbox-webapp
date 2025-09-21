@@ -23,7 +23,7 @@ import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
-import { Thread, Message } from '../../types';
+import { Thread, Message, Stage } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
@@ -143,7 +143,7 @@ const InboxPage: React.FC = () => {
     if (t === 'FACEBOOK') return 'sms';
     return 'whatsapp';
   };
-  const toUiLead = (api: ApiThread): Thread['lead'] => {
+  const toUiLead = (api: ApiThread, leadStage?: string): Thread['lead'] => {
     // Extract the meaningful contact information
     const displayName = api.contact.displayName;
     const phone = api.contact.phone || api.contact.waId; // Use waId if phone is null
@@ -165,7 +165,7 @@ const InboxPage: React.FC = () => {
       email: email || '',
       phone: phone || undefined,
       source: 'whatsapp',
-      stage: 'NEW',
+      stage: (leadStage as Stage) || 'NEW_LEAD', // Use provided stage or default to NEW_LEAD
       priority: 'MEDIUM',
       tags: [],
       createdAt: api.lastMessageAt,
@@ -326,6 +326,7 @@ const InboxPage: React.FC = () => {
         content: message.content,
         sender: message.sender,
         selectedThreadId: selectedThread?.id,
+        leadStage: thread.lead?.stage,
         timestamp: new Date().toISOString(),
       });
 
@@ -377,7 +378,13 @@ const InboxPage: React.FC = () => {
     const unsubscribeThreadUpdate = socketOn('thread:updated', (data) => {
       const { thread } = data;
 
-      console.log('Thread updated:', thread);
+      console.log('🔄 Thread updated via Socket.IO:', {
+        threadId: thread.id,
+        leadName: thread.lead?.name,
+        leadStage: thread.lead?.stage,
+        timestamp: new Date().toISOString(),
+        fullThread: thread
+      });
 
       setThreads((prev) => {
         const existingIndex = prev.findIndex((t) => t.id === thread.id);
@@ -647,6 +654,77 @@ const InboxPage: React.FC = () => {
     }
     const index = Math.abs(hash) % colors.length;
     return colors[index];
+  };
+
+  // 🎨 Lead Stage Color System - Context-aware colors for different lead types
+  const getLeadStageColor = (stage: string) => {
+    switch (stage) {
+      // 🆕 New & Engagement Stages
+      case 'NEW_LEAD':
+      case 'NEW':
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300';
+      case 'ENGAGED':
+        return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-300';
+      
+      // 💰 Transaction & Payment Stages (Green spectrum)
+      case 'TRANSACTION_SUCCESSFUL':
+        return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300';
+      case 'PAYMENT_PENDING':
+        return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900 dark:text-amber-300';
+      case 'TRANSACTION_IN_PROGRESS':
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900 dark:text-emerald-300';
+      
+      // ❌ Negative Outcomes (Red spectrum)
+      case 'CLOSED_LOST_TRANSACTION':
+        return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300';
+      case 'NOT_A_LEAD':
+        return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400';
+      
+      // 🎯 Interest & Inquiry Stages (Purple/Indigo spectrum)
+      case 'PRICING_INQUIRY':
+        return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-300';
+      case 'DEMO_REQUEST':
+        return 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900 dark:text-indigo-300';
+      case 'NEW_INQUIRY':
+        return 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900 dark:text-violet-300';
+      
+      // 🛠️ Support & Service Stages (Orange spectrum)
+      case 'TECHNICAL_SUPPORT':
+        return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900 dark:text-orange-300';
+      case 'FOLLOW_UP_REQUIRED':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300';
+      
+      // 🤝 Business & Partnership (Teal spectrum)
+      case 'PARTNERSHIP_OPPORTUNITY':
+        return 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900 dark:text-teal-300';
+      case 'FEEDBACK':
+        return 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-300';
+      
+      // Default fallback
+      default:
+        return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400';
+    }
+  };
+
+  // Format lead stage for display
+  const formatLeadStage = (stage: string) => {
+    const stageMap: Record<string, string> = {
+      'NEW_LEAD': 'New Lead',
+      'ENGAGED': 'Engaged',
+      'TRANSACTION_SUCCESSFUL': 'Payment Complete',
+      'PAYMENT_PENDING': 'Payment Pending',
+      'TRANSACTION_IN_PROGRESS': 'Processing Order',
+      'CLOSED_LOST_TRANSACTION': 'Closed Lost',
+      'PRICING_INQUIRY': 'Price Inquiry', 
+      'DEMO_REQUEST': 'Demo Request',
+      'NEW_INQUIRY': 'New Inquiry',
+      'TECHNICAL_SUPPORT': 'Tech Support',
+      'FOLLOW_UP_REQUIRED': 'Follow-up',
+      'PARTNERSHIP_OPPORTUNITY': 'Partnership',
+      'FEEDBACK': 'Feedback',
+      'NOT_A_LEAD': 'Not a Lead',
+    };
+    return stageMap[stage] || stage;
   };
 
   const handleEditContact = () => {
@@ -1006,7 +1084,13 @@ const InboxPage: React.FC = () => {
                       </div>
                     ) : (
                       <div>
-                        <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
+                        <div className='flex items-center gap-2 mb-1'>
+                          <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
+                          {/* 🏷️ Lead Stage Badge */}
+                          <Badge className={`text-xs px-2 py-1 ${getLeadStageColor(selectedThread.lead.stage)}`}>
+                            {formatLeadStage(selectedThread.lead.stage)}
+                          </Badge>
+                        </div>
                         <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0'>
                           <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
                             {selectedThread.lead.phone && selectedThread.lead.email ? (
