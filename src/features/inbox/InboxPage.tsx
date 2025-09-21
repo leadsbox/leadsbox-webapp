@@ -292,7 +292,16 @@ const InboxPage: React.FC = () => {
       isConnected,
       socketError,
       selectedThreadId: selectedThread?.id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+    });
+
+    // Add debugging for ALL Socket.IO events
+    const logAllEvents = socketOn('*', (eventName: string, ...args: unknown[]) => {
+      console.log('🎯 Socket.IO Event Received:', {
+        eventName,
+        args,
+        timestamp: new Date().toISOString(),
+      });
     });
 
     // Handle new messages
@@ -305,7 +314,7 @@ const InboxPage: React.FC = () => {
         content: message.content,
         sender: message.sender,
         selectedThreadId: selectedThread?.id,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Update messages if this is the selected thread
@@ -325,7 +334,7 @@ const InboxPage: React.FC = () => {
       } else {
         console.log('📝 Message is for different thread:', {
           messageThread: message.threadId,
-          currentThread: selectedThread?.id
+          currentThread: selectedThread?.id,
         });
       }
 
@@ -419,6 +428,7 @@ const InboxPage: React.FC = () => {
       unsubscribeNewThread();
       unsubscribeTypingStart();
       unsubscribeTypingStop();
+      logAllEvents();
     };
   }, [isConnected, selectedThread?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1053,13 +1063,33 @@ const InboxPage: React.FC = () => {
                   <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   <span className='text-muted-foreground'>{isConnected ? 'Real-time messaging' : 'Offline mode'}</span>
                   {!isConnected && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size='sm'
+                      variant='outline'
                       onClick={() => selectedThread && fetchMessages(selectedThread.id)}
-                      className="ml-2 h-6 text-xs"
+                      className='ml-2 h-6 text-xs'
                     >
                       Refresh
+                    </Button>
+                  )}
+                  {isConnected && selectedThread && (
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      onClick={() => {
+                        console.log('🧪 Testing Socket.IO - emitting test typing events');
+                        startTyping(selectedThread.id);
+                        setTimeout(() => stopTyping(selectedThread.id), 2000);
+
+                        // Also test message refresh
+                        setTimeout(() => {
+                          console.log('🔄 Testing message refresh after socket test');
+                          fetchMessages(selectedThread.id);
+                        }, 1000);
+                      }}
+                      className='ml-2 h-6 text-xs'
+                    >
+                      Test Socket
                     </Button>
                   )}
                 </div>
