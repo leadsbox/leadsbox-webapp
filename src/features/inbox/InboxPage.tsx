@@ -523,7 +523,7 @@ const InboxPage: React.FC = () => {
 
       // Refresh messages to show the sent message
       await fetchMessages(selectedThread.id);
-      
+
       // Scroll to bottom after sending message (additional delay for message processing)
       setTimeout(scrollToBottom, 200);
     } catch (error: unknown) {
