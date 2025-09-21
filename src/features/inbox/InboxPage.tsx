@@ -624,6 +624,31 @@ const InboxPage: React.FC = () => {
     }
   };
 
+  // Function to generate a consistent color based on tag text
+  const getTagColor = (tag: string) => {
+    // Simple hash function to generate a consistent color for each tag
+    const colors = [
+      'bg-blue-100 text-blue-800',
+      'bg-green-100 text-green-800',
+      'bg-yellow-100 text-yellow-800',
+      'bg-red-100 text-red-800',
+      'bg-purple-100 text-purple-800',
+      'bg-pink-100 text-pink-800',
+      'bg-indigo-100 text-indigo-800',
+      'bg-teal-100 text-teal-800',
+      'bg-orange-100 text-orange-800',
+      'bg-cyan-100 text-cyan-800',
+    ];
+    
+    // Simple hash function to get consistent color for each tag
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
   const handleEditContact = () => {
     if (!selectedThread) return;
 
@@ -787,15 +812,15 @@ const InboxPage: React.FC = () => {
 
                     <p className='text-sm text-muted-foreground truncate'>{thread.lastMessage?.content || 'No messages yet'}</p>
 
-                    {thread.tags.length > 0 && (
+                    {(thread.tags?.length > 0) && (
                       <div className='flex flex-wrap gap-1 mt-2'>
                         {thread.tags.slice(0, 2).map((tag) => (
-                          <Badge key={tag} variant='secondary' className='text-xs'>
+                          <Badge key={tag} className={`text-xs ${getTagColor(tag)}`}>
                             {tag}
                           </Badge>
                         ))}
                         {thread.tags.length > 2 && (
-                          <Badge variant='secondary' className='text-xs'>
+                          <Badge variant='outline' className='text-xs'>
                             +{thread.tags.length - 2}
                           </Badge>
                         )}
@@ -946,6 +971,13 @@ const InboxPage: React.FC = () => {
                       <AvatarFallback>{selectedThread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className='absolute -bottom-1 -right-1 text-lg'>{getChannelIcon(selectedThread.channel)}</div>
+                    {selectedThread.tags?.length > 0 && (
+                      <div className='absolute -top-1 -right-1 flex flex-wrap-reverse justify-end max-w-[80px] gap-0.5'>
+                        {selectedThread.tags.slice(0, 3).map((tag, index) => (
+                          <div key={tag} className={`h-1.5 w-1.5 rounded-full ${getTagColor(tag).split(' ')[0]}`} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className='flex-1 min-w-0'>
                     {editingContact ? (
@@ -975,19 +1007,35 @@ const InboxPage: React.FC = () => {
                     ) : (
                       <div>
                         <h2 className='text-lg font-semibold text-foreground'>{selectedThread.lead.name}</h2>
-                        <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
-                          {selectedThread.lead.phone && selectedThread.lead.email ? (
-                            <>
+                        <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0'>
+                          <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                            {selectedThread.lead.phone && selectedThread.lead.email ? (
+                              <>
+                                <span>{selectedThread.lead.phone}</span>
+                                <span>•</span>
+                                <span>{selectedThread.lead.email}</span>
+                              </>
+                            ) : selectedThread.lead.phone ? (
                               <span>{selectedThread.lead.phone}</span>
-                              <span>•</span>
+                            ) : selectedThread.lead.email ? (
                               <span>{selectedThread.lead.email}</span>
-                            </>
-                          ) : selectedThread.lead.phone ? (
-                            <span>{selectedThread.lead.phone}</span>
-                          ) : selectedThread.lead.email ? (
-                            <span>{selectedThread.lead.email}</span>
-                          ) : (
-                            <span>No contact info</span>
+                            ) : (
+                              <span>No contact info</span>
+                            )}
+                          </div>
+                          {selectedThread.tags?.length > 0 && (
+                            <div className='flex flex-wrap gap-1'>
+                              {selectedThread.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag} className={`text-xs ${getTagColor(tag)}`}>
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {selectedThread.tags.length > 3 && (
+                                <Badge variant='outline' className='text-xs'>
+                                  +{selectedThread.tags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
