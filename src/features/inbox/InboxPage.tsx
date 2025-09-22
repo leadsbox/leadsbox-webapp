@@ -126,7 +126,7 @@ const InboxPage: React.FC = () => {
       createdAt: string;
       updatedAt: string;
     };
-    channel: { id: string; type: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'; displayName?: string | null };
+    channel: { id: string; type: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'TELEGRAM'; displayName?: string | null };
     Lead?: Array<{
       id: string;
       label?: string | null;
@@ -139,7 +139,7 @@ const InboxPage: React.FC = () => {
   type ApiMessage = {
     id: string;
     threadId: string;
-    channelType: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK';
+    channelType: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'TELEGRAM';
     direction: 'IN' | 'OUT';
     text?: string | null;
     sentAt: string;
@@ -147,6 +147,7 @@ const InboxPage: React.FC = () => {
 
   const mapChannel = (t: ApiThread['channel']['type']): Thread['channel'] => {
     if (t === 'WHATSAPP') return 'whatsapp';
+    if (t === 'TELEGRAM') return 'telegram';
     if (t === 'INSTAGRAM') return 'sms';
     if (t === 'FACEBOOK') return 'sms';
     return 'whatsapp';
