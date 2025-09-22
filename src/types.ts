@@ -19,7 +19,7 @@ export interface Lead {
   email: string;
   phone?: string;
   company?: string;
-  source: 'whatsapp' | 'telegram' | 'website' | 'manual';
+  source: 'whatsapp' | 'telegram' | 'instagram' | 'website' | 'manual';
   stage: Stage;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   tags: string[];
@@ -41,7 +41,7 @@ export interface Thread {
   id: string;
   leadId: string;
   lead: Lead;
-  channel: 'whatsapp' | 'telegram' | 'sms' | 'email';
+  channel: 'whatsapp' | 'telegram' | 'instagram' | 'sms' | 'email';
   status: 'OPEN' | 'CLOSED' | 'PENDING';
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   isUnread: boolean;

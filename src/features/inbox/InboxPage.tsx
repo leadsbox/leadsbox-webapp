@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save } from 'lucide-react';
-import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
+import { WhatsAppIcon, TelegramIcon, InstagramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -148,7 +148,7 @@ const InboxPage: React.FC = () => {
   const mapChannel = (t: ApiThread['channel']['type']): Thread['channel'] => {
     if (t === 'WHATSAPP') return 'whatsapp';
     if (t === 'TELEGRAM') return 'telegram';
-    if (t === 'INSTAGRAM') return 'sms';
+    if (t === 'INSTAGRAM') return 'instagram';
     if (t === 'FACEBOOK') return 'sms';
     return 'whatsapp';
   };
@@ -606,6 +606,8 @@ const InboxPage: React.FC = () => {
         return <WhatsAppIcon className='h-4 w-4' />;
       case 'telegram':
         return <TelegramIcon className='h-4 w-4' />;
+      case 'instagram':
+        return <InstagramIcon className='h-4 w-4' />;
       case 'sms':
         return (
           <span role='img' aria-label='sms'>
