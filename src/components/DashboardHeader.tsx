@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Check,
   PlusCircle,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -99,6 +100,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     { path: '/dashboard/pipeline', label: 'Pipeline', icon: Zap },
     { path: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, badge: 3 },
     { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/dashboard/automations', label: 'Automations', icon: Sparkles },
     { path: '/dashboard/settings', label: 'Settings', icon: Settings },
   ];
 

@@ -9,8 +9,6 @@ import { ThemeSettings } from './components/ThemeSettings';
 import ProfileTab from './tabs/ProfileTab';
 import OrganizationTab from './tabs/OrganizationTab';
 import MembersTab from './tabs/MembersTab';
-import TagsTab from './tabs/TagsTab';
-import TemplatesTab from './tabs/TemplatesTab';
 import NotificationsTab from './tabs/NotificationsTab';
 import IntegrationsTab from './tabs/IntegrationsTab';
 import client from '../../api/client';
@@ -23,7 +21,7 @@ const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(() => {
     // Initialize tab from URL parameter, default to 'profile'
     const tabParam = searchParams.get('tab');
-    const validTabs = ['profile', 'integrations', 'organization', 'members', 'tags', 'templates', 'notifications', 'appearance'];
+    const validTabs = ['profile', 'integrations', 'organization', 'members', 'notifications', 'appearance'];
     return validTabs.includes(tabParam || '') ? tabParam! : 'profile';
   });
   const [organization, setOrganization] = useState<Organization>({
@@ -51,7 +49,7 @@ const SettingsPage: React.FC = () => {
   // Watch for URL parameter changes and update active tab
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs = ['profile', 'integrations', 'organization', 'members', 'tags', 'templates', 'notifications', 'appearance'];
+    const validTabs = ['profile', 'integrations', 'organization', 'members', 'notifications', 'appearance'];
     const newTab = validTabs.includes(tabParam || '') ? tabParam! : 'profile';
 
     // Update active tab based on URL parameter
@@ -132,13 +130,11 @@ const SettingsPage: React.FC = () => {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className='w-full overflow-x-auto flex gap-2 sm:grid sm:grid-cols-8'>
+        <TabsList className='w-full overflow-x-auto flex gap-2 sm:grid sm:grid-cols-6'>
           <TabsTrigger value='profile'>Profile</TabsTrigger>
           <TabsTrigger value='integrations'>Integrations</TabsTrigger>
           <TabsTrigger value='organization'>Organization</TabsTrigger>
           <TabsTrigger value='members'>Members</TabsTrigger>
-          <TabsTrigger value='tags'>Tags</TabsTrigger>
-          <TabsTrigger value='templates'>Templates</TabsTrigger>
           <TabsTrigger value='notifications'>Notifications</TabsTrigger>
           <TabsTrigger value='appearance'>Appearance</TabsTrigger>
         </TabsList>
@@ -170,16 +166,6 @@ const SettingsPage: React.FC = () => {
         {/* Members Management */}
         <TabsContent value='members' className='space-y-6'>
           <MembersTab selectedOrgId={selectedOrgId} />
-        </TabsContent>
-
-        {/* Tags Management */}
-        <TabsContent value='tags' className='space-y-6'>
-          <TagsTab />
-        </TabsContent>
-
-        {/* Templates */}
-        <TabsContent value='templates' className='space-y-6'>
-          <TemplatesTab />
         </TabsContent>
 
         {/* Notifications */}
