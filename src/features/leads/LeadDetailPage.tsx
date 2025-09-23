@@ -363,13 +363,38 @@ const LeadDetailPage: React.FC = () => {
 
     setIsSaving(true);
     try {
+      const nameTrimmed = editForm.name?.trim();
+      const emailTrimmed = editForm.email?.trim();
+      const phoneTrimmed = editForm.phone?.trim();
+
       // Update contact information if contactId exists
-      if (lead.contactId && (editForm.name || editForm.email || editForm.phone)) {
-        await client.put(`/contacts/${lead.contactId}`, {
-          displayName: editForm.name?.trim() || null,
-          email: editForm.email?.trim() || null,
-          phone: editForm.phone?.trim() || null,
-        });
+      if (lead.contactId && (nameTrimmed || emailTrimmed || phoneTrimmed)) {
+        const payload: Record<string, string> = {};
+
+        if (nameTrimmed) {
+          payload.displayName = nameTrimmed;
+        }
+
+        if (phoneTrimmed) {
+          payload.phone = phoneTrimmed;
+        }
+
+        if (emailTrimmed) {
+          if (!/.+@.+\..+/.test(emailTrimmed)) {
+            toast({
+              title: 'Invalid email',
+              description: 'Please enter a valid email address.',
+              variant: 'destructive',
+            });
+            setIsSaving(false);
+            return;
+          }
+          payload.email = emailTrimmed;
+        }
+
+        if (Object.keys(payload).length > 0) {
+          await client.put(`/contacts/${lead.contactId}`, payload);
+        }
       }
 
       // Update lead information if tags (lead type) changed
@@ -381,7 +406,13 @@ const LeadDetailPage: React.FC = () => {
       }
 
       // Update local state
-      const updatedLead = { ...lead, ...editForm };
+      const updatedLead = {
+        ...lead,
+        ...editForm,
+        name: nameTrimmed || lead.name,
+        email: emailTrimmed || lead.email || '',
+        phone: phoneTrimmed || lead.phone || '',
+      };
       setLead(updatedLead);
       setIsEditing(false);
       setEditForm({});
