@@ -31,6 +31,22 @@ export const IntegrationsTab: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const apiRoot = useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
 
+  // Instagram connection state and effect
+  const [igConnected, setIgConnected] = useState(false);
+  useEffect(() => {
+    const status = searchParams.get('instagram');
+    if (status === 'connected') {
+      setIgConnected(true);
+      toast.success('Instagram connected');
+      searchParams.delete('instagram');
+      setSearchParams(searchParams, { replace: true });
+    } else if (status === 'error') {
+      toast.error('Instagram connection failed');
+      searchParams.delete('instagram');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const status = searchParams.get('whatsapp');
     const token = searchParams.get('waToken');
@@ -81,7 +97,9 @@ export const IntegrationsTab: React.FC = () => {
         if (conns.length === 1) {
           setDisconnectKey(`${conns[0].wabaId}|${conns[0].phoneNumberId}`);
         }
-      } catch {}
+      } catch {
+        // Ignore error
+      }
     })();
   }, [apiRoot]);
 
@@ -319,9 +337,11 @@ export const IntegrationsTab: React.FC = () => {
                   </div>
                   <div>
                     <h3 className='font-medium'>Telegram</h3>
-                    <p className='text-sm text-muted-foreground'>Connect your Telegram bot</p>
+                    <p className='text-sm text-muted-foreground'>Connect your Telegram account</p>
                   </div>
                 </div>
+                {/* Telegram connection status badge */}
+                {/* TODO: Add real connection state if available */}
                 <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
                   Not Connected
                 </Badge>
@@ -329,11 +349,12 @@ export const IntegrationsTab: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className='space-y-3'>
-                <div>
-                  <Label>Bot Token</Label>
-                  <input className='w-full rounded-md border px-3 py-2 text-sm bg-background border-input' placeholder='Enter your bot token' />
-                </div>
-                <Button className='w-full' onClick={() => toast.info('Telegram integration coming soon')}>
+                <Button
+                  className='w-full'
+                  onClick={() => {
+                    window.location.href = `${apiRoot}/api/provider/telegram/sign-in`;
+                  }}
+                >
                   Connect Telegram
                 </Button>
               </div>
@@ -352,15 +373,27 @@ export const IntegrationsTab: React.FC = () => {
                     <p className='text-sm text-muted-foreground'>Connect your Instagram account</p>
                   </div>
                 </div>
-                <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                  Not Connected
-                </Badge>
+                {igConnected ? (
+                  <Badge variant='outline' className='bg-pink-500/10 text-pink-500'>
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                    Not Connected
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent>
               <div className='space-y-3'>
-                <Button className='w-full' onClick={() => toast.info('Instagram integration coming soon')}>
-                  Connect Instagram
+                <Button
+                  className='w-full'
+                  disabled={igConnected}
+                  onClick={() => {
+                    window.location.href = `${apiRoot}/api/provider/instagram`;
+                  }}
+                >
+                  {igConnected ? 'Connected' : 'Connect Instagram'}
                 </Button>
               </div>
             </CardContent>
