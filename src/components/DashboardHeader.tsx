@@ -31,6 +31,7 @@ import {
 import { CustomAvatar } from './ui/custom-avatar';
 import { Badge } from './ui/badge';
 import { useAuth } from '../context/AuthContext';
+import type { AuthUser } from '../types';
 import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { toast } from 'react-toastify';
@@ -44,7 +45,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
   const { user, logout } = useAuth();
   const location = useLocation();
   // Get the profile image URL
-  const userAvatar = user?.profileImage || (user as any)?.avatar || undefined;
+  const userAvatar = user?.profileImage || user?.avatar || undefined;
   const [orgId, setOrgIdState] = React.useState<string>(() => getOrgId());
   const [memberRole, setMemberRole] = React.useState<'OWNER' | 'ADMIN' | 'MEMBER' | null>(null);
 
@@ -57,10 +58,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     };
     const onCustom = () => setOrgIdState(getOrgId());
     window.addEventListener('storage', onStorage);
-    window.addEventListener('lb:org-changed', onCustom as any);
+    window.addEventListener('lb:org-changed', onCustom);
     return () => {
       window.removeEventListener('storage', onStorage);
-      window.removeEventListener('lb:org-changed', onCustom as any);
+      window.removeEventListener('lb:org-changed', onCustom);
     };
   }, []);
 
@@ -73,7 +74,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
       }
       try {
         const resp = await client.get(`/orgs/${orgId}/members`);
-        const list: Array<any> = resp?.data?.data?.members || [];
+        const list: Array<{ userId: string; role: 'OWNER' | 'ADMIN' | 'MEMBER' }> = resp?.data?.data?.members || [];
         const me = list.find((m) => m.userId === user.id);
         setMemberRole(me?.role || null);
       } catch (e) {
@@ -120,7 +121,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
 
   return (
     <header className='dashboard-header sticky top-0 z-30 px-3 sm:px-4 border-b border-border bg-card/60 backdrop-blur-md supports-[backdrop-filter]:bg-card/60'>
-      {user && (user as any).emailVerified === false && (
+      {user && user.emailVerified === false && (
         <div className='w-full bg-amber-50 text-amber-800 text-xs sm:text-sm px-3 py-2 rounded-b-md flex items-center justify-between border-b border-amber-200'>
           <span>Your email is not verified. Please check your inbox.</span>
           <Button size='sm' variant='outline' onClick={resendVerification} className='ml-3'>

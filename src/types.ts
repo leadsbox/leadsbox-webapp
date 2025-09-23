@@ -11,6 +11,7 @@ export interface User {
   role: 'OWNER' | 'MANAGER' | 'AGENT';
   createdAt: string;
   updatedAt: string;
+  emailVerified?: boolean;
 }
 
 export interface Lead {
