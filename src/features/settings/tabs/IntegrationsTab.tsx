@@ -20,10 +20,11 @@ import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FacebookIcon, InstagramIcon, TelegramIcon, WhatsAppIcon } from '@/components/brand-icons';
+import { Loader2 } from 'lucide-react';
 import { Globe } from 'lucide-react';
 
 export const IntegrationsTab: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
   const [waConnected, setWaConnected] = useState(false);
   const [waToken, setWaToken] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<Array<{ id: string; name: string }>>([]);
@@ -205,6 +206,7 @@ export const IntegrationsTab: React.FC = () => {
     }
     try {
       await client.post('/orgs', { name: newOrgName.trim() });
+      await refreshAuth();
       setOrgDialogOpen(false);
       setNewOrgName('');
       window.location.href = `${apiRoot}/api/provider/whatsapp`;
@@ -265,6 +267,7 @@ export const IntegrationsTab: React.FC = () => {
                         </SelectContent>
                       </Select>
                       <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={waLoading || !selectedBusiness}>
+                        {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                         Next
                       </Button>
                     </div>
@@ -284,6 +287,7 @@ export const IntegrationsTab: React.FC = () => {
                           </SelectContent>
                         </Select>
                         <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={waLoading || !selectedWaba}>
+                          {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                           Next
                         </Button>
                       </div>
@@ -304,6 +308,7 @@ export const IntegrationsTab: React.FC = () => {
                           </SelectContent>
                         </Select>
                         <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={waLoading || !selectedPhone}>
+                          {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                           Connect
                         </Button>
                       </div>
@@ -329,10 +334,12 @@ export const IntegrationsTab: React.FC = () => {
                       </div>
                     )}
                     <div className='flex space-x-2'>
-                      <Button onClick={startWhatsAppConnect} className='flex-1'>
+                      <Button onClick={startWhatsAppConnect} className='flex-1' disabled={waLoading}>
+                        {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                         {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
                       </Button>
-                      <Button variant='outline' className='text-destructive' disabled={!waConnected} onClick={disconnectWhatsApp}>
+                      <Button variant='outline' className='text-destructive' disabled={!waConnected || waLoading} onClick={disconnectWhatsApp}>
+                        {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                         Disconnect
                       </Button>
                     </div>
@@ -368,7 +375,9 @@ export const IntegrationsTab: React.FC = () => {
                   onClick={() => {
                     window.location.href = `${apiRoot}/api/provider/telegram/sign-in`;
                   }}
+                  disabled={waLoading}
                 >
+                  {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   Connect Telegram
                 </Button>
               </div>
@@ -402,11 +411,12 @@ export const IntegrationsTab: React.FC = () => {
               <div className='space-y-3'>
                 <Button
                   className='w-full'
-                  disabled={igConnected}
+                  disabled={igConnected || waLoading}
                   onClick={() => {
                     window.location.href = `${apiRoot}/api/provider/instagram`;
                   }}
                 >
+                  {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   {igConnected ? 'Connected' : 'Connect Instagram'}
                 </Button>
               </div>
@@ -432,7 +442,8 @@ export const IntegrationsTab: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className='space-y-3'>
-                <Button className='w-full' onClick={() => toast.info('Facebook integration coming soon')}>
+                <Button className='w-full' onClick={() => toast.info('Facebook integration coming soon')} disabled={waLoading}>
+                  {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   Connect Facebook
                 </Button>
               </div>
@@ -459,7 +470,10 @@ export const IntegrationsTab: React.FC = () => {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={createOrgAndStart}>Create & Continue</AlertDialogAction>
+            <AlertDialogAction onClick={createOrgAndStart} disabled={waLoading}>
+              {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
+              Create & Continue
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

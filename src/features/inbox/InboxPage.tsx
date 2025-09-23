@@ -763,12 +763,19 @@ const InboxPage: React.FC = () => {
 
     setSavingContact(true);
     try {
-      // Update the contact via API - this should update both inbox and leads
-      const response = await client.put(`/contacts/${selectedThread.leadId}`, {
+      // Use the correct contact ID for update (from lead.id, which is mapped from contact.id)
+      const contactId = selectedThread.lead.id;
+      // Only include email if it is a non-empty string
+      const payload: Record<string, string | null> = {
         displayName: contactForm.displayName.trim() || null,
-        email: contactForm.email.trim() || null,
         phone: contactForm.phone.trim() || null,
-      });
+      };
+      if (contactForm.email && contactForm.email.trim() !== '') {
+        payload.email = contactForm.email.trim();
+      } else {
+        payload.email = null;
+      }
+      const response = await client.put(`/contacts/${contactId}`, payload);
 
       // Update local state to reflect changes immediately
       const updatedThreads = threads.map((thread) => {
