@@ -183,6 +183,7 @@ const InboxPage: React.FC = () => {
       tags: [leadLabel], // Use the actual lead label as the primary tag
       createdAt: api.lastMessageAt,
       updatedAt: api.lastMessageAt,
+      contactId: api.contact.id,
     };
   };
   const toUiThread = (api: ApiThread): Thread => {
@@ -764,16 +765,34 @@ const InboxPage: React.FC = () => {
     setSavingContact(true);
     try {
       // Use the correct contact ID for update (from lead.id, which is mapped from contact.id)
-      const contactId = selectedThread.lead.id;
+      const contactId = selectedThread.lead.contactId || selectedThread.lead.id;
       // Only include email if it is a non-empty string and looks like an email
-      const payload: Record<string, string> = {
-        displayName: contactForm.displayName.trim(),
-        phone: contactForm.phone.trim(),
-      };
+      const payload: Record<string, string> = {};
+
+      const displayNameTrimmed = contactForm.displayName.trim();
+      if (displayNameTrimmed) {
+        payload.displayName = displayNameTrimmed;
+      }
+
+      const phoneTrimmed = contactForm.phone.trim();
+      if (phoneTrimmed) {
+        payload.phone = phoneTrimmed;
+      }
+
       const emailTrimmed = contactForm.email.trim();
-      // Basic email format check (optional, backend will validate fully)
-      if (emailTrimmed && /.+@.+\..+/.test(emailTrimmed)) {
+      if (emailTrimmed) {
+        if (!/.+@.+\..+/.test(emailTrimmed)) {
+          toast.error('Please enter a valid email address.');
+          setSavingContact(false);
+          return;
+        }
         payload.email = emailTrimmed;
+      }
+
+      if (Object.keys(payload).length === 0) {
+        toast.info('Update at least one contact field.');
+        setSavingContact(false);
+        return;
       }
       const response = await client.put(`/contacts/${contactId}`, payload);
 
