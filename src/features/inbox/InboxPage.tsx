@@ -765,15 +765,15 @@ const InboxPage: React.FC = () => {
     try {
       // Use the correct contact ID for update (from lead.id, which is mapped from contact.id)
       const contactId = selectedThread.lead.id;
-      // Only include email if it is a non-empty string
-      const payload: Record<string, string | null> = {
-        displayName: contactForm.displayName.trim() || null,
-        phone: contactForm.phone.trim() || null,
+      // Only include email if it is a non-empty string and looks like an email
+      const payload: Record<string, string> = {
+        displayName: contactForm.displayName.trim(),
+        phone: contactForm.phone.trim(),
       };
-      if (contactForm.email && contactForm.email.trim() !== '') {
-        payload.email = contactForm.email.trim();
-      } else {
-        payload.email = null;
+      const emailTrimmed = contactForm.email.trim();
+      // Basic email format check (optional, backend will validate fully)
+      if (emailTrimmed && /.+@.+\..+/.test(emailTrimmed)) {
+        payload.email = emailTrimmed;
       }
       const response = await client.put(`/contacts/${contactId}`, payload);
 
