@@ -4,7 +4,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import client from '@/api/client';
 import { API_BASE } from '@/api/config';
@@ -135,7 +144,12 @@ export const IntegrationsTab: React.FC = () => {
     if (!waToken || !selectedWaba || !selectedPhone || !user?.id) return;
     setWaLoading(true);
     try {
-      await client.post(`${apiRoot}/api/provider/whatsapp/connect`, { accessToken: waToken, wabaId: selectedWaba, phoneId: selectedPhone, userId: user.id });
+      await client.post(`${apiRoot}/api/provider/whatsapp/connect`, {
+        accessToken: waToken,
+        wabaId: selectedWaba,
+        phoneId: selectedPhone,
+        userId: user.id,
+      });
       setWaConnected(true);
       setWaToken(null);
       toast.success('WhatsApp account linked');
@@ -431,13 +445,17 @@ export const IntegrationsTab: React.FC = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Create an Organization</AlertDialogTitle>
-            <AlertDialogDescription>
-              You need an organization before connecting WhatsApp. Create one to proceed.
-            </AlertDialogDescription>
+            <AlertDialogDescription>You need an organization before connecting WhatsApp. Create one to proceed.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className='space-y-2'>
             <Label htmlFor='org-create-name'>Organization Name</Label>
-            <input id='org-create-name' className='w-full rounded-md border px-3 py-2 text-sm bg-background border-input' value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder='Your Company' />
+            <input
+              id='org-create-name'
+              className='w-full rounded-md border px-3 py-2 text-sm bg-background border-input'
+              value={newOrgName}
+              onChange={(e) => setNewOrgName(e.target.value)}
+              placeholder='Your Company'
+            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -450,4 +468,3 @@ export const IntegrationsTab: React.FC = () => {
 };
 
 export default IntegrationsTab;
-
