@@ -132,7 +132,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         <div className='w-full bg-red-50 text-red-800 text-xs sm:text-sm px-3 py-2 rounded-b-md flex items-center justify-between border-b border-red-200'>
           <span>You have not created an organization yet. Some features will be unavailable until you do.</span>
           <Button size='sm' variant='outline' className='ml-3' asChild>
-            <Link to='/dashboard/settings'>Create Organization</Link>
+            <Link to='/dashboard/settings?tab=organization'>Create Organization</Link>
           </Button>
         </div>
       )}
