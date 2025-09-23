@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Skip auth check on public auth pages to avoid redirect churn
         const isPublicAuthPage = (
+          path === '/' ||
           path.startsWith('/login') ||
           path.startsWith('/register') ||
           path.startsWith('/verify-email') ||
