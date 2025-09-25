@@ -1,0 +1,44 @@
+name: Sync to Personal Repo
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}   # allow manual run
+  # optional: keep forks in sync too
+  # schedule:
+  #   - cron: "0 */6 * * *" # every 6 hours
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed to push all branches/tags
+
+      - name: Set up git identity
+        run: |
+          git config user.name "leadbox-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Add destination remote (personal)
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          # Use token in the URL so we can push
+          git remote add personal https://x-access-token:${SYNC_TOKEN}@github.com/chizobavictory/leadsbox-webapp.git
+          git remote -v
+
+      - name: Push branches
+        run: |
+          # Push all local branches to personal (create/update; prune deleted)
+          for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
+            git push --force --prune personal "$branch:$branch"
+          done
+
+      - name: Push tags
+        run: |
+          git push --force --tags personal
