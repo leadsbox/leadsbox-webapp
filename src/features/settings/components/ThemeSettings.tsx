@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Monitor, Moon, Sun, Palette, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Label } from '../../../components/ui/label';
@@ -10,20 +10,6 @@ import type { Theme } from '../../../context/ThemeContext';
 
 export const ThemeSettings: React.FC = () => {
   const { theme, setTheme, accentColor, setAccentColor, accentColors } = useTheme();
-
-  // Update CSS variables when accent color changes
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--primary', accentColor.hsl);
-    root.style.setProperty('--accent', accentColor.hsl);
-    root.style.setProperty('--brand', accentColor.hsl);
-    root.style.setProperty('--ring', accentColor.hsl);
-    
-    // Update hover state (slightly darker)
-    const [h, s, l] = accentColor.hsl.split(' ').map(Number);
-    const hoverHsl = `${h} ${s}% ${Math.max(0, l - 5)}%`;
-    root.style.setProperty('--primary-hover', hoverHsl);
-  }, [accentColor]);
 
   return (
     <div className="space-y-6">

@@ -93,10 +93,10 @@ function useEmailCapture() {
 const Index = () => {
   useDocumentMeta(META);
   const { email, setEmail, role, setRole, handle, setHandle, state, submit } = useEmailCapture();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const ThemeIcon = useMemo(() => (theme === 'dark' ? Sun : Moon), [theme]);
+  const ThemeIcon = useMemo(() => (resolvedTheme === 'dark' ? Sun : Moon), [resolvedTheme]);
 
   return (
     <div className='min-h-screen w-full bg-background text-foreground'>
@@ -126,7 +126,12 @@ const Index = () => {
           </nav>
 
           <div className='flex items-center gap-2 sm:gap-3'>
-            <Button variant='ghost' size='icon' aria-label='Toggle theme' onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <Button
+              variant='ghost'
+              size='icon'
+              aria-label='Toggle theme'
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            >
               <ThemeIcon className='h-4 w-4' />
             </Button>
             <Button variant='ghost' size='sm' asChild>

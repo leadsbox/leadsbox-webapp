@@ -5,8 +5,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { Moon, Sun } from 'lucide-react';
 
 const PrivacyPolicy: React.FC = () => {
-  const { theme, setTheme } = useTheme();
-  const ThemeIcon = theme === 'dark' ? Sun : Moon;
+  const { resolvedTheme, setTheme } = useTheme();
+  const ThemeIcon = resolvedTheme === 'dark' ? Sun : Moon;
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
@@ -28,7 +28,12 @@ const PrivacyPolicy: React.FC = () => {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Toggle theme"
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            >
               <ThemeIcon className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" asChild>

@@ -8,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider, type Theme } from './context/ThemeContext';
+import { useTheme } from './context/ThemeContext';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -40,47 +40,11 @@ import AutomationsPage from './features/automations/AutomationsPage';
 
 const queryClient = new QueryClient();
 
-// Initialize theme before app renders
-const initializeTheme = () => {
-  // Set initial theme variables
-  const root = document.documentElement;
-  const savedTheme = (localStorage.getItem('theme') as Theme) || 'system';
-  const savedAccent = localStorage.getItem('accentColor');
-  const accent = savedAccent
-    ? JSON.parse(savedAccent)
-    : {
-        name: 'Blue',
-        value: 'blue',
-        hsl: '221 83% 53%',
-      };
+const App = () => {
+  const { resolvedTheme } = useTheme();
 
-  // Apply theme
-  root.classList.remove('light', 'dark');
-  if (savedTheme === 'system') {
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    root.classList.add(systemTheme);
-  } else {
-    root.classList.add(savedTheme);
-  }
-
-  // Apply accent color
-  root.style.setProperty('--primary', accent.hsl);
-  root.style.setProperty('--accent', accent.hsl);
-  root.style.setProperty('--brand', accent.hsl);
-  root.style.setProperty('--ring', accent.hsl);
-
-  // Set hover state
-  const [h, s, l] = accent.hsl.split(' ').map(Number);
-  const hoverHsl = `${h} ${s}% ${Math.max(0, l - 5)}%`;
-  root.style.setProperty('--primary-hover', hoverHsl);
-};
-
-// Initialize theme before rendering the app
-initializeTheme();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -95,7 +59,7 @@ const App = () => (
             pauseOnFocusLoss
             draggable
             pauseOnHover
-            theme='dark'
+            theme={resolvedTheme}
           />
           <BrowserRouter>
             <Routes>
@@ -143,8 +107,8 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+};
 
 export default App;
