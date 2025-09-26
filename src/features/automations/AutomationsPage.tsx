@@ -270,11 +270,11 @@ const AutomationsPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value='follow-ups' className='space-y-6 pt-4'>
-          <Card>
-            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+          <Card className='border-muted'>
+            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-2'>
               <div>
-                <CardTitle>Follow-up workflows</CardTitle>
-                <CardDescription>Stay top-of-mind with timed nudges and proactive reminders.</CardDescription>
+                <CardTitle className='text-lg'>Follow-up workflows</CardTitle>
+                <CardDescription className='text-muted-foreground'>Stay top-of-mind with timed nudges and proactive reminders.</CardDescription>
               </div>
               <Button
                 size='sm'
@@ -294,14 +294,16 @@ const AutomationsPage: React.FC = () => {
                 New workflow
               </Button>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className='h-[340px] pr-4'>
+            <CardContent className='pt-4'>
+              <ScrollArea className='max-h-[400px] pr-2'>
                 <div className='space-y-4'>
                   {/* Inline Follow-up Form */}
                   {(editingFollowup || editingFollowupDraft.message !== undefined) && (
                     <Card className='mb-6 border-muted'>
                       <CardHeader className='pb-2'>
-                        <CardTitle className='text-lg font-semibold'>{editingFollowup && editingFollowup.id ? 'Edit Workflow' : 'New Workflow'}</CardTitle>
+                        <CardTitle className='text-lg font-semibold'>
+                          {editingFollowup && editingFollowup.id ? 'Edit Workflow' : 'New Workflow'}
+                        </CardTitle>
                         <CardDescription className='text-muted-foreground'>Set up a follow-up workflow for your team.</CardDescription>
                       </CardHeader>
                       <CardContent>
