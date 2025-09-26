@@ -1,6 +1,13 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { Select } from '../../components/ui/select';
+import type { Template } from '@/types';
+import type { FollowUpRule as FollowUp } from '@/types';
+
+// ...existing imports...
+
+// Remove broken duplicate InboxPage definition and move all template/followup logic into the main component below.
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon } from '@/components/brand-icons';
@@ -30,10 +37,94 @@ import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
 
 const InboxPage: React.FC = () => {
+  // --- Templates state ---
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [templateVars, setTemplateVars] = useState<Record<string, string>>({});
+  const [showTemplateVars, setShowTemplateVars] = useState(false);
+
+  // --- Follow-ups state ---
+  const [followups, setFollowups] = useState<FollowUp[]>([]);
+  const [loadingFollowups, setLoadingFollowups] = useState(false);
+
+  // Fetch templates on mount
+  useEffect(() => {
+    client
+      .get('/api/templates')
+      .then((res) => setTemplates(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Fetch follow-ups when thread changes (must be after selectedThread is declared)
+
+  // Handle template selection
+  const handleTemplateSelect = (id: string) => {
+    setSelectedTemplate(id);
+    const t = templates.find((t) => t.id === id);
+    if (t) {
+      // Reset variable fields
+      const vars: Record<string, string> = {};
+      t.variables.forEach((v) => {
+        vars[v] = '';
+      });
+      setTemplateVars(vars);
+      setShowTemplateVars(true);
+    } else {
+      setShowTemplateVars(false);
+    }
+  };
+
+  // Send template message
+  const handleSendTemplate = async () => {
+    if (!selectedThread || !selectedTemplate) return;
+    await client.post('/api/messages/send-template', {
+      threadId: selectedThread.id,
+      templateId: selectedTemplate,
+      variables: templateVars,
+    });
+    setSelectedTemplate('');
+    setShowTemplateVars(false);
+    setTemplateVars({});
+    // Optionally refresh messages
+    if (selectedThread) fetchMessages(selectedThread.id);
+  };
+
+  // Follow-up actions
+  const scheduleFollowup = async (hours: number) => {
+    if (!selectedThread) return;
+    const runAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    await client.post('/api/followups', {
+      conversationId: selectedThread.id,
+      provider: 'WHATSAPP',
+      scheduledTime: runAt,
+      userId: '', // Fill from auth context if needed
+      organizationId: '', // Fill from auth context if needed
+    });
+    // Refresh followups
+    const res = await client.get(`/api/followups/conversation/${selectedThread.id}`);
+    setFollowups(res.data.followUps || []);
+  };
+  const cancelFollowup = async (id: string) => {
+    await client.post(`/api/followups/${id}/cancel`);
+    if (selectedThread) {
+      const res = await client.get(`/api/followups/conversation/${selectedThread.id}`);
+      setFollowups(res.data.followUps || []);
+    }
+  };
   const navigate = useNavigate();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+
+  // Fetch follow-ups when thread changes
+  useEffect(() => {
+    if (!selectedThread) return;
+    setLoadingFollowups(true);
+    client
+      .get(`/api/followups/conversation/${selectedThread.id}`)
+      .then((res) => setFollowups(res.data.followUps || []))
+      .finally(() => setLoadingFollowups(false));
+  }, [selectedThread]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1290,6 +1381,39 @@ const InboxPage: React.FC = () => {
                 {socketError && <div className='text-xs text-red-500'>Connection error: {socketError}</div>}
               </div>
 
+              {/* --- Message Template UI --- */}
+              <div className='flex flex-col gap-2 mb-2'>
+                <div className='flex items-center gap-2'>
+                  <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+                    <option value=''>Insert Template…</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </Select>
+                  {showTemplateVars && (
+                    <Button size='sm' onClick={handleSendTemplate} disabled={Object.values(templateVars).some((v) => !v)}>
+                      Send Template
+                    </Button>
+                  )}
+                </div>
+                {showTemplateVars && (
+                  <div className='flex flex-wrap gap-2'>
+                    {Object.keys(templateVars).map((v) => (
+                      <Input
+                        key={v}
+                        placeholder={v}
+                        value={templateVars[v]}
+                        onChange={(e) => setTemplateVars({ ...templateVars, [v]: e.target.value })}
+                        className='w-32'
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* --- End Message Template UI --- */}
+
               <div className='flex items-center space-x-2'>
                 <Input
                   placeholder='Type your message...'
@@ -1310,6 +1434,38 @@ const InboxPage: React.FC = () => {
                 >
                   {isConnected ? '⚡ Send' : 'Send'}
                 </Button>
+              </div>
+              {/* --- Follow-up Panel --- */}
+              <div className='mt-4 border-t pt-3'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <span className='font-medium'>Follow-ups:</span>
+                  <Button size='sm' onClick={() => scheduleFollowup(2)}>
+                    2h Nudge
+                  </Button>
+                  <Button size='sm' onClick={() => scheduleFollowup(24)}>
+                    24h Nudge
+                  </Button>
+                </div>
+                {loadingFollowups ? (
+                  <div className='text-xs text-muted-foreground'>Loading follow-ups…</div>
+                ) : (
+                  <ul className='text-xs space-y-1'>
+                    {followups.map((f) => (
+                      <li key={f.id} className='flex items-center gap-2'>
+                        <span>
+                          {new Date(f.scheduledTime).toLocaleString()} [{f.status}]
+                        </span>
+                        {f.status === 'SCHEDULED' && (
+                          <Button size='sm' variant='outline' onClick={() => cancelFollowup(f.id)}>
+                            Cancel
+                          </Button>
+                        )}
+                        {f.message && <span className='italic text-muted-foreground ml-2'>{f.message}</span>}
+                      </li>
+                    ))}
+                    {followups.length === 0 && <li>No follow-ups scheduled.</li>}
+                  </ul>
+                )}
               </div>
             </div>
           </>

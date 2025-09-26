@@ -1,3 +1,26 @@
+// Message Template and Follow-up Rule types for automations
+export interface Template {
+  id: string;
+  name: string;
+  body: string;
+  variables: string[];
+}
+
+export type FollowUpStatus = 'SCHEDULED' | 'SENT' | 'CANCELLED' | 'FAILED';
+
+export interface FollowUpRule {
+  id: string;
+  conversationId: string;
+  provider: string;
+  scheduledTime: string;
+  status: FollowUpStatus;
+  message?: string;
+  userId: string;
+  organizationId: string;
+  leadId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 // LeadsBox Dashboard Types
 
 export interface User {

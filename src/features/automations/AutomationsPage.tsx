@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Clock, MessageSquare, Sparkles, Wand2, Pencil, Trash2, Copy, Power } from 'lucide-react';
-import TemplatesTab from '@/features/settings/tabs/TemplatesTab';
+import { useEffect } from 'react';
+import client from '@/api/client';
+import type { Template, FollowUpRule } from '@/types';
 import TagsTab from '@/features/settings/tabs/TagsTab';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
@@ -15,64 +17,36 @@ import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './buil
 import { validateFlow } from './builder/serializers';
 import { toast } from 'react-toastify';
 
-const quickReplies = [
-  {
-    title: 'Pricing',
-    description: 'Share your latest price list or packages in one tap.',
-    usage: 'Used 42 times this month',
-  },
-  {
-    title: 'Location & Directions',
-    description: 'Send customers directions or pickup details instantly.',
-    usage: 'Used 28 times this month',
-  },
-  {
-    title: 'Thank You',
-    description: 'Close conversations with a professional thank you note.',
-    usage: 'Used 16 times this month',
-  },
-];
-
-const autoResponses = [
-  {
-    title: 'First-contact auto reply',
-    description: 'Welcome new leads and let them know someone is on it.',
-    template: '“Thanks for reaching out! A teammate will reply shortly.”',
-    enabled: true,
-  },
-  {
-    title: 'After-hours responder',
-    description: 'Set expectations when messages come in late at night.',
-    template: '“We’re closed right now, but you’ll hear from us tomorrow morning.”',
-    enabled: false,
-  },
-];
-
-const followUps = [
-  {
-    title: '24 hour check-in',
-    description: 'Remind hot leads that haven’t answered after a day.',
-    trigger: 'If no reply in 24 hours',
-    action: 'Send reminder message',
-  },
-  {
-    title: 'Quote follow-up',
-    description: 'Circle back on proposals that were sent but unanswered.',
-    trigger: '3 days after quote sent',
-    action: 'Notify owner + schedule nudge',
-  },
-  {
-    title: 'Dormant lead revive',
-    description: 'Re-engage leads that have been quiet for two weeks.',
-    trigger: '14 days without activity',
-    action: 'Send “still interested?” template',
-  },
-];
+// Removed unused quickReplies and followUps arrays
 
 const AutomationsPage: React.FC = () => {
   const [flows, setFlows] = useLocalStorage<AutomationFlow[]>(FLOWS_COLLECTION_KEY, []);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState<AutomationFlow | undefined>();
+  // --- Templates ---
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [newTemplate, setNewTemplate] = useState<{ name: string; body: string; variables: string }>({ name: '', body: '', variables: '' });
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  // --- Follow-ups ---
+  const [followupRules, setFollowupRules] = useState<FollowUpRule[]>([]);
+  const [editingFollowup, setEditingFollowup] = useState<FollowUpRule | null>(null);
+  // Local draft for modal editing (since FollowUpRule has required fields)
+  const [editingFollowupDraft, setEditingFollowupDraft] = useState<Partial<FollowUpRule>>({});
+
+  // Fetch templates
+  useEffect(() => {
+    client
+      .get('/api/templates')
+      .then((res) => setTemplates(res.data))
+      .catch(() => {});
+  }, []);
+  // Fetch follow-up rules (replace with your endpoint if needed)
+  useEffect(() => {
+    client
+      .get('/api/followup-rules')
+      .then((res) => setFollowupRules(res.data))
+      .catch(() => {});
+  }, []);
 
   const openBuilder = (flow?: AutomationFlow) => {
     setEditingFlow(flow ?? { ...createDefaultFlow(), name: 'Untitled automation' });
@@ -82,9 +56,7 @@ const AutomationsPage: React.FC = () => {
   const handleSaveFlow = (saved: AutomationFlow) => {
     setFlows((current) => {
       const exists = current.some((flow) => flow.id === saved.id);
-      const next = exists
-        ? current.map((flow) => (flow.id === saved.id ? saved : flow))
-        : [...current, saved];
+      const next = exists ? current.map((flow) => (flow.id === saved.id ? saved : flow)) : [...current, saved];
       return next;
     });
   };
@@ -117,9 +89,7 @@ const AutomationsPage: React.FC = () => {
     }
     setFlows((current) =>
       current.map((candidate) =>
-        candidate.id === flow.id
-          ? { ...candidate, status: flow.status === 'ON' ? 'OFF' : 'ON', updatedAt: new Date().toISOString() }
-          : candidate
+        candidate.id === flow.id ? { ...candidate, status: flow.status === 'ON' ? 'OFF' : 'ON', updatedAt: new Date().toISOString() } : candidate
       )
     );
   };
@@ -139,7 +109,7 @@ const AutomationsPage: React.FC = () => {
         </div>
         <div className='flex gap-2'>
           <Button variant='outline'>View activity</Button>
-          <Button onClick={() => openBuilder()}> 
+          <Button onClick={() => openBuilder()}>
             <Sparkles className='mr-2 h-4 w-4' />
             Build automation
           </Button>
@@ -160,55 +130,95 @@ const AutomationsPage: React.FC = () => {
                 <CardTitle>Quick reply library</CardTitle>
                 <CardDescription>Save your most common answers so the team replies in seconds.</CardDescription>
               </div>
-              <Button size='sm'>New template</Button>
+              <Button size='sm' onClick={() => setEditingTemplate({ id: '', name: '', body: '', variables: [] })}>
+                New template
+              </Button>
             </CardHeader>
             <CardContent>
               <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
-                {quickReplies.map((item) => (
-                  <Card key={item.title} className='border-muted'>
+                {templates.map((t) => (
+                  <Card key={t.id} className='border-muted'>
                     <CardHeader className='pb-2'>
                       <CardTitle className='flex items-center justify-between text-lg'>
-                        {item.title}
-                        <Badge variant='outline' className='text-xs font-medium'>
-                          FAQ
-                        </Badge>
+                        {t.name}
+                        <span className='text-xs text-muted-foreground'>{t.variables.join(', ')}</span>
                       </CardTitle>
-                      <CardDescription>{item.description}</CardDescription>
+                      <CardDescription>{t.body}</CardDescription>
                     </CardHeader>
-                    <CardContent className='pt-4 text-sm text-muted-foreground'>{item.usage}</CardContent>
+                    <CardContent className='pt-4 flex gap-2'>
+                      <Button size='sm' onClick={() => setEditingTemplate(t)}>
+                        Edit
+                      </Button>
+                      <Button
+                        size='sm'
+                        variant='destructive'
+                        onClick={async () => {
+                          await client.delete(`/api/templates/${t.id}`);
+                          setTemplates(templates.filter((x) => x.id !== t.id));
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </CardContent>
                   </Card>
                 ))}
               </div>
+              {/* Template Edit/Create Modal */}
+              {editingTemplate && (
+                <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+                  <div className='bg-white p-6 rounded shadow-lg w-full max-w-md'>
+                    <h3 className='font-bold mb-2'>{editingTemplate.id ? 'Edit Template' : 'New Template'}</h3>
+                    <input
+                      className='border p-2 mb-2 w-full'
+                      placeholder='Name'
+                      value={editingTemplate.name}
+                      onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                    />
+                    <textarea
+                      className='border p-2 mb-2 w-full'
+                      placeholder='Body'
+                      value={editingTemplate.body}
+                      onChange={(e) => setEditingTemplate({ ...editingTemplate, body: e.target.value })}
+                    />
+                    <input
+                      className='border p-2 mb-2 w-full'
+                      placeholder='Variables (comma separated)'
+                      value={editingTemplate.variables.join(',')}
+                      onChange={(e) =>
+                        setEditingTemplate({
+                          ...editingTemplate,
+                          variables: e.target.value
+                            .split(',')
+                            .map((v) => v.trim())
+                            .filter(Boolean),
+                        })
+                      }
+                    />
+                    <div className='flex gap-2'>
+                      <Button
+                        size='sm'
+                        onClick={async () => {
+                          if (editingTemplate.id) {
+                            await client.put(`/api/templates/${editingTemplate.id}`, editingTemplate);
+                            setTemplates(templates.map((t) => (t.id === editingTemplate.id ? editingTemplate : t)));
+                          } else {
+                            const res = await client.post('/api/templates', editingTemplate);
+                            setTemplates([...templates, res.data]);
+                          }
+                          setEditingTemplate(null);
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button size='sm' variant='outline' onClick={() => setEditingTemplate(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <CardTitle>Template packs</CardTitle>
-                <CardDescription>Bundle replies for pricing, onboarding, support, and more.</CardDescription>
-              </div>
-              <Button size='sm' variant='outline'>
-                Explore packs
-              </Button>
-            </CardHeader>
-            <CardContent className='grid gap-4 md:grid-cols-2'>
-              <Card className='border-muted'>
-                <CardHeader>
-                  <CardTitle>Sales starter kit</CardTitle>
-                  <CardDescription>All the scripts you need for product questions and objections.</CardDescription>
-                </CardHeader>
-              </Card>
-              <Card className='border-muted'>
-                <CardHeader>
-                  <CardTitle>Customer care pack</CardTitle>
-                  <CardDescription>Follow-ups, thank you notes, feedback requests, and more.</CardDescription>
-                </CardHeader>
-              </Card>
-            </CardContent>
-          </Card>
-
-          <TemplatesTab />
         </TabsContent>
 
         <TabsContent value='auto-responses' className='space-y-6 pt-4'>
@@ -221,28 +231,7 @@ const AutomationsPage: React.FC = () => {
               <Button size='sm'>Create auto-response</Button>
             </CardHeader>
             <CardContent className='space-y-4'>
-              {autoResponses.map((item) => (
-                <Card key={item.title} className='border-muted'>
-                  <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-                    <div>
-                      <CardTitle className='flex items-center gap-2 text-lg'>
-                        <MessageSquare className='h-4 w-4 text-primary' />
-                        {item.title}
-                      </CardTitle>
-                      <CardDescription>{item.description}</CardDescription>
-                    </div>
-                    <div className='flex items-center gap-2'>
-                      <Switch defaultChecked={item.enabled} />
-                      <span className='text-sm text-muted-foreground'>{item.enabled ? 'Enabled' : 'Disabled'}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <blockquote className='rounded-md border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground'>
-                      {item.template}
-                    </blockquote>
-                  </CardContent>
-                </Card>
-              ))}
+              {/* Auto-responses UI is placeholder, remove dead code. Implement real auto-response CRUD if needed. */}
             </CardContent>
           </Card>
 
@@ -281,38 +270,134 @@ const AutomationsPage: React.FC = () => {
                 <CardTitle>Follow-up workflows</CardTitle>
                 <CardDescription>Stay top-of-mind with timed nudges and proactive reminders.</CardDescription>
               </div>
-              <Button size='sm'>New workflow</Button>
+              <Button
+                size='sm'
+                onClick={() => {
+                  setEditingFollowupDraft({
+                    message: '',
+                    scheduledTime: '',
+                    status: 'SCHEDULED',
+                    provider: '',
+                    conversationId: '',
+                    userId: '',
+                    organizationId: '',
+                  });
+                  setEditingFollowup(null);
+                }}
+              >
+                New workflow
+              </Button>
             </CardHeader>
             <CardContent>
               <ScrollArea className='h-[340px] pr-4'>
                 <div className='space-y-4'>
-                  {followUps.map((item, index) => (
-                    <Card key={item.title} className='border-muted'>
+                  {followupRules.map((item, index) => (
+                    <Card key={item.id} className='border-muted'>
                       <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
                         <div>
-                          <CardTitle className='text-lg'>{item.title}</CardTitle>
-                          <CardDescription>{item.description}</CardDescription>
+                          <CardTitle className='text-lg'>Follow-up #{index + 1}</CardTitle>
+                          <CardDescription>{item.message || '(No message set)'}</CardDescription>
                         </div>
                         <Badge variant='outline' className='bg-primary/10 text-primary'>
-                          Workflow #{index + 1}
+                          {item.status}
                         </Badge>
                       </CardHeader>
                       <CardContent className='grid gap-4 md:grid-cols-2'>
                         <div className='rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground'>
                           <h4 className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <Clock className='h-4 w-4 text-primary' /> Trigger
+                            <Clock className='h-4 w-4 text-primary' /> Scheduled Time
                           </h4>
-                          <p className='mt-1'>{item.trigger}</p>
+                          <p className='mt-1'>{item.scheduledTime ? new Date(item.scheduledTime).toLocaleString() : '—'}</p>
                         </div>
                         <div className='rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground'>
                           <h4 className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <Calendar className='h-4 w-4 text-primary' /> Action
+                            <Calendar className='h-4 w-4 text-primary' /> Message
                           </h4>
-                          <p className='mt-1'>{item.action}</p>
+                          <p className='mt-1'>{item.message || '—'}</p>
+                        </div>
+                        <div className='flex gap-2'>
+                          <Button
+                            size='sm'
+                            onClick={() => {
+                              setEditingFollowup(item);
+                              setEditingFollowupDraft(item);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size='sm'
+                            variant='destructive'
+                            onClick={async () => {
+                              await client.delete(`/api/followup-rules/${item.id}`);
+                              setFollowupRules(followupRules.filter((x) => x.id !== item.id));
+                            }}
+                          >
+                            Delete
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+                  {/* Follow-up Edit/Create Modal */}
+                  {(editingFollowup || editingFollowupDraft.message !== undefined) && (
+                    <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+                      <div className='bg-white p-6 rounded shadow-lg w-full max-w-md'>
+                        <h3 className='font-bold mb-2'>{editingFollowup && editingFollowup.id ? 'Edit Workflow' : 'New Workflow'}</h3>
+                        <input
+                          className='border p-2 mb-2 w-full'
+                          placeholder='Message'
+                          value={editingFollowupDraft.message || ''}
+                          onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, message: e.target.value })}
+                        />
+                        <input
+                          className='border p-2 mb-2 w-full'
+                          placeholder='Scheduled Time (ISO)'
+                          value={editingFollowupDraft.scheduledTime || ''}
+                          onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, scheduledTime: e.target.value })}
+                        />
+                        <select
+                          className='border p-2 mb-2 w-full'
+                          value={editingFollowupDraft.status || 'SCHEDULED'}
+                          onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, status: e.target.value as FollowUpRule['status'] })}
+                        >
+                          <option value='SCHEDULED'>SCHEDULED</option>
+                          <option value='SENT'>SENT</option>
+                          <option value='CANCELLED'>CANCELLED</option>
+                          <option value='FAILED'>FAILED</option>
+                        </select>
+                        <div className='flex gap-2'>
+                          <Button
+                            size='sm'
+                            onClick={async () => {
+                              if (editingFollowup && editingFollowup.id) {
+                                const updated = { ...editingFollowup, ...editingFollowupDraft };
+                                await client.put(`/api/followup-rules/${editingFollowup.id}`, updated);
+                                setFollowupRules(followupRules.map((f) => (f.id === editingFollowup.id ? (updated as FollowUpRule) : f)));
+                              } else {
+                                const res = await client.post('/api/followup-rules', editingFollowupDraft);
+                                setFollowupRules([...followupRules, res.data]);
+                              }
+                              setEditingFollowup(null);
+                              setEditingFollowupDraft({});
+                            }}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size='sm'
+                            variant='outline'
+                            onClick={() => {
+                              setEditingFollowup(null);
+                              setEditingFollowupDraft({});
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -373,11 +458,7 @@ const AutomationsPage: React.FC = () => {
                       </CardDescription>
                     </div>
                     <div className='flex items-center gap-2'>
-                      <Switch
-                        checked={flow.status === 'ON'}
-                        onCheckedChange={() => handleToggle(flow)}
-                        aria-label='Toggle automation'
-                      />
+                      <Switch checked={flow.status === 'ON'} onCheckedChange={() => handleToggle(flow)} aria-label='Toggle automation' />
                       <Badge variant='secondary' className='hidden sm:inline-flex items-center gap-1'>
                         <Power className='h-3 w-3' /> {flow.status === 'ON' ? 'Live' : 'Off'}
                       </Badge>
@@ -395,7 +476,12 @@ const AutomationsPage: React.FC = () => {
                       <Button size='sm' variant='outline' className='gap-1' onClick={() => handleDuplicate(flow)}>
                         <Copy className='h-3.5 w-3.5' /> Duplicate
                       </Button>
-                      <Button size='sm' variant='ghost' className='gap-1 text-destructive hover:text-destructive' onClick={() => handleDelete(flow.id)}>
+                      <Button
+                        size='sm'
+                        variant='ghost'
+                        className='gap-1 text-destructive hover:text-destructive'
+                        onClick={() => handleDelete(flow.id)}
+                      >
                         <Trash2 className='h-3.5 w-3.5' /> Delete
                       </Button>
                     </div>
@@ -432,12 +518,7 @@ const AutomationsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <NewAutomationModal
-        open={builderOpen}
-        onOpenChange={setBuilderOpen}
-        initialFlow={editingFlow}
-        onSave={handleSaveFlow}
-      />
+      <NewAutomationModal open={builderOpen} onOpenChange={setBuilderOpen} initialFlow={editingFlow} onSave={handleSaveFlow} />
     </div>
   );
 };
