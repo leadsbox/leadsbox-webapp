@@ -297,6 +297,71 @@ const AutomationsPage: React.FC = () => {
             <CardContent>
               <ScrollArea className='h-[340px] pr-4'>
                 <div className='space-y-4'>
+                  {/* Inline Follow-up Form */}
+                  {(editingFollowup || editingFollowupDraft.message !== undefined) && (
+                    <Card className='mb-6 border-muted'>
+                      <CardHeader className='pb-2'>
+                        <CardTitle className='text-lg font-semibold'>{editingFollowup && editingFollowup.id ? 'Edit Workflow' : 'New Workflow'}</CardTitle>
+                        <CardDescription className='text-muted-foreground'>Set up a follow-up workflow for your team.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className='space-y-3'>
+                          <input
+                            className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                            value={editingFollowupDraft.message || ''}
+                            onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, message: e.target.value })}
+                          />
+                          <input
+                            className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                            placeholder='Scheduled Time (ISO)'
+                            value={editingFollowupDraft.scheduledTime || ''}
+                            onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, scheduledTime: e.target.value })}
+                          />
+                          <select
+                            className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                            value={editingFollowupDraft.status || 'SCHEDULED'}
+                            onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, status: e.target.value as FollowUpRule['status'] })}
+                          >
+                            <option value='SCHEDULED'>SCHEDULED</option>
+                            <option value='SENT'>SENT</option>
+                            <option value='CANCELLED'>CANCELLED</option>
+                            <option value='FAILED'>FAILED</option>
+                          </select>
+                          <div className='flex gap-2 pt-2'>
+                            <Button
+                              size='sm'
+                              variant='default'
+                              onClick={async () => {
+                                if (editingFollowup && editingFollowup.id) {
+                                  const updated = { ...editingFollowup, ...editingFollowupDraft };
+                                  await client.put(`/api/followup-rules/${editingFollowup.id}`, updated);
+                                  setFollowupRules(followupRules.map((f) => (f.id === editingFollowup.id ? (updated as FollowUpRule) : f)));
+                                } else {
+                                  const res = await client.post('/api/followup-rules', editingFollowupDraft);
+                                  setFollowupRules([...followupRules, res.data]);
+                                }
+                                setEditingFollowup(null);
+                                setEditingFollowupDraft({});
+                              }}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() => {
+                                setEditingFollowup(null);
+                                setEditingFollowupDraft({});
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {/* Existing follow-ups list */}
                   {followupRules.map((item, index) => (
                     <Card key={item.id} className='border-muted'>
                       <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
@@ -345,65 +410,6 @@ const AutomationsPage: React.FC = () => {
                       </CardContent>
                     </Card>
                   ))}
-                  {/* Follow-up Edit/Create Modal */}
-                  {(editingFollowup || editingFollowupDraft.message !== undefined) && (
-                    <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
-                      <div className='bg-white p-6 rounded shadow-lg w-full max-w-md'>
-                        <h3 className='font-bold mb-2'>{editingFollowup && editingFollowup.id ? 'Edit Workflow' : 'New Workflow'}</h3>
-                        <input
-                          className='border p-2 mb-2 w-full'
-                          placeholder='Message'
-                          value={editingFollowupDraft.message || ''}
-                          onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, message: e.target.value })}
-                        />
-                        <input
-                          className='border p-2 mb-2 w-full'
-                          placeholder='Scheduled Time (ISO)'
-                          value={editingFollowupDraft.scheduledTime || ''}
-                          onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, scheduledTime: e.target.value })}
-                        />
-                        <select
-                          className='border p-2 mb-2 w-full'
-                          value={editingFollowupDraft.status || 'SCHEDULED'}
-                          onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, status: e.target.value as FollowUpRule['status'] })}
-                        >
-                          <option value='SCHEDULED'>SCHEDULED</option>
-                          <option value='SENT'>SENT</option>
-                          <option value='CANCELLED'>CANCELLED</option>
-                          <option value='FAILED'>FAILED</option>
-                        </select>
-                        <div className='flex gap-2'>
-                          <Button
-                            size='sm'
-                            onClick={async () => {
-                              if (editingFollowup && editingFollowup.id) {
-                                const updated = { ...editingFollowup, ...editingFollowupDraft };
-                                await client.put(`/api/followup-rules/${editingFollowup.id}`, updated);
-                                setFollowupRules(followupRules.map((f) => (f.id === editingFollowup.id ? (updated as FollowUpRule) : f)));
-                              } else {
-                                const res = await client.post('/api/followup-rules', editingFollowupDraft);
-                                setFollowupRules([...followupRules, res.data]);
-                              }
-                              setEditingFollowup(null);
-                              setEditingFollowupDraft({});
-                            }}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size='sm'
-                            variant='outline'
-                            onClick={() => {
-                              setEditingFollowup(null);
-                              setEditingFollowupDraft({});
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </ScrollArea>
             </CardContent>
