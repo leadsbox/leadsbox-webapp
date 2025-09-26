@@ -135,6 +135,66 @@ const AutomationsPage: React.FC = () => {
               </Button>
             </CardHeader>
             <CardContent>
+              {/* Show create/edit card inline when editingTemplate is set and id is empty (new template) */}
+              {editingTemplate && editingTemplate.id === '' && (
+                <Card className='mb-6 border-muted'>
+                  <CardHeader className='pb-2'>
+                    <CardTitle className='text-lg font-semibold'>New Template</CardTitle>
+                    <CardDescription className='text-muted-foreground'>Create a quick reply template for your team.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='space-y-3'>
+                      <input
+                        className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                        placeholder='Name'
+                        value={editingTemplate.name}
+                        onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                      />
+                      <textarea
+                        className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm resize-none'
+                        placeholder='Body'
+                        rows={3}
+                        value={editingTemplate.body}
+                        onChange={(e) => setEditingTemplate({ ...editingTemplate, body: e.target.value })}
+                      />
+                      <input
+                        className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                        placeholder='Variables (comma separated)'
+                        value={editingTemplate.variables.join(',')}
+                        onChange={(e) =>
+                          setEditingTemplate({
+                            ...editingTemplate,
+                            variables: e.target.value
+                              .split(',')
+                              .map((v) => v.trim())
+                              .filter(Boolean),
+                          })
+                        }
+                      />
+                      <div className='flex gap-2 pt-2'>
+                        <Button
+                          size='sm'
+                          variant='default'
+                          onClick={async () => {
+                            if (editingTemplate.name && editingTemplate.body) {
+                              const res = await client.post('/api/templates', editingTemplate);
+                              setTemplates([...templates, res.data]);
+                              setEditingTemplate(null);
+                            } else {
+                              toast.error('Name and body are required');
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button size='sm' variant='outline' onClick={() => setEditingTemplate(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
                 {templates.map((t) => (
                   <Card key={t.id} className='border-muted'>
@@ -163,60 +223,6 @@ const AutomationsPage: React.FC = () => {
                   </Card>
                 ))}
               </div>
-              {/* Template Edit/Create Modal */}
-              {editingTemplate && (
-                <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
-                  <div className='bg-white p-6 rounded shadow-lg w-full max-w-md'>
-                    <h3 className='font-bold mb-2'>{editingTemplate.id ? 'Edit Template' : 'New Template'}</h3>
-                    <input
-                      className='border p-2 mb-2 w-full'
-                      placeholder='Name'
-                      value={editingTemplate.name}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                    />
-                    <textarea
-                      className='border p-2 mb-2 w-full'
-                      placeholder='Body'
-                      value={editingTemplate.body}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, body: e.target.value })}
-                    />
-                    <input
-                      className='border p-2 mb-2 w-full'
-                      placeholder='Variables (comma separated)'
-                      value={editingTemplate.variables.join(',')}
-                      onChange={(e) =>
-                        setEditingTemplate({
-                          ...editingTemplate,
-                          variables: e.target.value
-                            .split(',')
-                            .map((v) => v.trim())
-                            .filter(Boolean),
-                        })
-                      }
-                    />
-                    <div className='flex gap-2'>
-                      <Button
-                        size='sm'
-                        onClick={async () => {
-                          if (editingTemplate.id) {
-                            await client.put(`/api/templates/${editingTemplate.id}`, editingTemplate);
-                            setTemplates(templates.map((t) => (t.id === editingTemplate.id ? editingTemplate : t)));
-                          } else {
-                            const res = await client.post('/api/templates', editingTemplate);
-                            setTemplates([...templates, res.data]);
-                          }
-                          setEditingTemplate(null);
-                        }}
-                      >
-                        Save
-                      </Button>
-                      <Button size='sm' variant='outline' onClick={() => setEditingTemplate(null)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
