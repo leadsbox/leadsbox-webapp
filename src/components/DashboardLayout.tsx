@@ -200,14 +200,15 @@ export const DashboardLayout: React.FC = () => {
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    'flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    'relative flex items-center rounded-[var(--radius-sm)] py-2.5 text-sm font-medium transition-colors',
+                    sidebarCollapsed ? 'justify-center px-0' : 'px-3',
                     'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground'
                   )}
                   aria-current={isActive ? 'page' : undefined}
                   title={sidebarCollapsed ? item.title : undefined}
                 >
-                  <item.icon className='h-5 w-5 flex-shrink-0' />
+                  <item.icon className={cn('h-5 w-5 flex-shrink-0', sidebarCollapsed ? '' : '')} />
 
                   {!sidebarCollapsed && (
                     <>
@@ -298,14 +299,14 @@ export const DashboardLayout: React.FC = () => {
               {sidebarItems.map((item) => {
                 const isActive = location.pathname.startsWith(item.href);
                 return (
-                  <NavLink
-                    key={item.href}
-                    to={item.href}
-                    className={cn(
-                      'flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                      'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                      isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground'
-                    )}
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    'flex items-center rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors',
+                    'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground'
+                  )}
                   >
                     <item.icon className='h-5 w-5 flex-shrink-0' />
                     <span className='ml-3 flex-1'>{item.title}</span>
