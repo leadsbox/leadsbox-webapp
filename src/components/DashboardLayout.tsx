@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { MessageSquare, Users, Zap, CheckSquare, BarChart3, Settings, ChevronLeft, Inbox, Target, Calendar, FileText, Sparkles } from 'lucide-react';
+import { MessageSquare, Users, Zap, CheckSquare, BarChart3, Settings, ChevronLeft, Inbox, Target, Calendar, FileText, Sparkles, Home } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -18,6 +18,12 @@ interface SidebarItem {
 }
 
 const sidebarItems: SidebarItem[] = [
+  {
+    title: 'Home',
+    href: '/dashboard/home',
+    icon: Home,
+    description: 'Command center overview',
+  },
   {
     title: 'Inbox',
     href: '/dashboard/inbox',

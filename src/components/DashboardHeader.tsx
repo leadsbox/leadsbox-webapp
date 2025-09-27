@@ -18,6 +18,7 @@ import {
   Check,
   PlusCircle,
   Sparkles,
+  Home,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -95,6 +96,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
   const formattedDisplayName = formatName(displayName);
 
   const navigationItems = [
+    { path: '/dashboard/home', label: 'Home', icon: Home },
     { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: 12 },
     { path: '/dashboard/leads', label: 'Leads', icon: Users },
     { path: '/dashboard/pipeline', label: 'Pipeline', icon: Zap },
@@ -126,9 +128,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
       {user && user.emailVerified === false && (
         <div className='w-full bg-amber-50 text-amber-800 text-xs sm:text-sm px-3 py-2 rounded-b-md flex items-center justify-between border-b border-amber-200'>
           <span>Your email is not verified. Please check your inbox.</span>
-          <Button size='sm' variant='outline' onClick={resendVerification} className='ml-3'>
-            Resend link
-          </Button>
+              <Button size='sm' variant='outline' onClick={resendVerification} className='ml-3'>
+                Resend link
+              </Button>
         </div>
       )}
       {user && !orgId && (
@@ -159,7 +161,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant='ghost' className='gap-2 px-3'>
-                <Link to='/dashboard' className='w-8 h-8 rounded-full overflow-hidden flex-shrink-0'>
+                <Link to='/dashboard/home' className='w-8 h-8 rounded-full overflow-hidden flex-shrink-0'>
                   <CustomAvatar src={userAvatar || undefined} name={formattedDisplayName} size='md' className='w-full h-full' />
                 </Link>
                 <div className='text-left hidden sm:block'>
@@ -173,7 +175,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
               <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className='p-0'>
-                <Link to='/dashboard' className='flex-1 flex items-center justify-between p-2'>
+                <Link to='/dashboard/home' className='flex-1 flex items-center justify-between p-2'>
                   <div className='flex items-center gap-2'>
                     <div className='w-8 h-8 p-1 rounded-sm flex items-center justify-center'>
                       <CustomAvatar src={userAvatar || undefined} name={formattedDisplayName} size='sm' className='w-full h-full' />
