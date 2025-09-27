@@ -41,6 +41,7 @@ import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { toast } from '../../hooks/use-toast';
+import { Skeleton } from '../../components/ui/skeleton';
 
 // Backend lead type
 interface BackendLead {
@@ -58,6 +59,7 @@ const LeadsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<Stage | 'ALL'>('ALL');
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const labelToStage = (label?: string): Stage => {
@@ -103,6 +105,7 @@ const LeadsPage: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
+        setIsLoading(true);
         const resp = await client.get(endpoints.leads);
         const list: BackendLead[] = resp?.data?.data?.leads || resp?.data || [];
         const mapped: Lead[] = list.map((l: BackendLead) => ({
@@ -129,6 +132,8 @@ const LeadsPage: React.FC = () => {
       } catch (e) {
         console.error('Failed to load leads', e);
         setLeads([]);
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, []);
@@ -275,48 +280,66 @@ const LeadsPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{leads.length}</div>
-            <p className='text-xs text-muted-foreground'>+12% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium'>Qualified</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{leads.filter((l) => l.stage === 'QUALIFIED').length}</div>
-            <p className='text-xs text-muted-foreground'>+8% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>24.5%</div>
-            <p className='text-xs text-muted-foreground'>+2.1% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium'>Active Leads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{filteredLeads.length}</div>
-            <p className='text-xs text-muted-foreground'>Based on current filters</p>
-          </CardContent>
-        </Card>
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <Card key={`lead-stat-skeleton-${index}`} className='h-full'>
+                <CardHeader className='pb-2 space-y-2'>
+                  <Skeleton className='h-4 w-24' />
+                </CardHeader>
+                <CardContent className='space-y-2'>
+                  <Skeleton className='h-7 w-16' />
+                  <Skeleton className='h-3 w-32' />
+                </CardContent>
+              </Card>
+            ))
+          : (
+              <>
+                <Card>
+                  <CardHeader className='pb-2'>
+                    <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>{leads.length}</div>
+                    <p className='text-xs text-muted-foreground'>+12% from last month</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className='pb-2'>
+                    <CardTitle className='text-sm font-medium'>Qualified</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>{leads.filter((l) => l.stage === 'QUALIFIED').length}</div>
+                    <p className='text-xs text-muted-foreground'>+8% from last month</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className='pb-2'>
+                    <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>24.5%</div>
+                    <p className='text-xs text-muted-foreground'>+2.1% from last month</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className='pb-2'>
+                    <CardTitle className='text-sm font-medium'>Active Leads</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-2xl font-bold'>{filteredLeads.length}</div>
+                    <p className='text-xs text-muted-foreground'>Based on current filters</p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
       </div>
 
       {/* Leads Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Leads ({filteredLeads.length})</CardTitle>
+          <CardTitle>
+            {isLoading ? <Skeleton className='h-6 w-32' /> : `Leads (${filteredLeads.length})`}
+          </CardTitle>
         </CardHeader>
         <CardContent className='overflow-x-auto'>
           <Table className='min-w-[800px]'>
@@ -334,11 +357,59 @@ const LeadsPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLeads.map((lead) => {
-                const assignedUser = getAssignedUser(lead.assignedTo || '');
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <TableRow key={`lead-row-skel-${index}`}>
+                    <TableCell>
+                      <div className='flex items-center space-x-3'>
+                        <Skeleton className='h-8 w-8 rounded-full' />
+                        <div className='space-y-2'>
+                          <Skeleton className='h-4 w-28' />
+                          <Skeleton className='h-3 w-20' />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-16' />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-24' />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-20' />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-24' />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-16' />
+                    </TableCell>
+                    <TableCell>
+                      <div className='flex items-center space-x-2'>
+                        <Skeleton className='h-6 w-6 rounded-full' />
+                        <Skeleton className='h-4 w-20' />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-24' />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className='h-4 w-6' />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filteredLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className='h-24 text-center text-muted-foreground'>
+                    No leads match your filters yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLeads.map((lead) => {
+                  const assignedUser = getAssignedUser(lead.assignedTo || '');
 
-                return (
-                  <TableRow key={lead.id} className='cursor-pointer hover:bg-muted/50' onClick={() => handleLeadSelection(lead)}>
+                  return (
+                    <TableRow key={lead.id} className='cursor-pointer hover:bg-muted/50' onClick={() => handleLeadSelection(lead)}>
                     <TableCell>
                       <div className='flex items-center space-x-3'>
                         <Avatar className='h-8 w-8'>
@@ -415,7 +486,8 @@ const LeadsPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 );
-              })}
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>

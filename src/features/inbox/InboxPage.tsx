@@ -16,6 +16,7 @@ import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Skeleton } from '../../components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -899,7 +900,19 @@ const InboxPage: React.FC = () => {
         {/* Thread List */}
         <div className='flex-1 overflow-auto'>
           {loadingThreads ? (
-            <div className='p-6 text-center text-muted-foreground'>Loading...</div>
+            <div className='space-y-4 p-4'>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className='flex items-start gap-3'>
+                  <Skeleton className='h-10 w-10 rounded-full' />
+                  <div className='flex-1 space-y-2'>
+                    <Skeleton className='h-4 w-2/3' />
+                    <Skeleton className='h-3 w-1/2' />
+                    <Skeleton className='h-3 w-3/4' />
+                  </div>
+                  <Skeleton className='h-3 w-12' />
+                </div>
+              ))}
+            </div>
           ) : filteredThreads.length === 0 ? (
             <div className='p-6 text-center'>
               <WhatsAppIcon className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
@@ -1239,7 +1252,13 @@ const InboxPage: React.FC = () => {
             {/* Messages */}
             <div className='flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4'>
               {loadingMessages ? (
-                <div className='text-center text-muted-foreground'>Loading messages...</div>
+                <div className='space-y-4'>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div key={index} className={`flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                      <Skeleton className={`h-16 w-2/3 max-w-sm rounded-2xl ${index % 2 === 0 ? 'bg-muted' : 'bg-primary/20'}`} />
+                    </div>
+                  ))}
+                </div>
               ) : messages.length === 0 ? (
                 <div className='text-center text-muted-foreground'>No messages yet</div>
               ) : (

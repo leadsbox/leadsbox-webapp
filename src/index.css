@@ -201,6 +201,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -213,6 +214,7 @@
 }
 
 @layer components {
+
   /* Dashboard layout utilities */
   .dashboard-container {
     @apply min-h-screen bg-background;

@@ -29,6 +29,7 @@ import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { toast } from '../../hooks/use-toast';
 import { AxiosError } from 'axios';
+import { Skeleton } from '../../components/ui/skeleton';
 
 // Safe date formatting helper to prevent Invalid time value errors
 const safeFormatDistance = (dateValue: string | Date | null | undefined): string => {
@@ -573,12 +574,65 @@ const LeadDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className='container mx-auto py-8'>
-        <div className='flex items-center justify-center h-64'>
-          <div className='text-center'>
-            <div className='animate-pulse'>Loading lead details...</div>
+      <div className='container mx-auto py-6 space-y-6'>
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+          <div className='space-y-3'>
+            <Skeleton className='h-8 w-40' />
+            <Skeleton className='h-4 w-64' />
+          </div>
+          <div className='flex items-center gap-2'>
+            <Skeleton className='h-9 w-32 rounded-md' />
+            <Skeleton className='h-9 w-32 rounded-md' />
           </div>
         </div>
+
+        <Card>
+          <CardContent className='p-6'>
+            <div className='flex flex-col sm:flex-row sm:items-center gap-6'>
+              <Skeleton className='h-24 w-24 rounded-full' />
+              <div className='flex-1 space-y-4 w-full'>
+                <Skeleton className='h-6 w-48' />
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                  <Skeleton className='h-10 w-full' />
+                  <Skeleton className='h-10 w-full' />
+                  <Skeleton className='h-10 w-full' />
+                  <Skeleton className='h-10 w-full' />
+                </div>
+                <Skeleton className='h-4 w-56' />
+              </div>
+              <div className='flex flex-col gap-2'>
+                <Skeleton className='h-10 w-32 rounded-full' />
+                <Skeleton className='h-10 w-32 rounded-full' />
+                <Skeleton className='h-6 w-32 rounded-full' />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card key={`lead-detail-skeleton-${index}`}>
+              <CardHeader>
+                <Skeleton className='h-5 w-40' />
+              </CardHeader>
+              <CardContent className='space-y-3'>
+                <Skeleton className='h-4 w-3/4' />
+                <Skeleton className='h-4 w-2/3' />
+                <Skeleton className='h-4 w-1/2' />
+                <Skeleton className='h-4 w-2/5' />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className='h-5 w-32' />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className='h-32 w-full rounded-md' />
+          </CardContent>
+        </Card>
       </div>
     );
   }
