@@ -16,13 +16,48 @@ type AuthState = {
 
 const Ctx = createContext<AuthState | undefined>(undefined);
 
+const USER_STORAGE_KEY = 'lb_user';
+
+const readCachedUser = (): AuthUser | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch (error) {
+    console.warn('Failed to parse cached user profile', error);
+    return null;
+  }
+};
+
+const persistUser = (value: AuthUser | null) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value) {
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(value));
+    } else {
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+    }
+  } catch (error) {
+    console.warn('Failed to persist user profile', error);
+  }
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setloading] = useState(true);
+  const cachedUser = readCachedUser();
+  const [user, setUserState] = useState<AuthUser | null>(cachedUser);
+  const [loading, setloading] = useState(() => (cachedUser ? false : true));
+
+  const setUser = (value: AuthUser | null) => {
+    setUserState(value);
+    persistUser(value);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        if (!cachedUser) {
+          setloading(true);
+        }
         // Check if we're coming back from OAuth
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
@@ -163,9 +198,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('lb_org_id');
     } catch (error) {
       console.error('Failed to logout:', error);
+    } finally {
+      setUser(null);
+      toast.info('You have been logged out');
     }
-    setUser(null);
-    toast.info('You have been logged out');
   };
 
   const refreshAuth = async (): Promise<void> => {
