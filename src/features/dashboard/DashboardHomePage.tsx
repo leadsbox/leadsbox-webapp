@@ -34,20 +34,20 @@ interface BackendLead {
 }
 
 const quickActions = [
-  {
-    title: 'Create Invoice',
-    description: 'Generate a new invoice',
-    icon: FileText,
-    color: 'bg-blue-500 hover:bg-blue-600',
-    href: '/dashboard/invoices/new',
-  },
-  {
-    title: 'Add Receipt',
-    description: 'Record a payment receipt',
-    icon: Receipt,
-    color: 'bg-green-500 hover:bg-green-600',
-    href: '/dashboard/receipts/new',
-  },
+  // {
+  //   title: 'Create Invoice',
+  //   description: 'Generate a new invoice',
+  //   icon: FileText,
+  //   color: 'bg-blue-500 hover:bg-blue-600',
+  //   href: '/dashboard/invoices/new',
+  // },
+  // {
+  //   title: 'Add Receipt',
+  //   description: 'Record a payment receipt',
+  //   icon: Receipt,
+  //   color: 'bg-green-500 hover:bg-green-600',
+  //   href: '/dashboard/receipts/new',
+  // },
   {
     title: 'New Lead',
     description: 'Add a new potential customer',
@@ -365,21 +365,13 @@ export default function DashboardHomePage() {
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4'>
-        <div>
-          <div className='flex items-center gap-3'>
-            <div>
-              <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Home</h1>
-              <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
-            </div>
-
-            {/* Real-time Connection Status */}
-            <div className='flex items-center gap-2 px-3 py-1 rounded-full text-xs border'>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-              <span className={isConnected ? 'text-green-700' : 'text-gray-500'}>{isConnected ? '⚡ Real-time' : 'Offline'}</span>
-            </div>
+        <div className='space-y-3'>
+          <div>
+            <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Home</h1>
+            <p className='text-sm sm:text-base text-muted-foreground'>Welcome back! Here's what's happening with your business.</p>
           </div>
 
-          <div className='mt-2 flex items-center gap-2'>
+          <div className='flex flex-wrap items-center gap-2'>
             <IntegrationBadge
               icon={Globe}
               label='WhatsApp'
@@ -394,6 +386,10 @@ export default function DashboardHomePage() {
               loading={integrationLoading}
               to='/dashboard/settings?tab=integrations'
             />
+            <div className='flex items-center gap-2 px-2 py-1 rounded-full text-xs border'>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className={isConnected ? 'text-green-700' : 'text-gray-500'}>{isConnected ? '⚡ Real-time' : 'Offline'}</span>
+            </div>
           </div>
         </div>
 
