@@ -13,6 +13,7 @@ import client from '@/api/client';
 import { API_BASE, endpoints } from '@/api/config';
 import { useSocketIO } from '@/lib/socket';
 import { Thread } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Types for backend data
 interface ChartDataPoint {
@@ -320,6 +321,46 @@ export default function DashboardHomePage() {
     };
   }, [socket, isConnected, fetchDashboardData]);
 
+  const overviewSkeleton = (
+    <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={`home-overview-skel-${index}`} className='h-full'>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <Skeleton className='h-4 w-24' />
+            <Skeleton className='h-4 w-4 rounded-full' />
+          </CardHeader>
+          <CardContent className='space-y-3'>
+            <Skeleton className='h-7 w-16' />
+            <Skeleton className='h-3 w-32' />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const chartSkeleton = (
+    <div className='h-[160px] sm:h-[200px] flex items-center justify-center'>
+      <Skeleton className='h-full w-full rounded-md' />
+    </div>
+  );
+
+  const recentLeadsSkeleton = (
+    <div className='space-y-4'>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={`recent-lead-skel-${index}`} className='flex items-center justify-between'>
+          <div className='space-y-2'>
+            <Skeleton className='h-4 w-24' />
+            <Skeleton className='h-3 w-20' />
+          </div>
+          <div className='space-y-2 text-right'>
+            <Skeleton className='h-5 w-14 rounded-full' />
+            <Skeleton className='h-3 w-16' />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
@@ -375,63 +416,67 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Overview Cards */}
-      <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
-            <Users className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{countsLoading ? '...' : actualLeadsCount}</div>
-            <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-              <TrendingUp className='h-3 w-3 text-green-500' />
-              <span className='text-green-500'>+12.5%</span>
-              <span>from last month</span>
-            </div>
-          </CardContent>
-        </Card>
+      {countsLoading && analyticsLoading ? (
+        overviewSkeleton
+      ) : (
+        <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
+          <Card className='transition-all duration-200 hover:shadow-md'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
+              <Users className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{countsLoading ? '—' : actualLeadsCount}</div>
+              <div className='flex items-center gap-1 text-xs text-muted-foreground'>
+                <TrendingUp className='h-3 w-3 text-green-500' />
+                <span className='text-green-500'>+12.5%</span>
+                <span>from last month</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Active Threads</CardTitle>
-            <MessageSquare className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{countsLoading ? '...' : actualThreadsCount}</div>
-            <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-              <Activity className='h-3 w-3 text-blue-500' />
-              <span className='text-blue-500'>+3</span>
-              <span>new today</span>
-            </div>
-          </CardContent>
-        </Card>
+          <Card className='transition-all duration-200 hover:shadow-md'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>Active Threads</CardTitle>
+              <MessageSquare className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{countsLoading ? '—' : actualThreadsCount}</div>
+              <div className='flex items-center gap-1 text-xs text-muted-foreground'>
+                <Activity className='h-3 w-3 text-blue-500' />
+                <span className='text-blue-500'>+3</span>
+                <span>new today</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
-            <TrendingUp className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{formatPercentage(analytics.overview.conversionRate)}</div>
-            <Progress value={analytics.overview.conversionRate} className='mt-2' />
-          </CardContent>
-        </Card>
+          <Card className='transition-all duration-200 hover:shadow-md'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
+              <TrendingUp className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{formatPercentage(analytics.overview.conversionRate)}</div>
+              <Progress value={analytics.overview.conversionRate} className='mt-2' />
+            </CardContent>
+          </Card>
 
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Avg Response Time</CardTitle>
-            <Calendar className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{analytics.overview.avgResponseTime}h</div>
-            <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-              <TrendingUp className='h-3 w-3 text-green-500 rotate-180' />
-              <span className='text-green-500'>-0.3h</span>
-              <span>improvement</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className='transition-all duration-200 hover:shadow-md'>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <CardTitle className='text-sm font-medium'>Avg Response Time</CardTitle>
+              <Calendar className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent>
+              <div className='text-2xl font-bold'>{analytics.overview.avgResponseTime}h</div>
+              <div className='flex items-center gap-1 text-xs text-muted-foreground'>
+                <TrendingUp className='h-3 w-3 text-green-500 rotate-180' />
+                <span className='text-green-500'>-0.3h</span>
+                <span>improvement</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Charts and Recent Activity */}
       <div className='grid gap-4 sm:gap-6 lg:grid-cols-2'>
@@ -443,9 +488,7 @@ export default function DashboardHomePage() {
           </CardHeader>
           <CardContent>
             {analyticsLoading ? (
-              <div className='h-[160px] sm:h-[200px] flex items-center justify-center'>
-                <div className='text-muted-foreground'>Loading chart data...</div>
-              </div>
+              chartSkeleton
             ) : (
               <ChartContainer config={chartConfig} className='h-[160px] sm:h-[200px]'>
                 <ResponsiveContainer width='100%' height='100%'>
@@ -470,9 +513,7 @@ export default function DashboardHomePage() {
           </CardHeader>
           <CardContent>
             {analyticsLoading ? (
-              <div className='h-[160px] sm:h-[200px] flex items-center justify-center'>
-                <div className='text-muted-foreground'>Loading chart data...</div>
-              </div>
+              chartSkeleton
             ) : (
               <ChartContainer config={chartConfig} className='h-[160px] sm:h-[200px]'>
                 <ResponsiveContainer width='100%' height='100%'>
@@ -502,9 +543,7 @@ export default function DashboardHomePage() {
           </CardHeader>
           <CardContent className='space-y-4'>
             {analyticsLoading ? (
-              <div className='text-center py-4'>
-                <div className='text-muted-foreground'>Loading recent leads...</div>
-              </div>
+              recentLeadsSkeleton
             ) : recentLeadsData.length === 0 ? (
               <div className='text-center py-4'>
                 <div className='text-muted-foreground'>No recent leads found</div>
