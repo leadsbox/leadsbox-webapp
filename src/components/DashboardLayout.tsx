@@ -197,7 +197,7 @@ export const DashboardLayout: React.FC = () => {
 
         {/* Navigation */}
         <nav className='flex-1 overflow-auto py-4'>
-          <div className='space-y-1 px-3'>
+          <div className='space-y-1'>
             {sidebarItems.map((item) => {
               const isActive = location.pathname.startsWith(item.href);
 
@@ -205,16 +205,20 @@ export const DashboardLayout: React.FC = () => {
                 <NavLink
                   key={item.href}
                   to={item.href}
-                  className={cn(
-                    'relative flex items-center rounded-[var(--radius-sm)] py-2.5 text-sm font-medium transition-colors',
-                    sidebarCollapsed ? 'justify-center px-0' : 'px-3',
-                    'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground'
-                  )}
+                className={cn(
+                  'sidebar-item-base',
+                  sidebarCollapsed ? 'sidebar-item-collapsed' : '',
+                  isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'
+                )}
                   aria-current={isActive ? 'page' : undefined}
                   title={sidebarCollapsed ? item.title : undefined}
                 >
-                  <item.icon className={cn('h-5 w-5 flex-shrink-0', sidebarCollapsed ? '' : '')} />
+                  <item.icon
+                    className={cn(
+                      'h-5 w-5 flex-shrink-0 transition-colors',
+                      isActive ? 'text-primary' : 'text-sidebar-foreground/60'
+                    )}
+                  />
 
                   {!sidebarCollapsed && (
                     <>
@@ -308,13 +312,17 @@ export const DashboardLayout: React.FC = () => {
                 <NavLink
                   key={item.href}
                   to={item.href}
-                  className={cn(
-                    'flex items-center rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors',
-                    'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground'
-                  )}
+                className={cn(
+                  'sidebar-item-base px-3',
+                  isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'
+                )}
                   >
-                    <item.icon className='h-5 w-5 flex-shrink-0' />
+                    <item.icon
+                      className={cn(
+                        'h-5 w-5 flex-shrink-0 transition-colors',
+                        isActive ? 'text-primary' : 'text-sidebar-foreground/60'
+                      )}
+                    />
                     <span className='ml-3 flex-1'>{item.title}</span>
                     {item.badge && (
                       <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
