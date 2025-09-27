@@ -1346,6 +1346,21 @@ const InboxPage: React.FC = () => {
               {/* Follow-up Panel removed */}
             </div>
           </>
+        ) : loadingThreads || loadingMessages ? (
+          <div className='flex-1 flex flex-col gap-4 p-4 sm:p-6'>
+            <div className='flex items-center justify-between gap-4'>
+              <Skeleton className='h-8 w-48 max-w-[60%]' />
+              <Skeleton className='h-8 w-32' />
+            </div>
+            <div className='flex-1 space-y-3 overflow-hidden'>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={`message-pane-skeleton-${index}`} className={`flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                  <Skeleton className='h-16 w-2/3 max-w-sm rounded-2xl' />
+                </div>
+              ))}
+            </div>
+            <Skeleton className='h-11 w-full rounded-xl' />
+          </div>
         ) : (
           <div className='flex-1 flex items-center justify-center'>
             <div className='text-center'>
