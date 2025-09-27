@@ -2,16 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LeadsBox Dashboard Design System - Dark-first professional theme */
+/* LeadsBox UI foundations */
 
 @layer base {
   :root {
-    /* Light mode (fallback) - Professional Blues */
+    /* Color tokens */
     --background: 220 25% 97%;
     --foreground: 220 15% 15%;
+    --surface: 0 0% 100%;
+    --surface-foreground: 220 15% 20%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 15%;
+    --card: var(--surface);
+    --card-foreground: var(--surface-foreground);
 
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 15%;
@@ -26,9 +28,6 @@
     --muted: 220 15% 95%;
     --muted-foreground: 220 10% 45%;
 
-    --accent: 221 83% 53%;
-    --accent-foreground: 0 0% 98%;
-
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
@@ -42,9 +41,38 @@
     --input: 220 15% 88%;
     --ring: 221 83% 53%;
 
-    --radius: 0.75rem;
+    /* Radius scale (px → rem) */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+    --radius-2xl: 1.5rem;
+    --radius: var(--radius-md);
 
-    /* Dashboard specific colors */
+    /* Spacing scale */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4rem;
+
+    /* Motion */
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 240ms;
+    --ease-standard: cubic-bezier(.2, .7, .2, 1);
+
+    /* Elevation */
+    --shadow-color: 220 40% 20%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.12);
+    --shadow-md: 0 6px 12px -4px hsl(var(--shadow-color) / 0.14);
+    --shadow-lg: 0 16px 32px -12px hsl(var(--shadow-color) / 0.18);
+    --shadow-brand: 0 16px 40px -16px hsl(var(--brand) / 0.35);
+
+    /* Contextual tokens */
     --brand: 221 83% 53%;
     --brand-foreground: 0 0% 98%;
     --brand-subtle: 221 83% 96%;
@@ -61,7 +89,6 @@
     --status-won: 142 76% 36%;
     --status-lost: 0 84% 60%;
 
-    /* Sidebar tokens */
     --sidebar-background: 220 25% 98%;
     --sidebar-foreground: 220 15% 25%;
     --sidebar-primary: 221 83% 53%;
@@ -70,15 +97,20 @@
     --sidebar-accent-foreground: 220 15% 25%;
     --sidebar-border: 220 15% 90%;
     --sidebar-ring: 221 83% 53%;
+
+    --gradient-brand: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--primary-hover)));
+    --gradient-status: linear-gradient(90deg, hsl(var(--status-new)), hsl(var(--status-progress)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
   }
 
   .dark {
-    /* Dark mode - Primary LeadsBox theme */
     --background: 224 15% 6%;
     --foreground: 220 15% 92%;
+    --surface: 224 15% 8%;
+    --surface-foreground: 220 15% 92%;
 
-    --card: 224 15% 8%;
-    --card-foreground: 220 15% 92%;
+    --card: var(--surface);
+    --card-foreground: var(--surface-foreground);
 
     --popover: 224 15% 9%;
     --popover-foreground: 220 15% 92%;
@@ -93,9 +125,6 @@
     --muted: 224 15% 10%;
     --muted-foreground: 220 8% 55%;
 
-    --accent: 221 83% 53%;
-    --accent-foreground: 0 0% 98%;
-
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
@@ -109,7 +138,12 @@
     --input: 224 15% 12%;
     --ring: 221 83% 53%;
 
-    /* Dashboard specific colors - dark mode */
+    --shadow-color: 220 56% 8%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.35);
+    --shadow-md: 0 12px 24px -12px hsl(var(--shadow-color) / 0.45);
+    --shadow-lg: 0 24px 36px -18px hsl(var(--shadow-color) / 0.55);
+    --shadow-brand: 0 18px 46px -20px hsl(var(--brand) / 0.45);
+
     --brand: 221 83% 53%;
     --brand-foreground: 0 0% 98%;
     --brand-subtle: 224 15% 12%;
@@ -126,7 +160,6 @@
     --status-won: 142 76% 36%;
     --status-lost: 0 84% 60%;
 
-    /* Sidebar dark tokens */
     --sidebar-background: 224 15% 7%;
     --sidebar-foreground: 220 15% 80%;
     --sidebar-primary: 221 83% 53%;
@@ -137,23 +170,6 @@
     --sidebar-ring: 221 83% 53%;
   }
 
-  /* Global gradients and animations */
-  :root {
-    --gradient-brand: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--primary-hover)));
-    --gradient-status: linear-gradient(90deg, hsl(var(--status-new)), hsl(var(--status-progress)));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
-    
-    --shadow-sm: 0 1px 2px 0 hsl(var(--foreground) / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(var(--foreground) / 0.1), 0 2px 4px -2px hsl(var(--foreground) / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(var(--foreground) / 0.1), 0 4px 6px -4px hsl(var(--foreground) / 0.1);
-    --shadow-brand: 0 4px 14px 0 hsl(var(--brand) / 0.25);
-
-    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
@@ -162,7 +178,6 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Custom scrollbars for dark theme */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
@@ -175,14 +190,25 @@
     @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30;
   }
 
-  /* Focus styles */
   :focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: none;
   }
 
-  /* Selection styles */
   ::selection {
     @apply bg-primary/20 text-foreground;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

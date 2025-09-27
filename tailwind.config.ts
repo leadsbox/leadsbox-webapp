@@ -85,9 +85,36 @@ export default {
 				}
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				DEFAULT: 'var(--radius-md)',
+				sm: 'var(--radius-sm)',
+				md: 'var(--radius-md)',
+				lg: 'var(--radius-lg)',
+				xl: 'var(--radius-xl)',
+				'2xl': 'var(--radius-2xl)'
+			},
+			spacing: {
+				xs: 'var(--space-1)',
+				sm: 'var(--space-2)',
+				md: 'var(--space-3)',
+				lg: 'var(--space-4)',
+				xl: 'var(--space-5)',
+				'2xl': 'var(--space-6)',
+				'3xl': 'var(--space-7)',
+				'4xl': 'var(--space-8)'
+			},
+			boxShadow: {
+				sm: 'var(--shadow-sm)',
+				md: 'var(--shadow-md)',
+				lg: 'var(--shadow-lg)',
+				focus: '0 0 0 2px hsl(var(--ring))'
+			},
+			transitionDuration: {
+				fast: 'var(--duration-fast)',
+				DEFAULT: 'var(--duration-base)',
+				slow: 'var(--duration-slow)'
+			},
+			transitionTimingFunction: {
+				standard: 'var(--ease-standard)'
 			},
 			keyframes: {
 				'accordion-down': {
