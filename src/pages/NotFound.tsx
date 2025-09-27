@@ -40,18 +40,22 @@ const NotFound = () => {
           </nav>
 
           <div className='flex items-center gap-2 sm:gap-3'>
-            <Button variant='ghost' size='sm' asChild>
-              <a href='/login'>Login</a>
+            <Button asChild size='sm'>
+              <Link to='/dashboard'>
+                <Home className='mr-2 h-4 w-4' />
+                Go to Dashboard
+              </Link>
             </Button>
-            <Button size='sm' asChild>
-              <a href='/#waitlist'>Join Waitlist</a>
+            <Button variant='outline' size='sm' onClick={() => window.history.back()}>
+              <ArrowLeft className='mr-2 h-4 w-4' />
+              Go Back
             </Button>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className='flex items-center justify-center w-full px-6 py-16 sm:px-12'>
+  <main className='flex items-center justify-center w-full h-[calc(100vh-4rem)] px-6 sm:px-12'>
         <div className='max-w-xl w-full text-center'>
           <div className='mb-6 inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm'>
             <span className='mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-destructive/10 text-destructive'>404</span>
