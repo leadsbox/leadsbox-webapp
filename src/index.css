@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* Color tokens */
-    --background: 220 25% 97%;
+    --background: 220 20% 95%;
     --foreground: 220 15% 15%;
     --surface: 0 0% 100%;
     --surface-foreground: 220 15% 20%;
@@ -25,8 +25,8 @@
     --secondary: 220 15% 95%;
     --secondary-foreground: 220 15% 25%;
 
-    --muted: 220 15% 95%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 220 18% 90%;
+    --muted-foreground: 220 12% 38%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
@@ -37,8 +37,8 @@
     --success: 142 76% 36%;
     --success-foreground: 0 0% 98%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
+    --border: 220 16% 82%;
+    --input: 220 16% 82%;
     --ring: 221 83% 53%;
 
     /* Radius scale (px → rem) */
@@ -89,13 +89,13 @@
     --status-won: 142 76% 36%;
     --status-lost: 0 84% 60%;
 
-    --sidebar-background: 220 25% 98%;
-    --sidebar-foreground: 220 15% 25%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 15% 22%;
     --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 15% 94%;
+    --sidebar-accent: 220 18% 90%;
     --sidebar-accent-foreground: 220 15% 25%;
-    --sidebar-border: 220 15% 90%;
+    --sidebar-border: 220 15% 88%;
     --sidebar-ring: 221 83% 53%;
 
     --gradient-brand: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--primary-hover)));
@@ -223,7 +223,7 @@
   }
 
   .dashboard-sidebar {
-    @apply border-r bg-sidebar;
+    @apply border-r bg-card;
   }
 
   .dashboard-main {
