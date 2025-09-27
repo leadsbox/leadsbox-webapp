@@ -55,7 +55,7 @@ const NotFound = () => {
       </header>
 
       {/* Content */}
-  <main className='flex items-center justify-center w-full h-[calc(100vh-4rem)] px-6 sm:px-12'>
+      <main className='flex items-center justify-center w-full h-[calc(100vh-4rem)] px-6 sm:px-12'>
         <div className='max-w-xl w-full text-center'>
           <div className='mb-6 inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm'>
             <span className='mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-destructive/10 text-destructive'>404</span>
