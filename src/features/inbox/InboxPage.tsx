@@ -1346,7 +1346,7 @@ const InboxPage: React.FC = () => {
               {/* Follow-up Panel removed */}
             </div>
           </>
-        ) : loadingThreads || loadingMessages ? (
+        ) : (!selectedThread && (loadingThreads || loadingMessages)) ? (
           <div className='flex-1 flex flex-col gap-4 p-4 sm:p-6'>
             <div className='flex items-center justify-between gap-4'>
               <Skeleton className='h-8 w-48 max-w-[60%]' />
