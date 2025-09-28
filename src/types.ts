@@ -1,9 +1,19 @@
 // Message Template and Follow-up Rule types for automations
+export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+export type TemplateStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+
 export interface Template {
   id: string;
   name: string;
   body: string;
   variables: string[];
+  category: TemplateCategory;
+  status: TemplateStatus;
+  language?: string;
+  providerTemplateId?: string | null;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 export type FollowUpStatus = 'SCHEDULED' | 'SENT' | 'CANCELLED' | 'FAILED';
@@ -18,6 +28,9 @@ export interface FollowUpRule {
   userId: string;
   organizationId: string;
   leadId?: string;
+  templateId?: string | null;
+  variables?: Record<string, string> | null;
+  template?: Template;
   createdAt?: string;
   updatedAt?: string;
 }

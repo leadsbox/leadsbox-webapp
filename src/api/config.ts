@@ -84,6 +84,12 @@ export const endpoints = {
   // Tags & Templates
   tags: '/tags',
   templates: '/templates',
+  templateStatus: (id: string) => `/templates/status/${id}`,
+  submitTemplate: '/templates/submit-for-approval',
+  followups: '/followups',
+  followupConversation: (conversationId: string) => `/followups/conversation/${conversationId}`,
+  followup: (id: string) => `/followups/${id}`,
+  followupCancel: (id: string) => `/followups/${id}/cancel`,
 } as const;
 
 // HTTP Methods

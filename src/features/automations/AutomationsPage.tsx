@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,14 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, MessageSquare, Sparkles, Wand2, Pencil, Trash2, Copy, Power } from 'lucide-react';
-import { useEffect } from 'react';
+import { Calendar, Clock, MessageSquare, Sparkles, Wand2, Pencil, Trash2, Copy, Power, RefreshCw, Send } from 'lucide-react';
 import client from '@/api/client';
-import type { Template, FollowUpRule } from '@/types';
+import type {
+  Template,
+  TemplateStatus,
+  TemplateCategory,
+  FollowUpRule,
+} from '@/types';
 import TagsTab from '@/features/settings/tabs/TagsTab';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
@@ -25,13 +29,14 @@ const AutomationsPage: React.FC = () => {
   const [editingFlow, setEditingFlow] = useState<AutomationFlow | undefined>();
   // --- Templates ---
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [newTemplate, setNewTemplate] = useState<{ name: string; body: string; variables: string }>({ name: '', body: '', variables: '' });
+  const [templatesLoading, setTemplatesLoading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   // --- Follow-ups ---
   const [followupRules, setFollowupRules] = useState<FollowUpRule[]>([]);
+  const [followupsLoading, setFollowupsLoading] = useState(false);
   const [editingFollowup, setEditingFollowup] = useState<FollowUpRule | null>(null);
-  // Local draft for modal editing (since FollowUpRule has required fields)
   const [editingFollowupDraft, setEditingFollowupDraft] = useState<Partial<FollowUpRule>>({});
+  const [followupConversationId, setFollowupConversationId] = useState('');
 
   // Fetch templates
   useEffect(() => {
