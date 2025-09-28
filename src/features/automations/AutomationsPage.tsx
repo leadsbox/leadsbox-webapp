@@ -6,14 +6,11 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, MessageSquare, Sparkles, Wand2, Pencil, Trash2, Copy, Power, RefreshCw, Send } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar, Clock, MessageSquare, Sparkles, Wand2, Pencil, Trash2, Copy, Power, RefreshCw, Send, ArrowUpDown } from 'lucide-react';
 import client from '@/api/client';
-import type {
-  Template,
-  TemplateStatus,
-  TemplateCategory,
-  FollowUpRule,
-} from '@/types';
+import { endpoints } from '@/api/config';
+import type { Template, TemplateStatus, FollowUpRule } from '@/types';
 import TagsTab from '@/features/settings/tabs/TagsTab';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
@@ -23,7 +20,33 @@ import { toast } from 'react-toastify';
 
 // Removed unused quickReplies and followUps arrays
 
+type TemplateStatusFilter = TemplateStatus | 'ALL';
+
+const TEMPLATE_STATUS_ORDER: TemplateStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
+
+const TEMPLATE_STATUS_LABELS: Record<TemplateStatus, string> = {
+  DRAFT: 'Draft',
+  PENDING_APPROVAL: 'Pending approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
+
+const formatEnumLabel = (value: string) =>
+  value
+    .split('_')
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
+    .join(' ');
+
+const resolveTemplateStatus = (status?: TemplateStatus | null): TemplateStatus => {
+  if (!status) return 'DRAFT';
+  return TEMPLATE_STATUS_ORDER.includes(status) ? status : 'DRAFT';
+};
+
 const AutomationsPage: React.FC = () => {
+  // Sorting state for templates
+  const [templateStatusFilter, setTemplateStatusFilter] = useState<TemplateStatusFilter>('ALL');
+  const [statusSortDirection, setStatusSortDirection] = useState<'ASC' | 'DESC'>('ASC');
   const [flows, setFlows] = useLocalStorage<AutomationFlow[]>(FLOWS_COLLECTION_KEY, []);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState<AutomationFlow | undefined>();
@@ -40,16 +63,18 @@ const AutomationsPage: React.FC = () => {
 
   // Fetch templates
   useEffect(() => {
+    setTemplatesLoading(true);
     client
-      .get('/api/templates')
-      .then((res) => setTemplates(res.data))
-      .catch(() => {});
+      .get(endpoints.templates)
+      .then((res) => setTemplates(Array.isArray(res.data?.data) ? res.data.data : []))
+      .catch(() => setTemplates([]))
+      .finally(() => setTemplatesLoading(false));
   }, []);
   // Fetch follow-up rules (replace with your endpoint if needed)
   useEffect(() => {
     client
-      .get('/api/followup-rules')
-      .then((res) => setFollowupRules(res.data))
+      .get(endpoints.followups)
+      .then((res) => setFollowupRules(Array.isArray(res.data?.data) ? res.data.data : []))
       .catch(() => {});
   }, []);
 
@@ -105,6 +130,26 @@ const AutomationsPage: React.FC = () => {
     return `${active} live · ${flows.length} total`;
   }, [flows]);
 
+  const filteredTemplates = useMemo(() => {
+    const byStatus =
+      templateStatusFilter === 'ALL' ? templates : templates.filter((template) => resolveTemplateStatus(template.status) === templateStatusFilter);
+
+    const resolvedOrder = TEMPLATE_STATUS_ORDER;
+    const sortMultiplier = statusSortDirection === 'ASC' ? 1 : -1;
+
+    return [...byStatus].sort((a, b) => {
+      const aStatus = resolveTemplateStatus(a?.status);
+      const bStatus = resolveTemplateStatus(b?.status);
+      const aIndex = resolvedOrder.indexOf(aStatus);
+      const bIndex = resolvedOrder.indexOf(bStatus);
+
+      const safeA = aIndex === -1 ? resolvedOrder.length : aIndex;
+      const safeB = bIndex === -1 ? resolvedOrder.length : bIndex;
+
+      return (safeA - safeB) * sortMultiplier;
+    });
+  }, [templates, templateStatusFilter, statusSortDirection]);
+
   return (
     <div className='p-4 sm:p-6 space-y-6'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
@@ -129,105 +174,209 @@ const AutomationsPage: React.FC = () => {
           <TabsTrigger value='flows'>Flows</TabsTrigger>
         </TabsList>
         <TabsContent value='templates' className='space-y-6 pt-4'>
-          <Card>
+          {/* Card for creating a new template */}
+          <Card className='mb-6 border-muted'>
             <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+              <div>
+                <CardTitle>Create New Template</CardTitle>
+                <CardDescription>Create a quick reply template for your team.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {editingTemplate && editingTemplate.id === '' ? (
+                <div className='space-y-3'>
+                  <input
+                    className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                    placeholder='Name'
+                    value={editingTemplate.name}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                  />
+                  <textarea
+                    className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm resize-none'
+                    placeholder='Body'
+                    rows={3}
+                    value={editingTemplate.body}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, body: e.target.value })}
+                  />
+                  <input
+                    className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
+                    placeholder='Variables (comma separated)'
+                    value={editingTemplate.variables.join(',')}
+                    onChange={(e) =>
+                      setEditingTemplate({
+                        ...editingTemplate,
+                        variables: e.target.value
+                          .split(',')
+                          .map((v) => v.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                  />
+                  <div className='flex gap-2 pt-2'>
+                    <Button
+                      size='sm'
+                      variant='default'
+                      onClick={async () => {
+                        const name = editingTemplate.name?.trim();
+                        const body = editingTemplate.body?.trim();
+
+                        if (name && body) {
+                          try {
+                            const variables = Array.isArray(editingTemplate.variables)
+                              ? editingTemplate.variables.map((variable) => variable.trim()).filter(Boolean)
+                              : [];
+                            const category = (editingTemplate.category ?? 'MARKETING') as Template['category'];
+
+                            const payload = {
+                              name,
+                              body,
+                              variables,
+                              category,
+                              language: editingTemplate.language,
+                            };
+
+                            const res = await client.post(endpoints.templates, payload);
+                            const createdTemplate = res.data?.data;
+                            if (createdTemplate) {
+                              setTemplates((prev) => [...prev, createdTemplate]);
+                              toast.success('Template created');
+                            } else {
+                              toast.warn('Template created but response was empty');
+                            }
+                            setEditingTemplate(null);
+                          } catch (error: any) {
+                            const message = error?.response?.data?.message || 'Failed to create template';
+                            toast.error(message);
+                          }
+                        } else {
+                          toast.error('Name and body are required');
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button size='sm' variant='outline' onClick={() => setEditingTemplate(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size='sm'
+                  onClick={() =>
+                    setEditingTemplate({
+                      id: '',
+                      name: '',
+                      body: '',
+                      variables: [],
+                      category: 'MARKETING',
+                      status: 'DRAFT',
+                    })
+                  }
+                >
+                  New template
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Card for listing and sorting templates */}
+          <Card>
+            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <div>
                 <CardTitle>Quick reply library</CardTitle>
                 <CardDescription>Save your most common answers so the team replies in seconds.</CardDescription>
               </div>
-              <Button size='sm' onClick={() => setEditingTemplate({ id: '', name: '', body: '', variables: [] })}>
-                New template
-              </Button>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
+                <select
+                  className='border border-input rounded px-2 py-1 text-sm bg-muted focus:outline-none focus:ring focus:ring-primary/30'
+                  value={templateStatusFilter}
+                  onChange={(e) => setTemplateStatusFilter(e.target.value as TemplateStatusFilter)}
+                >
+                  <option value='ALL'>All statuses</option>
+                  {TEMPLATE_STATUS_ORDER.map((status) => (
+                    <option key={status} value={status}>
+                      {TEMPLATE_STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </select>
+                <Button size='sm' variant='outline' onClick={() => setStatusSortDirection((current) => (current === 'ASC' ? 'DESC' : 'ASC'))}>
+                  <ArrowUpDown className='mr-2 h-4 w-4' />
+                  Status order: {statusSortDirection === 'ASC' ? 'Ascending' : 'Descending'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {/* Show create/edit card inline when editingTemplate is set and id is empty (new template) */}
-              {editingTemplate && editingTemplate.id === '' && (
-                <Card className='mb-6 border-muted'>
-                  <CardHeader className='pb-2'>
-                    <CardTitle className='text-lg font-semibold'>New Template</CardTitle>
-                    <CardDescription className='text-muted-foreground'>Create a quick reply template for your team.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='space-y-3'>
-                      <input
-                        className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
-                        placeholder='Name'
-                        value={editingTemplate.name}
-                        onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                      />
-                      <textarea
-                        className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm resize-none'
-                        placeholder='Body'
-                        rows={3}
-                        value={editingTemplate.body}
-                        onChange={(e) => setEditingTemplate({ ...editingTemplate, body: e.target.value })}
-                      />
-                      <input
-                        className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
-                        placeholder='Variables (comma separated)'
-                        value={editingTemplate.variables.join(',')}
-                        onChange={(e) =>
-                          setEditingTemplate({
-                            ...editingTemplate,
-                            variables: e.target.value
-                              .split(',')
-                              .map((v) => v.trim())
-                              .filter(Boolean),
-                          })
-                        }
-                      />
-                      <div className='flex gap-2 pt-2'>
-                        <Button
-                          size='sm'
-                          variant='default'
-                          onClick={async () => {
-                            if (editingTemplate.name && editingTemplate.body) {
-                              const res = await client.post('/api/templates', editingTemplate);
-                              setTemplates([...templates, res.data]);
-                              setEditingTemplate(null);
-                            } else {
-                              toast.error('Name and body are required');
-                            }
-                          }}
-                        >
-                          Save
-                        </Button>
-                        <Button size='sm' variant='outline' onClick={() => setEditingTemplate(null)}>
-                          Cancel
-                        </Button>
+              {templatesLoading ? (
+                <div className='space-y-3'>
+                  {[0, 1, 2].map((key) => (
+                    <Skeleton key={key} className='h-24 w-full' />
+                  ))}
+                </div>
+              ) : filteredTemplates.length ? (
+                <div className='space-y-3'>
+                  {filteredTemplates.map((template, index) => {
+                    if (!template) return null;
+
+                    const variables = Array.isArray(template.variables) ? template.variables : [];
+                    const normalizedStatus = resolveTemplateStatus(template.status);
+                    const statusLabel = TEMPLATE_STATUS_LABELS[normalizedStatus] ?? formatEnumLabel(normalizedStatus);
+                    const category = (template.category ?? 'MARKETING') as Template['category'];
+                    const categoryLabel = formatEnumLabel(category);
+
+                    return (
+                      <div key={template.id || `template-${index}`} className='rounded-lg border border-muted bg-background/40 p-4 shadow-sm'>
+                        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                          <div className='space-y-2'>
+                            <div className='flex flex-col gap-1'>
+                              <span className='text-base font-semibold text-foreground'>{template.name || 'Untitled template'}</span>
+                              <span className='text-sm text-muted-foreground line-clamp-2'>{template.body || 'No content provided.'}</span>
+                            </div>
+                            {variables.length > 0 && (
+                              <div className='flex flex-wrap gap-1'>
+                                {variables.map((variable) => (
+                                  <Badge key={variable} variant='secondary' className='text-xs font-normal'>
+                                    {variable}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className='flex flex-col items-start gap-2 sm:items-end'>
+                            <Badge variant='outline' className='tracking-wide'>
+                              {statusLabel}
+                            </Badge>
+                            <span className='text-xs text-muted-foreground'>Category: {categoryLabel}</span>
+                          </div>
+                        </div>
+                        <div className='mt-4 flex flex-wrap gap-2'>
+                          <Button size='sm' onClick={() => setEditingTemplate(template)}>
+                            Edit
+                          </Button>
+                          <Button
+                            size='sm'
+                            variant='destructive'
+                            onClick={async () => {
+                              try {
+                                await client.delete(`${endpoints.templates}/${template.id}`);
+                                setTemplates((prev) => prev.filter((x) => x.id !== template.id));
+                                toast.success('Template deleted');
+                              } catch (error: any) {
+                                const message = error?.response?.data?.message || 'Failed to delete template';
+                                toast.error(message);
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className='text-sm text-muted-foreground'>No templates found for the selected filters.</p>
               )}
-              <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
-                {templates.map((t) => (
-                  <Card key={t.id} className='border-muted'>
-                    <CardHeader className='pb-2'>
-                      <CardTitle className='flex items-center justify-between text-lg'>
-                        {t.name}
-                        <span className='text-xs text-muted-foreground'>{t.variables.join(', ')}</span>
-                      </CardTitle>
-                      <CardDescription>{t.body}</CardDescription>
-                    </CardHeader>
-                    <CardContent className='pt-4 flex gap-2'>
-                      <Button size='sm' onClick={() => setEditingTemplate(t)}>
-                        Edit
-                      </Button>
-                      <Button
-                        size='sm'
-                        variant='destructive'
-                        onClick={async () => {
-                          await client.delete(`/api/templates/${t.id}`);
-                          setTemplates(templates.filter((x) => x.id !== t.id));
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -339,16 +488,29 @@ const AutomationsPage: React.FC = () => {
                               size='sm'
                               variant='default'
                               onClick={async () => {
-                                if (editingFollowup && editingFollowup.id) {
-                                  const updated = { ...editingFollowup, ...editingFollowupDraft };
-                                  await client.put(`/api/followup-rules/${editingFollowup.id}`, updated);
-                                  setFollowupRules(followupRules.map((f) => (f.id === editingFollowup.id ? (updated as FollowUpRule) : f)));
-                                } else {
-                                  const res = await client.post('/api/followup-rules', editingFollowupDraft);
-                                  setFollowupRules([...followupRules, res.data]);
+                                try {
+                                  if (editingFollowup && editingFollowup.id) {
+                                    const payload = { ...editingFollowup, ...editingFollowupDraft };
+                                    const res = await client.put(`${endpoints.followups}/${editingFollowup.id}`, payload);
+                                    const updatedRule = (res.data?.data as FollowUpRule) || (payload as FollowUpRule);
+                                    setFollowupRules((current) => current.map((rule) => (rule.id === editingFollowup.id ? updatedRule : rule)));
+                                    toast.success('Workflow updated');
+                                  } else {
+                                    const res = await client.post(endpoints.followups, editingFollowupDraft);
+                                    const createdRule = res.data?.data as FollowUpRule | undefined;
+                                    if (createdRule) {
+                                      setFollowupRules((current) => [...current, createdRule]);
+                                      toast.success('Workflow created');
+                                    } else {
+                                      toast.warn('Workflow saved but response was empty');
+                                    }
+                                  }
+                                  setEditingFollowup(null);
+                                  setEditingFollowupDraft({});
+                                } catch (error: any) {
+                                  const message = error?.response?.data?.message || 'Failed to save workflow';
+                                  toast.error(message);
                                 }
-                                setEditingFollowup(null);
-                                setEditingFollowupDraft({});
                               }}
                             >
                               Save
@@ -407,8 +569,14 @@ const AutomationsPage: React.FC = () => {
                             size='sm'
                             variant='destructive'
                             onClick={async () => {
-                              await client.delete(`/api/followup-rules/${item.id}`);
-                              setFollowupRules(followupRules.filter((x) => x.id !== item.id));
+                              try {
+                                await client.delete(`${endpoints.followups}/${item.id}`);
+                                setFollowupRules((current) => current.filter((x) => x.id !== item.id));
+                                toast.success('Workflow deleted');
+                              } catch (error: any) {
+                                const message = error?.response?.data?.message || 'Failed to delete workflow';
+                                toast.error(message);
+                              }
                             }}
                           >
                             Delete
