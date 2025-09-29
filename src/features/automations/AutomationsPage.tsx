@@ -116,6 +116,9 @@ const AutomationsPage: React.FC = () => {
   const [availableConversations, setAvailableConversations] = useState<ConversationOption[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
 
+  const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
+  const [editTemplateError, setEditTemplateError] = useState<string | null>(null);
+
   const conversationOptions = useMemo(() => {
     const merged = new Map<string, ConversationOption>();
     availableConversations.forEach((option) => {
@@ -191,6 +194,7 @@ const AutomationsPage: React.FC = () => {
       );
       setCreateFollowupDraft(createFollowupDefaults(fallback));
       setCreateFollowupVariables('');
+      setCreateTemplateError(null);
     },
     [conversationFilter, conversationOptions]
   );
@@ -199,6 +203,7 @@ const AutomationsPage: React.FC = () => {
     setEditingFollowup(null);
     setEditingFollowupDraft({});
     setEditingFollowupVariables('');
+    setEditTemplateError(null);
   };
 
   // Fetch templates
@@ -387,6 +392,8 @@ const AutomationsPage: React.FC = () => {
   };
 
   const handleCreateFollowup = async () => {
+    setCreateTemplateError(null);
+
     const conversationId = createFollowupDraft.conversationId.trim();
     if (!conversationId) {
       toast.error('Conversation ID is required');
@@ -446,11 +453,18 @@ const AutomationsPage: React.FC = () => {
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Failed to create follow-up';
       toast.error(message);
+      if (typeof message === 'string' && message.includes('approved template')) {
+        setCreateTemplateError(
+          'WhatsApp requires an approved template for messages outside the 24-hour window. Select an approved template to continue.'
+        );
+      }
     }
   };
 
   const handleUpdateFollowup = async () => {
     if (!editingFollowup) return;
+
+    setEditTemplateError(null);
 
     const conversationId = (editingFollowupDraft.conversationId || editingFollowup.conversationId || '').trim();
     if (!conversationId) {
@@ -516,6 +530,9 @@ const AutomationsPage: React.FC = () => {
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Failed to save workflow';
       toast.error(message);
+      if (typeof message === 'string' && message.includes('approved template')) {
+        setEditTemplateError('WhatsApp requires an approved template for messages outside the 24-hour window. Select an approved template to continue.');
+      }
     }
   };
 
@@ -844,7 +861,13 @@ const AutomationsPage: React.FC = () => {
                       <select
                         className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
                         value={createFollowupDraft.provider}
-                        onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, provider: e.target.value })}
+                        onChange={(e) => {
+                          const provider = e.target.value;
+                          setCreateFollowupDraft({ ...createFollowupDraft, provider });
+                          if (provider !== 'whatsapp') {
+                            setCreateTemplateError(null);
+                          }
+                        }}
                       >
                         <option value='whatsapp'>WhatsApp</option>
                         <option value='sms'>SMS</option>
@@ -870,7 +893,10 @@ const AutomationsPage: React.FC = () => {
                         <select
                           className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
                           value={createFollowupDraft.templateId ?? ''}
-                          onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, templateId: e.target.value || undefined })}
+                          onChange={(e) => {
+                            setCreateFollowupDraft({ ...createFollowupDraft, templateId: e.target.value || undefined });
+                            setCreateTemplateError(null);
+                          }}
                         >
                           <option value=''>No template</option>
                           {approvedTemplates.map((template) => (
@@ -882,6 +908,9 @@ const AutomationsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  {createTemplateError && approvedTemplates.length === 0 && (
+                    <p className='text-xs text-destructive'>{createTemplateError}</p>
+                  )}
                   <div className='space-y-1'>
                     <label className='text-xs font-medium text-muted-foreground'>Message</label>
                     <textarea
@@ -990,7 +1019,13 @@ const AutomationsPage: React.FC = () => {
                             <select
                               className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
                               value={(editingFollowupDraft.provider as string) ?? editingFollowup.provider ?? DEFAULT_PROVIDER}
-                              onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, provider: e.target.value })}
+                              onChange={(e) => {
+                                const provider = e.target.value;
+                                setEditingFollowupDraft({ ...editingFollowupDraft, provider });
+                                if (provider !== 'whatsapp') {
+                                  setEditTemplateError(null);
+                                }
+                              }}
                             >
                               <option value='whatsapp'>WhatsApp</option>
                               <option value='sms'>SMS</option>
@@ -1030,7 +1065,10 @@ const AutomationsPage: React.FC = () => {
                             <select
                               className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
                               value={editingFollowupDraft.templateId ?? editingFollowup.templateId ?? ''}
-                              onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, templateId: e.target.value || undefined })}
+                              onChange={(e) => {
+                                setEditingFollowupDraft({ ...editingFollowupDraft, templateId: e.target.value || undefined });
+                                setEditTemplateError(null);
+                              }}
                             >
                               <option value=''>No template</option>
                               {approvedTemplates.map((template) => (
@@ -1039,7 +1077,13 @@ const AutomationsPage: React.FC = () => {
                                 </option>
                               ))}
                             </select>
+                            {editTemplateError && (
+                              <p className='text-xs text-destructive'>{editTemplateError}</p>
+                            )}
                           </div>
+                        )}
+                        {editTemplateError && approvedTemplates.length === 0 && (
+                          <p className='text-xs text-destructive'>{editTemplateError}</p>
                         )}
                         <div className='space-y-1'>
                           <label className='text-xs font-medium text-muted-foreground'>Message</label>
