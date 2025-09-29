@@ -63,6 +63,13 @@ const createFollowupDefaults = (conversationId = ''): FollowUpFormDraft => ({
   status: 'SCHEDULED',
 });
 
+type ConversationOption = {
+  id: string;
+  label: string;
+  channel?: string | null;
+  contactName?: string | null;
+};
+
 const toDateTimeLocalInput = (value?: string | null) => {
   if (!value) return '';
   const date = new Date(value);
@@ -106,13 +113,86 @@ const AutomationsPage: React.FC = () => {
   const [createFollowupOpen, setCreateFollowupOpen] = useState(false);
   const [createFollowupDraft, setCreateFollowupDraft] = useState<FollowUpFormDraft>(() => createFollowupDefaults());
   const [createFollowupVariables, setCreateFollowupVariables] = useState('');
+  const [availableConversations, setAvailableConversations] = useState<ConversationOption[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+
+  const conversationOptions = useMemo(() => {
+    const merged = new Map<string, ConversationOption>();
+    availableConversations.forEach((option) => {
+      merged.set(option.id, option);
+    });
+    allFollowups.forEach((followup) => {
+      const id = followup.conversationId;
+      if (!id) return;
+      if (!merged.has(id)) {
+        merged.set(id, { id, label: id });
+      }
+    });
+    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [availableConversations, allFollowups]);
+
+  const filteredFollowups = useMemo(() => {
+    const source =
+      conversationFilter === 'ALL'
+        ? allFollowups
+        : allFollowups.filter((followup) => followup.conversationId === conversationFilter);
+
+    const toTimestamp = (value?: string | null) => {
+      if (!value) return Number.POSITIVE_INFINITY;
+      const time = new Date(value).getTime();
+      return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+    };
+
+    return [...source].sort((a, b) => {
+      const aTime = toTimestamp(a.scheduledTime ?? a.createdAt);
+      const bTime = toTimestamp(b.scheduledTime ?? b.createdAt);
+      return aTime - bTime;
+    });
+  }, [allFollowups, conversationFilter]);
+
+  useEffect(() => {
+    if (conversationFilter === 'ALL') return;
+    const exists = conversationOptions.some((option) => option.id === conversationFilter);
+    if (!exists) {
+      setConversationFilter('ALL');
+    }
+  }, [conversationFilter, conversationOptions]);
+
+  const formatConversationLabel = (option: ConversationOption) => {
+    if (!option.channel) return option.label;
+    const channel = option.channel.toUpperCase();
+    switch (channel) {
+      case 'WHATSAPP':
+        return `${option.label} · WhatsApp`;
+      case 'TELEGRAM':
+        return `${option.label} · Telegram`;
+      case 'INSTAGRAM':
+        return `${option.label} · Instagram`;
+      case 'FACEBOOK':
+        return `${option.label} · Facebook`;
+      default:
+        return `${option.label} · ${formatEnumLabel(option.channel)}`;
+    }
+  };
+
+  const selectedConversationLabel = useMemo(() => {
+    if (conversationFilter === 'ALL') return 'All conversations';
+    const option = conversationOptions.find((candidate) => candidate.id === conversationFilter);
+    return option ? formatConversationLabel(option) : conversationFilter;
+  }, [conversationFilter, conversationOptions]);
 
   const resetCreateFollowupForm = useCallback(
     (prefillConversationId?: string) => {
-      setCreateFollowupDraft(createFollowupDefaults(prefillConversationId ?? (conversationFilter !== 'ALL' ? conversationFilter : '')));
+      const fallback = (
+        prefillConversationId ??
+        (conversationFilter !== 'ALL'
+          ? conversationFilter
+          : conversationOptions[0]?.id ?? '')
+      );
+      setCreateFollowupDraft(createFollowupDefaults(fallback));
       setCreateFollowupVariables('');
     },
-    [conversationFilter]
+    [conversationFilter, conversationOptions]
   );
 
   const resetEditingFollowup = () => {
@@ -154,15 +234,62 @@ const AutomationsPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchAllFollowups();
-  }, [fetchAllFollowups]);
+  const fetchConversations = useCallback(async () => {
+    setConversationsLoading(true);
+    try {
+      const res = await client.get(endpoints.threads, {
+        params: { include: 'contact,channel' },
+      });
+      const threads =
+        (res.data?.data?.threads as Array<{
+          id: string;
+          contact?: { displayName?: string | null; phone?: string | null; waId?: string | null; email?: string | null };
+          channel?: { type?: string | null; displayName?: string | null };
+        }>) || [];
+
+      const rawThreads = (Array.isArray(res.data?.data?.threads)
+        ? res.data.data.threads
+        : Array.isArray(res.data?.threads)
+        ? res.data.threads
+        : Array.isArray(res.data)
+        ? res.data
+        : threads) as typeof threads;
+
+      const options = (Array.isArray(rawThreads) ? rawThreads : threads).map<ConversationOption>((thread) => {
+        const contactNameRaw =
+          thread.contact?.displayName || thread.contact?.phone || thread.contact?.waId || thread.contact?.email || 'Conversation';
+        const contactName = contactNameRaw ? contactNameRaw.trim() : 'Conversation';
+        const channel = thread.channel?.displayName || thread.channel?.type || null;
+        return {
+          id: thread.id,
+          label: contactName,
+          channel,
+          contactName,
+        };
+      });
+
+      const sorted = options.sort((a, b) => a.label.localeCompare(b.label));
+      setAvailableConversations(sorted);
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
+      if (message) {
+        toast.error(message);
+      }
+      setAvailableConversations([]);
+    } finally {
+      setConversationsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!createFollowupOpen) {
-      resetCreateFollowupForm();
-    }
-  }, [conversationFilter, createFollowupOpen, resetCreateFollowupForm]);
+    fetchAllFollowups();
+    fetchConversations();
+  }, [fetchAllFollowups, fetchConversations]);
+
+  useEffect(() => {
+    if (!createFollowupOpen) return;
+    resetCreateFollowupForm();
+  }, [createFollowupOpen, conversationFilter, conversationOptions, resetCreateFollowupForm]);
 
   const openBuilder = (flow?: AutomationFlow) => {
     setEditingFlow(flow ?? { ...createDefaultFlow(), name: 'Untitled automation' });
@@ -241,39 +368,6 @@ const AutomationsPage: React.FC = () => {
     [templates]
   );
 
-  const conversationOptions = useMemo(() => {
-    const ids = Array.from(new Set(allFollowups.map((followup) => followup.conversationId).filter(Boolean)));
-    ids.sort();
-    return ids;
-  }, [allFollowups]);
-
-  const filteredFollowups = useMemo(() => {
-    const source =
-      conversationFilter === 'ALL'
-        ? allFollowups
-        : allFollowups.filter((followup) => followup.conversationId === conversationFilter);
-
-    const toTimestamp = (value?: string | null) => {
-      if (!value) return Number.POSITIVE_INFINITY;
-      const time = new Date(value).getTime();
-      return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
-    };
-
-    return [...source].sort((a, b) => {
-      const aTime = toTimestamp(a.scheduledTime ?? a.createdAt);
-      const bTime = toTimestamp(b.scheduledTime ?? b.createdAt);
-      return aTime - bTime;
-    });
-  }, [allFollowups, conversationFilter]);
-
-  useEffect(() => {
-    if (conversationFilter === 'ALL') return;
-    const exists = allFollowups.some((followup) => followup.conversationId === conversationFilter);
-    if (!exists) {
-      setConversationFilter('ALL');
-    }
-  }, [allFollowups, conversationFilter]);
-
   const parseVariablesInput = (input: string) => {
     if (!input.trim()) return undefined;
 
@@ -348,6 +442,7 @@ const AutomationsPage: React.FC = () => {
       resetCreateFollowupForm(conversationId);
       setConversationFilter(conversationId);
       await fetchAllFollowups();
+      await fetchConversations();
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Failed to create follow-up';
       toast.error(message);
@@ -417,6 +512,7 @@ const AutomationsPage: React.FC = () => {
       resetEditingFollowup();
       setConversationFilter(conversationId);
       await fetchAllFollowups();
+      await fetchConversations();
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Failed to save workflow';
       toast.error(message);
@@ -721,20 +817,26 @@ const AutomationsPage: React.FC = () => {
                 <div className='space-y-3'>
                   <div className='grid gap-3 sm:grid-cols-2'>
                     <div className='space-y-1'>
-                      <label className='text-xs font-medium text-muted-foreground'>Conversation ID<span className='text-destructive'>*</span></label>
-                      <input
-                        className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                        placeholder='conv_123'
-                        list='followup-conversations'
-                        value={createFollowupDraft.conversationId}
-                        onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, conversationId: e.target.value })}
-                      />
-                      {conversationOptions.length > 0 && (
-                        <datalist id='followup-conversations'>
-                          {conversationOptions.map((conversationId) => (
-                            <option key={conversationId} value={conversationId} />
+                      <label className='text-xs font-medium text-muted-foreground'>Conversation<span className='text-destructive'>*</span></label>
+                      {conversationsLoading ? (
+                        <Skeleton className='h-9 w-full' />
+                      ) : conversationOptions.length ? (
+                        <select
+                          className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
+                          value={createFollowupDraft.conversationId}
+                          onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, conversationId: e.target.value })}
+                        >
+                          <option value=''>Select a chat</option>
+                          {conversationOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {formatConversationLabel(option)}
+                            </option>
                           ))}
-                        </datalist>
+                        </select>
+                      ) : (
+                        <div className='rounded border border-dashed border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground'>
+                          No conversations available yet. Head to the inbox to start a chat first.
+                        </div>
                       )}
                     </div>
                     <div className='space-y-1'>
@@ -803,7 +905,7 @@ const AutomationsPage: React.FC = () => {
                     <p className='text-[11px] text-muted-foreground'>Only needed when the selected template includes placeholders.</p>
                   </div>
                   <div className='flex flex-wrap gap-2 pt-2'>
-                    <Button size='sm' onClick={handleCreateFollowup}>Save</Button>
+                    <Button size='sm' disabled={conversationsLoading || !createFollowupDraft.conversationId} onClick={handleCreateFollowup}>Save</Button>
                     <Button
                       size='sm'
                       variant='outline'
@@ -821,9 +923,14 @@ const AutomationsPage: React.FC = () => {
                   <p className='text-sm text-muted-foreground'>Schedule the perfect follow-up once and reuse it whenever a lead goes quiet.</p>
                   <Button
                     size='sm'
+                    disabled={conversationsLoading || conversationOptions.length === 0}
                     onClick={() => {
                       if (!user?.id) {
                         toast.error('You must be signed in to create follow-ups');
+                        return;
+                      }
+                      if (conversationOptions.length === 0) {
+                        toast.error('No conversations available to schedule a follow-up yet.');
                         return;
                       }
                       setCreateFollowupOpen(true);
@@ -850,9 +957,9 @@ const AutomationsPage: React.FC = () => {
                   onChange={(e) => setConversationFilter(e.target.value)}
                 >
                   <option value='ALL'>All conversations</option>
-                  {conversationOptions.map((conversationId) => (
-                    <option key={conversationId} value={conversationId}>
-                      {conversationId}
+                  {conversationOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {formatConversationLabel(option)}
                     </option>
                   ))}
                 </select>
@@ -974,7 +1081,7 @@ const AutomationsPage: React.FC = () => {
                   <p className='text-sm text-muted-foreground'>
                     {conversationFilter === 'ALL'
                       ? 'No follow-ups scheduled yet.'
-                      : `No follow-ups scheduled for ${conversationFilter}.`}
+                      : `No follow-ups scheduled for ${selectedConversationLabel}.`}
                   </p>
                 ) : (
                   filteredFollowups.map((item, index) => (
@@ -1033,6 +1140,7 @@ const AutomationsPage: React.FC = () => {
                                   resetEditingFollowup();
                                 }
                                 await fetchAllFollowups();
+                                await fetchConversations();
                               } catch (error: any) {
                                 const message = error?.response?.data?.message || 'Failed to delete workflow';
                                 toast.error(message);
