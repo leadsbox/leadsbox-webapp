@@ -9,8 +9,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit, Plus, Trash2, Users } from 'lucide-react';
+import { Copy, Edit, Plus, Trash2, Users } from 'lucide-react';
 import client from '@/api/client';
+import { endpoints } from '@/api/config';
 import { toast } from 'react-toastify';
 
 interface Props {
@@ -32,6 +33,8 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
+  const [inviteLink, setInviteLink] = useState('');
+  const [generatingInvite, setGeneratingInvite] = useState(false);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -55,6 +58,15 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
     };
     fetchMembers();
   }, [selectedOrgId]);
+
+  useEffect(() => {
+    if (!memberDialogOpen) {
+      setInviteEmail('');
+      setInviteRole('MEMBER');
+      setInviteLink('');
+      setGeneratingInvite(false);
+    }
+  }, [memberDialogOpen]);
 
   const getRoleBadgeColor = (role: MemberVM['role']) => {
     switch (role) {
@@ -82,6 +94,7 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
       await client.post(`/orgs/${selectedOrgId}/members`, { email: inviteEmail.trim(), role: inviteRole });
       setInviteEmail('');
       setInviteRole('MEMBER');
+      setInviteLink('');
       setMemberDialogOpen(false);
       const resp = await client.get(`/orgs/${selectedOrgId}/members`);
       const list: Array<any> = resp?.data?.data?.members || [];
@@ -97,6 +110,42 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
       toast.success('Member added');
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to add member');
+    }
+  };
+
+  const generateInvite = async () => {
+    if (!selectedOrgId) {
+      toast.error('Select an organization first');
+      return;
+    }
+
+    try {
+      setGeneratingInvite(true);
+      const res = await client.post(endpoints.orgInvite(selectedOrgId), {
+        role: inviteRole,
+        email: inviteEmail.trim() || undefined,
+      });
+      const link = res?.data?.data?.inviteUrl as string | undefined;
+      if (link) {
+        setInviteLink(link);
+        toast.success('Invite link generated');
+      } else {
+        toast.error('Failed to generate invite link');
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to generate invite link');
+    } finally {
+      setGeneratingInvite(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      toast.success('Invite link copied');
+    } catch (e) {
+      toast.error('Unable to copy invite link');
     }
   };
 
@@ -242,12 +291,46 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant='outline' onClick={() => setMemberDialogOpen(false)}>Cancel</Button>
-            <Button onClick={inviteMember} disabled={!selectedOrgId}>
-              <Plus className='h-4 w-4 mr-2' />
-              Add Member
+          {inviteLink && (
+            <div className='mt-4 space-y-2'>
+              <Label>Invitation Link</Label>
+              <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                <Input readOnly value={inviteLink} />
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={copyInviteLink}
+                  className='whitespace-nowrap'
+                >
+                  <Copy className='h-4 w-4 mr-2' />
+                  Copy Link
+                </Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setMemberDialogOpen(false)}
+            >
+              Cancel
             </Button>
+            <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
+              <Button
+                type='button'
+                variant='secondary'
+                onClick={generateInvite}
+                disabled={!selectedOrgId || generatingInvite}
+              >
+                <Copy className='h-4 w-4 mr-2' />
+                Generate Invite Link
+              </Button>
+              <Button type='button' onClick={inviteMember} disabled={!selectedOrgId}>
+                <Plus className='h-4 w-4 mr-2' />
+                Add Member
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -256,4 +339,3 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
 };
 
 export default MembersTab;
-

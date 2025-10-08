@@ -31,6 +31,9 @@ export const endpoints = {
   profile: '/user/profile', // not used by this backend; left for compat
   organization: '/organization', // use endpoints.orgs instead
   members: '/organization/members',
+  orgInvite: (orgId: string) => `/orgs/${orgId}/invitations`,
+  orgInvitePreview: (token: string) => `/orgs/invitations/${token}`,
+  orgInviteAccept: (token: string) => `/orgs/invitations/${token}/accept`,
 
   // Leads
   leads: '/leads',

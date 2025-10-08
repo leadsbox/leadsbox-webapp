@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
-import client from '@/api/client';
+import client, { getOrgId } from '@/api/client';
 import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -142,14 +142,19 @@ export const IntegrationsTab: React.FC = () => {
   };
 
   const finalizeConnect = async () => {
-    if (!waToken || !selectedWaba || !selectedPhone || !user?.id) return;
+    if (!waToken || !selectedWaba || !selectedPhone) return;
+    const organizationId = getOrgId();
+    if (!organizationId) {
+      toast.error('Select an organization before linking WhatsApp');
+      return;
+    }
     setWaLoading(true);
     try {
       await client.post(`${apiRoot}/api/provider/whatsapp/connect`, {
         accessToken: waToken,
         wabaId: selectedWaba,
         phoneId: selectedPhone,
-        userId: user.id,
+        organizationId,
       });
       setWaConnected(true);
       setWaToken(null);

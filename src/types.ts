@@ -44,7 +44,7 @@ export interface User {
   orgId?: string;
   profileImage?: string;
   avatar?: string;
-  role: 'OWNER' | 'MANAGER' | 'AGENT';
+  role: 'OWNER' | 'MANAGER' | 'AGENT' | 'ADMIN' | 'MEMBER';
   createdAt: string;
   updatedAt: string;
   emailVerified?: boolean;
@@ -364,9 +364,16 @@ export interface PaginatedResponse<T> {
 }
 
 // Auth types
+export type OrganizationSummary = {
+  id: string;
+  name: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+};
+
 export interface AuthUser extends User {
-  organizations: Organization[];
-  currentOrgId: string;
+  orgId?: string | null;
+  currentOrgId?: string | null;
+  organizations?: OrganizationSummary[];
 }
 
 export interface LoginCredentials {
@@ -375,10 +382,11 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  name: string;
+  username: string;
   email: string;
   password: string;
   organizationName?: string;
+  inviteToken?: string;
 }
 
 export interface AuthResponse {

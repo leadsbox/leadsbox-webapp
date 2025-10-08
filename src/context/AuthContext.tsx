@@ -8,7 +8,13 @@ type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (params: { email: string; password: string; username: string; organizationName: string }) => Promise<void>;
+  register: (params: {
+    email: string;
+    password: string;
+    username: string;
+    organizationName?: string;
+    inviteToken?: string | null;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   setOrg: (id: string) => void;
@@ -140,13 +146,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (profile) {
         setUser(profile);
         toast.success(`Welcome back, ${profile.username || profile.email}!`);
-        // Ensure orgId is set after login
-        if (!getOrgId()) {
+
+        if (profile.orgId) {
+          setOrg(profile.orgId);
+        } else if (profile.currentOrgId) {
+          setOrg(profile.currentOrgId);
+        } else if (!getOrgId()) {
           try {
             const orgRes = await client.get(endpoints.orgs);
             const orgs = orgRes?.data?.data?.orgs || orgRes?.data?.orgs || [];
             if (Array.isArray(orgs) && orgs.length > 0) {
-              setOrgId(orgs[0].id);
+              setOrg(orgs[0].id);
             }
           } catch (_) {
             // noop
@@ -164,11 +174,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (params: { email: string; password: string; username: string; organizationName: string }): Promise<void> => {
+  const register = async (params: {
+    email: string;
+    password: string;
+    username: string;
+    organizationName?: string;
+    inviteToken?: string | null;
+  }): Promise<void> => {
     setloading(true);
     try {
-      const { email, password, username, organizationName } = params;
-      const res = await client.post(endpoints.register, { email, password, username, organizationName });
+      const { email, password, username, organizationName, inviteToken } = params;
+      const requestBody: Record<string, unknown> = {
+        email,
+        password,
+        username,
+      };
+
+      if (organizationName && organizationName.trim().length > 0) {
+        requestBody.organizationName = organizationName.trim();
+      }
+
+      if (inviteToken) {
+        requestBody.inviteToken = inviteToken;
+      }
+
+      const res = await client.post(endpoints.register, requestBody);
 
       const payload = res?.data?.data || {};
       const profile = payload?.profile; // register returns token inside profile
@@ -179,6 +209,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(profile);
         toast.success(`Welcome to LeadsBox, ${profile.username || profile.email}!`);
         // Org is created server-side during register; if backend returns orgId later we can set it here
+        if (profile.orgId) {
+          setOrg(profile.orgId);
+        } else if (profile.currentOrgId) {
+          setOrg(profile.currentOrgId);
+        }
       } else {
         throw new Error('Registration failed');
       }
@@ -216,7 +251,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const setOrg = (id: string) => setOrgId(id);
+  const setOrg = (id: string) => {
+    setOrgId(id);
+    setUserState((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, orgId: id, currentOrgId: id } as AuthUser;
+      persistUser(next);
+      return next;
+    });
+  };
 
   return <Ctx.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth }}>{children}</Ctx.Provider>;
 };

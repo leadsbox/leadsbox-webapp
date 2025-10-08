@@ -33,6 +33,10 @@ const Register = () => {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [agree, setAgree] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteOrgName, setInviteOrgName] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -50,6 +54,37 @@ const Register = () => {
       }
     }
   }, [formData.email]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('invite');
+    if (!tokenParam) {
+      setInviteToken(null);
+      setInviteOrgName(null);
+      setInviteRole('MEMBER');
+      setInviteError(null);
+      return;
+    }
+
+    setInviteToken(tokenParam);
+    (async () => {
+      try {
+        const res = await client.get(endpoints.orgInvitePreview(tokenParam));
+        const inviteData = res?.data?.data;
+        const orgName = inviteData?.organization?.name || null;
+        if (orgName) {
+          setInviteOrgName(orgName);
+          setFormData((prev) => ({ ...prev, organizationName: orgName }));
+        }
+        if (inviteData?.role) {
+          setInviteRole(inviteData.role as 'MEMBER' | 'ADMIN');
+        }
+        setInviteError(null);
+      } catch (err) {
+        setInviteError('This invitation link is invalid or has expired.');
+      }
+    })();
+  }, []);
 
   const handleGoogleRedirect = () => {
     const next = encodeURIComponent('/dashboard');
@@ -86,9 +121,15 @@ const Register = () => {
     e.preventDefault();
 
     const { username, email, password, confirmPassword, organizationName } = formData;
+    const requiresOrgName = !inviteToken;
 
-    if (!username || !email || !password || !confirmPassword || !organizationName) {
-      toast.error('Please fill in all fields');
+    if (!username || !email || !password || !confirmPassword || (requiresOrgName && !organizationName)) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (inviteToken && inviteError) {
+      toast.error(inviteError);
       return;
     }
 
@@ -115,7 +156,13 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      await register({ email, password, username, organizationName });
+      await register({
+        email,
+        password,
+        username,
+        organizationName: requiresOrgName ? organizationName : undefined,
+        inviteToken,
+      });
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error) {
@@ -196,22 +243,38 @@ const Register = () => {
             </div>
             {/* First/Last name moved to profile settings after registration */}
 
-            <div className='space-y-2'>
-              <Label htmlFor='organizationName'>Organization Name</Label>
-              <div className='relative'>
-                <Building className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='organizationName'
-                  name='organizationName'
-                  type='text'
-                  placeholder='Your Company'
-                  value={formData.organizationName}
-                  onChange={handleInputChange}
-                  className='pl-10'
-                  disabled={isLoading}
-                />
+            {inviteToken ? (
+              <div className='space-y-2 rounded-md border border-dashed border-muted p-4 bg-muted/20'>
+                <p className='text-sm text-muted-foreground'>
+                  {inviteError ? (
+                    <span className='text-destructive'>{inviteError}</span>
+                  ) : (
+                    <>
+                      You&apos;re joining{' '}
+                      <span className='font-medium'>{inviteOrgName || 'this organization'}</span>{' '}
+                      as a <span className='font-medium lowercase'>{inviteRole.toLowerCase()}</span>.
+                    </>
+                  )}
+                </p>
               </div>
-            </div>
+            ) : (
+              <div className='space-y-2'>
+                <Label htmlFor='organizationName'>Organization Name</Label>
+                <div className='relative'>
+                  <Building className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    id='organizationName'
+                    name='organizationName'
+                    type='text'
+                    placeholder='Your Company'
+                    value={formData.organizationName}
+                    onChange={handleInputChange}
+                    className='pl-10'
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className='space-y-2'>
               <Label htmlFor='email'>Email</Label>
