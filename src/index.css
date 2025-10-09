@@ -17,26 +17,26 @@
     line-height: 1.5;
 
     /* Color tokens */
-    --background: 220 20% 95%;
+    --background: 220 16% 92%;
     --foreground: 220 15% 15%;
-    --surface: 0 0% 100%;
-    --surface-foreground: 220 15% 20%;
+    --surface: 210 16% 96%;
+    --surface-foreground: 220 18% 22%;
 
     --card: var(--surface);
     --card-foreground: var(--surface-foreground);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 15%;
+    --popover: 210 16% 96%;
+    --popover-foreground: 220 18% 22%;
 
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 98%;
     --primary-hover: 221 83% 48%;
 
-    --secondary: 220 15% 95%;
-    --secondary-foreground: 220 15% 25%;
+    --secondary: 220 12% 90%;
+    --secondary-foreground: 220 18% 28%;
 
-    --muted: 220 18% 90%;
-    --muted-foreground: 220 12% 38%;
+    --muted: 220 14% 86%;
+    --muted-foreground: 220 12% 36%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
