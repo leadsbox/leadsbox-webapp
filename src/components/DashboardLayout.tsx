@@ -2,7 +2,22 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { MessageSquare, Users, Zap, CheckSquare, BarChart3, Settings, ChevronLeft, Inbox, Target, Calendar, FileText, Sparkles, Home } from 'lucide-react';
+import {
+  MessageSquare,
+  Users,
+  Zap,
+  CheckSquare,
+  BarChart3,
+  Settings,
+  ChevronLeft,
+  Inbox,
+  Target,
+  Calendar,
+  FileText,
+  Sparkles,
+  Home,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -205,47 +220,55 @@ export const DashboardLayout: React.FC = () => {
                 <NavLink
                   key={item.href}
                   to={item.href}
-                className={cn(
-                  'sidebar-item-base',
-                  sidebarCollapsed ? 'sidebar-item-collapsed' : '',
-                  isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'
-                )}
+                  className={cn(
+                    'sidebar-item-base',
+                    sidebarCollapsed ? 'sidebar-item-collapsed' : '',
+                    isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'
+                  )}
                   aria-current={isActive ? 'page' : undefined}
                   title={sidebarCollapsed ? item.title : undefined}
                 >
-                  <item.icon
-                    className={cn(
-                      'h-5 w-5 flex-shrink-0 transition-colors',
-                      isActive ? 'text-primary' : 'text-sidebar-foreground/60'
+                  <motion.div
+                    className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'w-full')}
+                    whileHover={{ x: isActive || sidebarCollapsed ? 0 : 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  >
+                    <item.icon className={cn('h-5 w-5 flex-shrink-0 transition-colors', isActive ? 'text-primary' : 'text-sidebar-foreground/60')} />
+
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className='ml-3 flex-1'>{item.title}</span>
+                        {item.title === 'Inbox' && inboxCount > 0 && (
+                          <Badge
+                            variant={isActive ? 'secondary' : 'outline'}
+                            className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'
+                          >
+                            {inboxLoading ? '...' : inboxCount}
+                          </Badge>
+                        )}
+                        {item.title === 'Tasks' && item.badge && (
+                          <Badge
+                            variant={isActive ? 'secondary' : 'outline'}
+                            className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </>
                     )}
-                  />
 
-                  {!sidebarCollapsed && (
-                    <>
-                      <span className='ml-3 flex-1'>{item.title}</span>
-                      {item.title === 'Inbox' && inboxCount > 0 && (
-                        <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
-                          {inboxLoading ? '...' : inboxCount}
-                        </Badge>
-                      )}
-                      {item.title === 'Tasks' && item.badge && (
-                        <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </>
-                  )}
-
-                  {sidebarCollapsed && item.title === 'Inbox' && inboxCount > 0 && (
-                    <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
-                      {inboxLoading ? '...' : inboxCount}
-                    </Badge>
-                  )}
-                  {sidebarCollapsed && item.title === 'Tasks' && item.badge && (
-                    <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
-                      {item.badge}
-                    </Badge>
-                  )}
+                    {sidebarCollapsed && item.title === 'Inbox' && inboxCount > 0 && (
+                      <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
+                        {inboxLoading ? '...' : inboxCount}
+                      </Badge>
+                    )}
+                    {sidebarCollapsed && item.title === 'Tasks' && item.badge && (
+                      <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </motion.div>
                 </NavLink>
               );
             })}
@@ -309,26 +332,27 @@ export const DashboardLayout: React.FC = () => {
               {sidebarItems.map((item) => {
                 const isActive = location.pathname.startsWith(item.href);
                 return (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                className={cn(
-                  'sidebar-item-base px-3',
-                  isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'
-                )}
+                  <NavLink
+                    key={item.href}
+                    to={item.href}
+                    className={cn('sidebar-item-base px-3', isActive ? 'sidebar-item-active' : 'sidebar-item-inactive')}
                   >
-                    <item.icon
-                      className={cn(
-                        'h-5 w-5 flex-shrink-0 transition-colors',
-                        isActive ? 'text-primary' : 'text-sidebar-foreground/60'
+                    <motion.div
+                      className='flex items-center w-full'
+                      whileHover={{ x: isActive ? 0 : 4 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                    >
+                      <item.icon
+                        className={cn('h-5 w-5 flex-shrink-0 transition-colors', isActive ? 'text-primary' : 'text-sidebar-foreground/60')}
+                      />
+                      <span className='ml-3 flex-1'>{item.title}</span>
+                      {item.badge && (
+                        <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
+                          {item.badge}
+                        </Badge>
                       )}
-                    />
-                    <span className='ml-3 flex-1'>{item.title}</span>
-                    {item.badge && (
-                      <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
-                        {item.badge}
-                      </Badge>
-                    )}
+                    </motion.div>
                   </NavLink>
                 );
               })}

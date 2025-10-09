@@ -6,6 +6,16 @@
 
 @layer base {
   :root {
+    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    font-feature-settings: "liga", "kern", "calt";
+    font-synthesis: none;
+    --lb-type-xs: clamp(0.72rem, 0.68rem + 0.2vw, 0.82rem);
+    --lb-type-sm: clamp(0.82rem, 0.76rem + 0.3vw, 0.96rem);
+    --lb-type-base: clamp(0.98rem, 0.9rem + 0.4vw, 1.08rem);
+    --lb-type-lg: clamp(1.12rem, 1.02rem + 0.6vw, 1.32rem);
+    --lb-type-xl: clamp(1.34rem, 1.16rem + 0.85vw, 1.78rem);
+    line-height: 1.5;
+
     /* Color tokens */
     --background: 220 20% 95%;
     --foreground: 220 15% 15%;
@@ -175,7 +185,56 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    background-image: none;
+    background-color: hsl(var(--background));
+  }
+
+  .dark body {
+    position: relative;
+    background-color: #05070f;
+    background-image:
+      radial-gradient(320px circle at 12% -10%, rgba(76, 150, 255, 0.35), transparent 60%),
+      radial-gradient(420px circle at 82% 0%, rgba(132, 196, 255, 0.18), transparent 65%),
+      linear-gradient(180deg, rgba(7, 11, 20, 0.92) 0%, rgba(5, 7, 15, 1) 88%);
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  .dark body::before,
+  .dark body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .dark body::before {
+    background: radial-gradient(circle at top, rgba(80, 120, 255, 0.28), transparent 55%);
+    mix-blend-mode: screen;
+    filter: blur(80px);
+    opacity: 0.7;
+  }
+
+  .dark body::after {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 65%);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    mask: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+    -webkit-mask: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+    opacity: 0.4;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.015em;
+    line-height: 1.2;
   }
 
   ::-webkit-scrollbar {
