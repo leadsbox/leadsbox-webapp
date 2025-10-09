@@ -374,7 +374,7 @@ export const DashboardLayout: React.FC = () => {
         <DashboardHeader onSidebarToggle={toggleSidebar} sidebarOpen={isMobile ? mobileOpen : !sidebarCollapsed} />
 
         {/* Page content */}
-        <main className='dashboard-main flex-1 overflow-auto bg-background'>
+        <main className='dashboard-main flex-1 overflow-auto'>
           <Outlet />
         </main>
       </div>

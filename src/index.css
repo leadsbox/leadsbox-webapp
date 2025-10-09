@@ -276,7 +276,12 @@
 
   /* Dashboard layout utilities */
   .dashboard-container {
-    @apply min-h-screen bg-background;
+    @apply min-h-screen;
+    background-color: hsl(var(--background));
+  }
+
+  .dark .dashboard-container {
+    background-color: transparent;
   }
 
   .dashboard-header {
@@ -289,6 +294,11 @@
 
   .dashboard-main {
     @apply flex-1 overflow-hidden;
+    background-color: hsl(var(--background));
+  }
+
+  .dark .dashboard-main {
+    background-color: transparent;
   }
 
   .sidebar-item-base {
