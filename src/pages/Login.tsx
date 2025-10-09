@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,57 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'react-toastify';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { API_BASE, endpoints } from '@/api/config';
+import client from '@/api/client';
+import { loadPendingInvite, savePendingInvite } from '@/lib/inviteStorage';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteOrg, setInviteOrg] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
+  const [inviteError, setInviteError] = useState<string | null>(null);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('invite');
+    const stored = loadPendingInvite();
+    const activeToken = tokenParam || stored || null;
+
+    if (tokenParam) {
+      savePendingInvite(tokenParam);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (!activeToken) {
+      setInviteToken(null);
+      setInviteOrg(null);
+      setInviteRole('MEMBER');
+      setInviteError(null);
+      return;
+    }
+
+    setInviteToken(activeToken);
+    (async () => {
+      try {
+        const res = await client.get(endpoints.orgInvitePreview(activeToken));
+        const data = res?.data?.data;
+        setInviteOrg(data?.organization?.name || null);
+        if (data?.role) {
+          setInviteRole((data.role as 'MEMBER' | 'ADMIN') ?? 'MEMBER');
+        }
+        setInviteError(null);
+      } catch (error) {
+        console.error('Failed to preview invite', error);
+        setInviteError('This invitation looks invalid or has expired.');
+      }
+    })();
+  }, []);
 
   const handleGoogleRedirect = () => {
     // Land on home dashboard after OAuth
@@ -36,7 +78,6 @@ const Login = () => {
     
     try {
       await login(email, password);
-      toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Invalid credentials';
@@ -56,6 +97,19 @@ const Login = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {inviteToken && (
+            <div className="mb-4 rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-sm text-muted-foreground">
+              {inviteError ? (
+                <span className="text-destructive">{inviteError}</span>
+              ) : (
+                <>
+                  After signing in we&apos;ll add you to{' '}
+                  <span className="font-medium text-foreground">{inviteOrg || 'the invited organization'}</span> as a{' '}
+                  <span className="font-medium lowercase">{inviteRole.toLowerCase()}</span>.
+                </>
+              )}
+            </div>
+          )}
           <div className="space-y-4">
             <Button
               type="button"

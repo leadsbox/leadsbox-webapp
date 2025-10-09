@@ -11,6 +11,7 @@ import { API_BASE, endpoints } from '@/api/config';
 import client from '@/api/client';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { clearPendingInvite, savePendingInvite } from '@/lib/inviteStorage';
 
 declare global {
   interface Window {
@@ -63,10 +64,12 @@ const Register = () => {
       setInviteOrgName(null);
       setInviteRole('MEMBER');
       setInviteError(null);
+      clearPendingInvite();
       return;
     }
 
     setInviteToken(tokenParam);
+    savePendingInvite(tokenParam);
     (async () => {
       try {
         const res = await client.get(endpoints.orgInvitePreview(tokenParam));
@@ -163,6 +166,7 @@ const Register = () => {
         organizationName: requiresOrgName ? organizationName : undefined,
         inviteToken,
       });
+      clearPendingInvite();
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error) {
@@ -360,7 +364,10 @@ const Register = () => {
 
           <div className='mt-4 text-center text-sm'>
             <span className='text-muted-foreground'>Already have an account? </span>
-            <Link to='/login' className='text-primary hover:underline font-medium'>
+            <Link
+              to={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : '/login'}
+              className='text-primary hover:underline font-medium'
+            >
               Sign in
             </Link>
           </div>

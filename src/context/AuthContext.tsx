@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
 import client, { setAccessToken, setOrgId, getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
+import { clearPendingInvite, loadPendingInvite } from '@/lib/inviteStorage';
 
 type AuthState = {
   user: AuthUser | null;
@@ -18,6 +19,7 @@ type AuthState = {
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   setOrg: (id: string) => void;
+  acceptInvite: (token: string) => Promise<void>;
 };
 
 const Ctx = createContext<AuthState | undefined>(undefined);
@@ -58,50 +60,90 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     persistUser(value);
   };
 
+  const acceptInvite = async (token: string, options: { silent?: boolean } = {}) => {
+    if (!token) return;
+    try {
+      const previewRes = await client.get(endpoints.orgInvitePreview(token));
+      const preview = previewRes?.data?.data;
+      const orgName = preview?.organization?.name;
+      const role = (preview?.role as string | undefined) || undefined;
+
+      const acceptRes = await client.post(endpoints.orgInviteAccept(token));
+      clearPendingInvite();
+
+      const profileRes = await client.get(endpoints.me);
+      const nextUser = profileRes?.data?.user as AuthUser | undefined;
+      if (nextUser) {
+        setUser(nextUser);
+        const defaultOrg = nextUser.currentOrgId || nextUser.orgId;
+        if (defaultOrg) {
+          setOrgId(defaultOrg);
+        }
+      }
+
+      if (!options.silent) {
+        const acceptedRole =
+          acceptRes?.data?.data?.role || role
+            ? ` as ${(acceptRes?.data?.data?.role || role || '').toLowerCase()}`
+            : '';
+        toast.success(`You're now part of ${orgName || 'the organization'}${acceptedRole}.`);
+      }
+    } catch (error: any) {
+      if (!options.silent) {
+        const message =
+          error?.response?.data?.message || 'Failed to accept invitation. Please try again.';
+        toast.error(message);
+      }
+      throw error;
+    }
+  };
+
+  const acceptPendingInviteIfNeeded = async () => {
+    const pendingToken = loadPendingInvite();
+    if (!pendingToken) return;
+    try {
+      await acceptInvite(pendingToken);
+    } catch (error) {
+      console.error('Pending invite acceptance failed:', error);
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
         if (!cachedUser) {
           setloading(true);
         }
-        // Check if we're coming back from OAuth
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const path = window.location.pathname || '';
-        
-        // Only treat ?token as an access token for OAuth redirects, not for /verify-email
+
         if (token && !path.startsWith('/verify-email')) {
-          // We have a token from OAuth, store it
           setAccessToken(token);
-          // Remove token from URL to prevent issues
           window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Skip auth check on public auth pages to avoid redirect churn
-        const isPublicAuthPage = (
+        const isPublicAuthPage =
           path === '/' ||
           path.startsWith('/login') ||
           path.startsWith('/register') ||
           path.startsWith('/verify-email') ||
           path.startsWith('/forgot-password') ||
-          path.startsWith('/reset-password')
-        );
+          path.startsWith('/reset-password');
+
         if (isPublicAuthPage) {
           setUser(null);
           setloading(false);
           return;
         }
 
-        // Get user data
         const { data } = await client.get(endpoints.me);
 
         if (data?.user) {
           setUser(data.user);
-          // Ensure x-org-id is set for org-scoped APIs
           if (data.user.orgId) {
             setOrgId(data.user.orgId);
           } else if (!getOrgId()) {
-            // Auto-select a default org if user has one
             try {
               const orgRes = await client.get(endpoints.orgs);
               const orgs = orgRes?.data?.data?.orgs || orgRes?.data?.orgs || [];
@@ -109,17 +151,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setOrgId(orgs[0].id);
               }
             } catch (_) {
-              // noop — user may not have an org yet
+              // noop
             }
           }
           if (data.accessToken) setAccessToken(data.accessToken);
+          await acceptPendingInviteIfNeeded();
         } else {
           setUser(null);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         setUser(null);
-        // Clear invalid tokens
         localStorage.removeItem('lb_access_token');
         localStorage.removeItem('lb_org_id');
       } finally {
@@ -162,6 +204,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // noop
           }
         }
+        await acceptPendingInviteIfNeeded();
       } else {
         throw new Error('Login failed');
       }
@@ -261,7 +304,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
-  return <Ctx.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth, acceptInvite }}>
+      {children}
+    </Ctx.Provider>
+  );
 };
 
 export const useAuth = () => {
