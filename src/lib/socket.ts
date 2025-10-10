@@ -5,6 +5,7 @@
 import React from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Message, Thread } from '@/types';
+import type { Analytics } from '@/types';
 
 // Socket.IO event types matching the backend
 export interface ServerToClientEvents {
@@ -29,6 +30,7 @@ export interface ServerToClientEvents {
 
   // Dashboard Events
   'dashboard:stats': (data: { totalLeads: number; activeThreads: number; [key: string]: any }) => void;
+  'analytics:overview': (data: Analytics) => void;
 
   // System Events
   connected: () => void;
@@ -53,6 +55,10 @@ export interface ClientToServerEvents {
   // Dashboard Subscriptions
   'dashboard:subscribe': () => void;
   'dashboard:unsubscribe': () => void;
+
+  // Analytics subscriptions
+  'analytics:subscribe': (data: { range?: string }) => void;
+  'analytics:unsubscribe': () => void;
 }
 
 // Socket.IO Client Service
@@ -269,6 +275,25 @@ export class SocketIOService {
     }
   }
 
+  async subscribeToAnalytics(range: string = '7d'): Promise<void> {
+    if (!this.socket?.connected) {
+      try {
+        await this.connect();
+      } catch (error) {
+        console.error('Failed to connect for analytics subscription:', error);
+        return;
+      }
+    }
+
+    this.socket?.emit('analytics:subscribe', { range });
+  }
+
+  unsubscribeFromAnalytics(): void {
+    if (this.socket?.connected) {
+      this.socket.emit('analytics:unsubscribe');
+    }
+  }
+
   // Event listener management
   on<K extends keyof ServerToClientEvents>(event: K, callback: (data: Parameters<ServerToClientEvents[K]>[0]) => void): () => void {
     if (!this.listeners.has(event)) {
@@ -328,6 +353,7 @@ export class SocketIOService {
 
     // Dashboard events
     this.socket.on('dashboard:stats', (data) => this.emitToListeners('dashboard:stats', data));
+    this.socket.on('analytics:overview', (data) => this.emitToListeners('analytics:overview', data));
   }
 
   // Handle disconnection with reconnection logic

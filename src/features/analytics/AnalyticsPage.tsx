@@ -1,6 +1,6 @@
 // Analytics Page Component for LeadsBox Dashboard
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -40,10 +40,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import client from '@/api/client';
-import { endpoints } from '@/api/config';
 import type { Analytics } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { socketService } from '@/lib/socket';
+import { useSocketIO } from '@/lib/socket';
 import { useToast } from '@/components/ui/use-toast';
 
 const EMPTY_ANALYTICS: Analytics = {
@@ -72,44 +72,68 @@ const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const fetchAnalytics = useCallback(
-    async (range: string) => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await client.get(endpoints.analytics.overview, {
-          params: { range },
-        });
-        const payload = (response.data?.data || response.data) as Analytics;
-        setAnalytics(payload);
-      } catch (err: any) {
-        console.error('Failed to load analytics overview', err);
-        const message =
-          err?.response?.data?.message ||
-          'Unable to load analytics right now. Please try again.';
-        setError(message);
-        toast({
-          title: 'Analytics unavailable',
-          description: message,
-          variant: 'destructive',
-        });
-        setAnalytics(null);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [toast]
-  );
+  const { isConnected } = useSocketIO();
 
   useEffect(() => {
-    fetchAnalytics(dateRange);
-  }, [dateRange, fetchAnalytics]);
+    let mounted = true;
+    setLoading(true);
+    setError(null);
 
-  const handleRefresh = async () => {
+    const unsubscribeOverview = socketService.on('analytics:overview', (data) => {
+      if (!mounted) return;
+      setAnalytics(data as Analytics);
+      setLoading(false);
+      setRefreshing(false);
+      setError(null);
+    });
+
+    const unsubscribeError = socketService.on('error', (payload) => {
+      if (!mounted) return;
+      if (payload.code === 'ANALYTICS_OVERVIEW_FAILED') {
+        setError(payload.message);
+        setLoading(false);
+        setRefreshing(false);
+        toast({
+          title: 'Analytics unavailable',
+          description: payload.message,
+          variant: 'destructive',
+        });
+      }
+    });
+
+    socketService
+      .connect()
+      .catch((err) => {
+        console.error('Analytics socket connect failed', err);
+        if (mounted) {
+          setError('Unable to connect to real-time analytics');
+          setLoading(false);
+          setRefreshing(false);
+        }
+      })
+      .finally(() => {
+        if (socketService.isConnected()) {
+          socketService.subscribeToAnalytics(dateRange);
+        }
+      });
+
+    return () => {
+      mounted = false;
+      unsubscribeOverview();
+      unsubscribeError();
+      socketService.unsubscribeFromAnalytics();
+    };
+  }, [dateRange, toast]);
+
+  useEffect(() => {
+    if (isConnected) {
+      socketService.subscribeToAnalytics(dateRange);
+    }
+  }, [isConnected, dateRange]);
+
+  const handleRefresh = () => {
     setRefreshing(true);
-    await fetchAnalytics(dateRange);
+    socketService.subscribeToAnalytics(dateRange);
   };
 
   const currentAnalytics = useMemo(
@@ -177,7 +201,11 @@ const AnalyticsPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overview.totalLeads}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{overview.totalLeads}</div>
+            )}
             <div className="flex items-center space-x-1 text-xs">
               <span className="text-green-500">+12%</span>
               <span className="text-muted-foreground">vs last month</span>
@@ -196,7 +224,11 @@ const AnalyticsPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overview.activeThreads}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{overview.activeThreads}</div>
+            )}
             <div className="flex items-center space-x-1 text-xs">
               <span className="text-green-500">+8%</span>
               <span className="text-muted-foreground">vs last month</span>
@@ -215,7 +247,11 @@ const AnalyticsPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatPercentage(overview.conversionRate)}</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{formatPercentage(overview.conversionRate)}</div>
+            )}
             <div className="flex items-center space-x-1 text-xs">
               <span className="text-green-500">+2.1%</span>
               <span className="text-muted-foreground">vs last month</span>
@@ -234,7 +270,11 @@ const AnalyticsPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overview.avgResponseTime}h</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{overview.avgResponseTime}h</div>
+            )}
             <div className="flex items-center space-x-1 text-xs">
               <span className="text-green-500">-15%</span>
               <span className="text-muted-foreground">vs last month</span>
@@ -242,6 +282,10 @@ const AnalyticsPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
 
       {/* Charts Tabs */}
       <Tabs defaultValue="trends" className="space-y-6">
@@ -262,31 +306,37 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trends.leadsOverTime}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip 
-                        labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                        formatter={(value: number) => [value, 'Leads']}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke={colors.primary} 
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                {loading ? (
+                  <div className="h-[240px]">
+                    <Skeleton className="h-full w-full rounded-md" />
+                  </div>
+                ) : (
+                  <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trends.leadsOverTime}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                          formatter={(value: number) => [value, 'Leads']}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="value"
+                          stroke={colors.primary}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -299,17 +349,23 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={trends.conversionsByStage}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip formatter={(value: number) => [value, 'Leads']} />
-                      <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {loading ? (
+                  <div className="h-[240px]">
+                    <Skeleton className="h-full w-full rounded-md" />
+                  </div>
+                ) : (
+                  <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={trends.conversionsByStage}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={(value: number) => [value, 'Leads']} />
+                        <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -322,31 +378,37 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trends.responseTimesTrend}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip 
-                        labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                        formatter={(value: number) => [`${value}h`, 'Response Time']}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke={colors.secondary} 
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                {loading ? (
+                  <div className="h-[220px]">
+                    <Skeleton className="h-full w-full rounded-md" />
+                  </div>
+                ) : (
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trends.responseTimesTrend}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                          formatter={(value: number) => [`${value}h`, 'Response Time']}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="value"
+                          stroke={colors.secondary}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -363,24 +425,44 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {performance.topSources.map((source, index) => (
-                    <div key={source.source} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: pieColors[index] }} />
-                        <div>
-                          <div className="font-medium">{source.source}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {source.leads} leads • {source.conversions} conversions
+                {loading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div key={`source-skel-${idx}`} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-3 w-3 rounded-full" />
+                          <div>
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-32 mt-1" />
                           </div>
                         </div>
+                        <Skeleton className="h-5 w-12 rounded-full" />
                       </div>
-                      <Badge variant="secondary">
-                        {formatPercentage(source.conversionRate)}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {performance.topSources.map((source, index) => (
+                      <div key={source.source} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                          />
+                          <div>
+                            <div className="font-medium">{source.source}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {source.leads} leads • {source.conversions} conversions
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant="secondary">
+                          {formatPercentage(source.conversionRate)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -393,33 +475,52 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {performance.agentPerformance.map((agent) => (
-                    <div key={agent.agent.id} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={agent.agent.avatar} />
-                          <AvatarFallback>
-                            {agent.agent.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{agent.agent.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {agent.threadsHandled} threads • {agent.conversions} conversions
+                {loading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div key={`agent-skeleton-${idx}`} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div>
+                            <Skeleton className="h-4 w-28" />
+                            <Skeleton className="h-3 w-32 mt-1" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-4 w-14" />
+                      </div>
+                    ))}
+                  </div>
+                ) : performance.agentPerformance.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No agent data available yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {performance.agentPerformance.map((agent) => (
+                      <div key={agent.agent.id} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={agent.agent.avatar} />
+                            <AvatarFallback>
+                              {agent.agent.name?.charAt(0)?.toUpperCase() || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{agent.agent.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {agent.threadsHandled} threads • {agent.conversions} conversions
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">{agent.avgResponseTime}h avg</div>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-500">★</span>
+                            <span className="text-sm">{agent.rating.toFixed(1)}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-medium">{agent.avgResponseTime}h avg</div>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-yellow-500">★</span>
-                          <span className="text-sm">{agent.rating}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -436,26 +537,32 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={performance.channelDistribution}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {performance.channelDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => [value, 'Leads']} />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
+                {loading ? (
+                  <div className="h-[240px]">
+                    <Skeleton className="h-full w-full rounded-md" />
+                  </div>
+                ) : (
+                  <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={performance.channelDistribution}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {performance.channelDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => [value, 'Leads']} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -468,17 +575,23 @@ const AnalyticsPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={performance.channelDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip formatter={(value: number) => [value, 'Leads']} />
-                      <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {loading ? (
+                  <div className="h-[240px]">
+                    <Skeleton className="h-full w-full rounded-md" />
+                  </div>
+                ) : (
+                  <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={performance.channelDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={(value: number) => [value, 'Leads']} />
+                        <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

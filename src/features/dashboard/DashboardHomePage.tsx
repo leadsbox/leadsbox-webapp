@@ -13,6 +13,7 @@ import client from '@/api/client';
 import { API_BASE, endpoints } from '@/api/config';
 import { useSocketIO } from '@/lib/socket';
 import { Thread } from '@/types';
+import type { Analytics } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Types for backend data
@@ -38,6 +39,14 @@ const DEFAULT_ANALYTICS_OVERVIEW = {
   activeThreads: 0,
   conversionRate: 0,
   avgResponseTime: 0,
+};
+
+type ApiError = {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 };
 
 const quickActions = [
@@ -86,9 +95,10 @@ export default function DashboardHomePage() {
   const [leadsOverTimeData, setLeadsOverTimeData] = useState<ChartDataPoint[]>([]);
   const [pipelineData, setPipelineData] = useState<ChartDataPoint[]>([]);
   const [recentLeadsData, setRecentLeadsData] = useState<BackendLead[]>([]);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsOverview, setAnalyticsOverview] = useState(DEFAULT_ANALYTICS_OVERVIEW);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [isAnalyticsPending, setIsAnalyticsPending] = useState(true);
+  const [isLeadsPending, setIsLeadsPending] = useState(true);
 
   // Socket.IO integration for real-time updates
   const { socket, isConnected } = useSocketIO();
@@ -99,31 +109,18 @@ export default function DashboardHomePage() {
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
   const apiRoot = useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
+  const analyticsLoading = isAnalyticsPending || isLeadsPending;
 
   // Helper function to refresh dashboard data (memoized to avoid dependency issues)
   const fetchDashboardData = React.useCallback(async () => {
     try {
-      setAnalyticsLoading(true);
+      setIsLeadsPending(true);
       setAnalyticsError(null);
 
-      const [leadsResp, analyticsResp] = await Promise.all([
-        client.get(endpoints.leads),
-        client.get(endpoints.analytics.overview, { params: { range: timeRange } }),
-      ]);
+      const leadsResp = await client.get(endpoints.leads);
 
       const leadsList: BackendLead[] =
         leadsResp?.data?.data?.leads || leadsResp?.data || [];
-
-      const overviewPayload =
-        analyticsResp?.data?.data?.overview || analyticsResp?.data?.overview;
-
-      if (overviewPayload) {
-        setAnalyticsOverview(overviewPayload);
-        setActualLeadsCount(overviewPayload.totalLeads ?? leadsList.length);
-        setActualThreadsCount((prev) => overviewPayload.activeThreads ?? prev);
-      } else {
-        setAnalyticsOverview(DEFAULT_ANALYTICS_OVERVIEW);
-      }
 
       const leadsOverTime = processLeadsOverTime(leadsList);
       setLeadsOverTimeData(leadsOverTime);
@@ -139,19 +136,20 @@ export default function DashboardHomePage() {
         )
         .slice(0, 5);
       setRecentLeadsData(recentLeads);
-    } catch (error: any) {
+      setActualLeadsCount(leadsList.length);
+    } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      setAnalyticsOverview(DEFAULT_ANALYTICS_OVERVIEW);
+      const apiError = error as ApiError;
       setAnalyticsError(
-        error?.response?.data?.message || 'Unable to load analytics overview.'
+        apiError.response?.data?.message || 'Unable to load dashboard data.'
       );
       setLeadsOverTimeData([]);
       setPipelineData([]);
       setRecentLeadsData([]);
     } finally {
-      setAnalyticsLoading(false);
+      setIsLeadsPending(false);
     }
-  }, [timeRange]);
+  }, []);
 
   // Helper function to process leads over time data
   const processLeadsOverTime = (leads: BackendLead[]): ChartDataPoint[] => {
@@ -197,6 +195,75 @@ export default function DashboardHomePage() {
       label: stage,
     }));
   };
+
+  // Subscribe to analytics overview via Socket.IO for real-time updates
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsAnalyticsPending(true);
+    setAnalyticsError(null);
+
+    const unsubscribeOverview = socket.on('analytics:overview', (data: Analytics) => {
+      if (!isMounted) return;
+
+      const overview = data?.overview ?? DEFAULT_ANALYTICS_OVERVIEW;
+      setAnalyticsOverview(overview);
+      if (typeof overview.totalLeads === 'number') {
+        setActualLeadsCount(overview.totalLeads);
+      }
+      if (typeof overview.activeThreads === 'number') {
+        setActualThreadsCount(overview.activeThreads);
+      }
+      setIsAnalyticsPending(false);
+      setAnalyticsError(null);
+    });
+
+    const unsubscribeError = socket.on('error', (payload: { message: string; code?: string }) => {
+      if (!isMounted) return;
+      if (payload.code === 'ANALYTICS_OVERVIEW_FAILED') {
+        setAnalyticsError(payload.message || 'Unable to load analytics overview.');
+        setIsAnalyticsPending(false);
+      }
+    });
+
+    const subscribe = async () => {
+      try {
+        if (!socket.isConnected()) {
+          await socket.connect();
+        }
+        await socket.subscribeToAnalytics(timeRange);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Analytics subscription failed:', error);
+        setAnalyticsError('Unable to connect to real-time analytics.');
+        setIsAnalyticsPending(false);
+      }
+    };
+
+    subscribe();
+
+    return () => {
+      isMounted = false;
+      unsubscribeOverview();
+      unsubscribeError();
+      socket.unsubscribeFromAnalytics();
+    };
+  }, [socket, timeRange]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      return;
+    }
+    setIsAnalyticsPending(true);
+    setAnalyticsError(null);
+    socket
+      .subscribeToAnalytics(timeRange)
+      .catch((error) => {
+        console.error('Failed to refresh analytics subscription:', error);
+        setAnalyticsError('Unable to refresh analytics overview.');
+        setIsAnalyticsPending(false);
+      });
+  }, [isConnected, socket, timeRange]);
 
   // Check WhatsApp and Telegram connection status
   useEffect(() => {
@@ -265,7 +332,7 @@ export default function DashboardHomePage() {
   // Fetch analytics and dashboard data when range changes
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, timeRange]);
 
   // Real-time Socket.IO event listeners for instant dashboard updates
   useEffect(() => {
