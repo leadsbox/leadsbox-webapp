@@ -228,9 +228,9 @@ const AutomationsPage: React.FC = () => {
         ? (res.data as FollowUpRule[])
         : [];
       setAllFollowups(followUps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setAllFollowups([]);
-      const message = error?.response?.data?.message;
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       if (message) {
         toast.error(message);
       }
@@ -275,8 +275,8 @@ const AutomationsPage: React.FC = () => {
 
       const sorted = options.sort((a, b) => a.label.localeCompare(b.label));
       setAvailableConversations(sorted);
-    } catch (error: any) {
-      const message = error?.response?.data?.message;
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       if (message) {
         toast.error(message);
       }
@@ -450,8 +450,16 @@ const AutomationsPage: React.FC = () => {
       setConversationFilter(conversationId);
       await fetchAllFollowups();
       await fetchConversations();
-    } catch (error: any) {
-      const message = error?.response?.data?.message || 'Failed to create follow-up';
+    } catch (error: unknown) {
+      let message = 'Failed to create follow-up';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      }
       toast.error(message);
       if (typeof message === 'string' && message.includes('approved template')) {
         setCreateTemplateError(
@@ -527,8 +535,16 @@ const AutomationsPage: React.FC = () => {
       setConversationFilter(conversationId);
       await fetchAllFollowups();
       await fetchConversations();
-    } catch (error: any) {
-      const message = error?.response?.data?.message || 'Failed to save workflow';
+    } catch (error: unknown) {
+      let message = 'Failed to save workflow';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      }
       toast.error(message);
       if (typeof message === 'string' && message.includes('approved template')) {
         setEditTemplateError('WhatsApp requires an approved template for messages outside the 24-hour window. Select an approved template to continue.');
@@ -1185,8 +1201,16 @@ const AutomationsPage: React.FC = () => {
                                 }
                                 await fetchAllFollowups();
                                 await fetchConversations();
-                              } catch (error: any) {
-                                const message = error?.response?.data?.message || 'Failed to delete workflow';
+                              } catch (error: unknown) {
+                                let message = 'Failed to delete workflow';
+                                if (
+                                  typeof error === 'object' &&
+                                  error !== null &&
+                                  'response' in error &&
+                                  typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+                                ) {
+                                  message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+                                }
                                 toast.error(message);
                               }
                             }}
