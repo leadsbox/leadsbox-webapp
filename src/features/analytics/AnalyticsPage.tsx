@@ -1,19 +1,16 @@
 // Analytics Page Component for LeadsBox Dashboard
 
-import React, { useState } from 'react';
-import { 
-  TrendingUp, 
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  TrendingUp,
   TrendingDown,
-  Users, 
-  DollarSign, 
+  Users,
   MessageSquare,
   Clock,
   Target,
   BarChart3,
   PieChart,
-  Calendar,
   Download,
-  Filter,
   RefreshCw
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -43,28 +40,84 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { mockAnalytics, mockUsers } from '../../data/mockData';
+import client from '@/api/client';
+import { endpoints } from '@/api/config';
+import type { Analytics } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
+
+const EMPTY_ANALYTICS: Analytics = {
+  overview: {
+    totalLeads: 0,
+    activeThreads: 0,
+    conversionRate: 0,
+    avgResponseTime: 0,
+  },
+  trends: {
+    leadsOverTime: [],
+    conversionsByStage: [],
+    responseTimesTrend: [],
+  },
+  performance: {
+    topSources: [],
+    agentPerformance: [],
+    channelDistribution: [],
+  },
+};
 
 const AnalyticsPage: React.FC = () => {
   const [dateRange, setDateRange] = useState('7d');
   const [refreshing, setRefreshing] = useState(false);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const { overview, trends, performance } = mockAnalytics;
+  const fetchAnalytics = useCallback(
+    async (range: string) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await client.get(endpoints.analytics.overview, {
+          params: { range },
+        });
+        const payload = (response.data?.data || response.data) as Analytics;
+        setAnalytics(payload);
+      } catch (err: any) {
+        console.error('Failed to load analytics overview', err);
+        const message =
+          err?.response?.data?.message ||
+          'Unable to load analytics right now. Please try again.';
+        setError(message);
+        toast({
+          title: 'Analytics unavailable',
+          description: message,
+          variant: 'destructive',
+        });
+        setAnalytics(null);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [toast]
+  );
+
+  useEffect(() => {
+    fetchAnalytics(dateRange);
+  }, [dateRange, fetchAnalytics]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => setRefreshing(false), 1000);
+    await fetchAnalytics(dateRange);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const currentAnalytics = useMemo(
+    () => analytics ?? EMPTY_ANALYTICS,
+    [analytics]
+  );
+
+  const { overview, trends, performance } = currentAnalytics;
 
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;

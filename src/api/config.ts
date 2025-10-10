@@ -62,10 +62,9 @@ export const endpoints = {
   moveLead: '/pipeline/move',
 
   // Analytics
-  analytics: '/analytics',
-  analyticsOverview: '/analytics/overview',
-  analyticsTrends: '/analytics/trends',
-  analyticsPerformance: '/analytics/performance',
+  analytics: {
+    overview: '/analytics/overview',
+  },
 
   // Settings
   settings: '/settings',

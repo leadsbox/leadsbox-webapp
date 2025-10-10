@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { mockAnalytics, getTodayTasks, getOverdueTasks, mockLeads, mockOrganization } from '@/data/mockData';
+import { getTodayTasks, getOverdueTasks, mockOrganization } from '@/data/mockData';
 import { IntegrationBadge } from '@/components/ui/integrationbadge';
 import client from '@/api/client';
 import { API_BASE, endpoints } from '@/api/config';
@@ -32,6 +32,13 @@ interface BackendLead {
   updatedAt: string;
   lastMessageAt?: string;
 }
+
+const DEFAULT_ANALYTICS_OVERVIEW = {
+  totalLeads: 0,
+  activeThreads: 0,
+  conversionRate: 0,
+  avgResponseTime: 0,
+};
 
 const quickActions = [
   // {
@@ -80,14 +87,13 @@ export default function DashboardHomePage() {
   const [pipelineData, setPipelineData] = useState<ChartDataPoint[]>([]);
   const [recentLeadsData, setRecentLeadsData] = useState<BackendLead[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsOverview, setAnalyticsOverview] = useState(DEFAULT_ANALYTICS_OVERVIEW);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
   // Socket.IO integration for real-time updates
   const { socket, isConnected } = useSocketIO();
-
-  const analytics = mockAnalytics;
   const todayTasks = getTodayTasks();
   const overdueTasks = getOverdueTasks();
-  const recentLeads = mockLeads.slice(0, 3);
 
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
@@ -98,32 +104,54 @@ export default function DashboardHomePage() {
   const fetchDashboardData = React.useCallback(async () => {
     try {
       setAnalyticsLoading(true);
+      setAnalyticsError(null);
 
-      // Fetch leads data for processing
-      const leadsResp = await client.get(endpoints.leads);
-      const leadsList: BackendLead[] = leadsResp?.data?.data?.leads || leadsResp?.data || [];
+      const [leadsResp, analyticsResp] = await Promise.all([
+        client.get(endpoints.leads),
+        client.get(endpoints.analytics.overview, { params: { range: timeRange } }),
+      ]);
 
-      // Process leads over time data (group by date)
+      const leadsList: BackendLead[] =
+        leadsResp?.data?.data?.leads || leadsResp?.data || [];
+
+      const overviewPayload =
+        analyticsResp?.data?.data?.overview || analyticsResp?.data?.overview;
+
+      if (overviewPayload) {
+        setAnalyticsOverview(overviewPayload);
+        setActualLeadsCount(overviewPayload.totalLeads ?? leadsList.length);
+        setActualThreadsCount((prev) => overviewPayload.activeThreads ?? prev);
+      } else {
+        setAnalyticsOverview(DEFAULT_ANALYTICS_OVERVIEW);
+      }
+
       const leadsOverTime = processLeadsOverTime(leadsList);
       setLeadsOverTimeData(leadsOverTime);
 
-      // Process pipeline data (group by stage/label)
       const pipelineDistribution = processPipelineData(leadsList);
       setPipelineData(pipelineDistribution);
 
-      // Get recent leads (last 5, sorted by creation date)
-      const recentLeads = leadsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+      const recentLeads = leadsList
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() -
+            new Date(a.createdAt).getTime()
+        )
+        .slice(0, 5);
       setRecentLeadsData(recentLeads);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
-      // Fallback to empty arrays
+      setAnalyticsOverview(DEFAULT_ANALYTICS_OVERVIEW);
+      setAnalyticsError(
+        error?.response?.data?.message || 'Unable to load analytics overview.'
+      );
       setLeadsOverTimeData([]);
       setPipelineData([]);
       setRecentLeadsData([]);
     } finally {
       setAnalyticsLoading(false);
     }
-  }, []);
+  }, [timeRange]);
 
   // Helper function to process leads over time data
   const processLeadsOverTime = (leads: BackendLead[]): ChartDataPoint[] => {
@@ -234,40 +262,10 @@ export default function DashboardHomePage() {
     fetchActualCounts();
   }, []);
 
-  // Fetch analytics and dashboard data
+  // Fetch analytics and dashboard data when range changes
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setAnalyticsLoading(true);
-
-        // Fetch leads data for processing
-        const leadsResp = await client.get(endpoints.leads);
-        const leadsList: BackendLead[] = leadsResp?.data?.data?.leads || leadsResp?.data || [];
-
-        // Process leads over time data (group by date)
-        const leadsOverTime = processLeadsOverTime(leadsList);
-        setLeadsOverTimeData(leadsOverTime);
-
-        // Process pipeline data (group by stage/label)
-        const pipelineDistribution = processPipelineData(leadsList);
-        setPipelineData(pipelineDistribution);
-
-        // Get recent leads (last 5, sorted by creation date)
-        const recentLeads = leadsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
-        setRecentLeadsData(recentLeads);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        // Fallback to empty arrays
-        setLeadsOverTimeData([]);
-        setPipelineData([]);
-        setRecentLeadsData([]);
-      } finally {
-        setAnalyticsLoading(false);
-      }
-    };
-
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
   // Real-time Socket.IO event listeners for instant dashboard updates
   useEffect(() => {
@@ -452,8 +450,14 @@ export default function DashboardHomePage() {
               <TrendingUp className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold'>{formatPercentage(analytics.overview.conversionRate)}</div>
-              <Progress value={analytics.overview.conversionRate} className='mt-2' />
+              {analyticsLoading ? (
+                <Skeleton className='h-7 w-20' />
+              ) : (
+                <>
+                  <div className='text-2xl font-bold'>{formatPercentage(analyticsOverview.conversionRate)}</div>
+                  <Progress value={analyticsOverview.conversionRate} className='mt-2' />
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -463,7 +467,11 @@ export default function DashboardHomePage() {
               <Calendar className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold'>{analytics.overview.avgResponseTime}h</div>
+              {analyticsLoading ? (
+                <Skeleton className='h-7 w-16' />
+              ) : (
+                <div className='text-2xl font-bold'>{analyticsOverview.avgResponseTime}h</div>
+              )}
               <div className='flex items-center gap-1 text-xs text-muted-foreground'>
                 <TrendingUp className='h-3 w-3 text-green-500 rotate-180' />
                 <span className='text-green-500'>-0.3h</span>
@@ -472,6 +480,10 @@ export default function DashboardHomePage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {analyticsError && (
+        <p className='text-sm text-destructive'>{analyticsError}</p>
       )}
 
       {/* Charts and Recent Activity */}
