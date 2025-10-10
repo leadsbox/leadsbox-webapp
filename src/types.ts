@@ -14,6 +14,7 @@ export interface Template {
   submittedAt?: string | null;
   approvedAt?: string | null;
   rejectionReason?: string | null;
+  updatedAt?: string;
 }
 
 export type FollowUpStatus = 'SCHEDULED' | 'SENT' | 'CANCELLED' | 'FAILED';

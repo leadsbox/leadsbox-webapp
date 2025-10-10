@@ -2,25 +2,22 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, MessageSquare, Sparkles, Wand2, Pencil, Trash2, Copy, Power, ArrowUpDown } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'react-toastify';
+import { ArrowUpDown, CheckCircle2, Clock, MessageSquare, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
-import type { Template, TemplateStatus, FollowUpRule } from '@/types';
-import TagsTab from '@/features/settings/tabs/TagsTab';
+import type { FollowUpRule, FollowUpStatus, Template, TemplateStatus } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import TemplateComposer from './components/TemplateComposer';
+import ScheduleFollowUpModal, { ConversationOption } from './components/ScheduleFollowUpModal';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
 import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './builder/utils';
 import { validateFlow } from './builder/serializers';
-import { toast } from 'react-toastify';
-import { useAuth } from '@/context/AuthContext';
-
-// Removed unused quickReplies and followUps arrays
-
-type TemplateStatusFilter = TemplateStatus | 'ALL';
 
 const TEMPLATE_STATUS_ORDER: TemplateStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
 
@@ -31,286 +28,360 @@ const TEMPLATE_STATUS_LABELS: Record<TemplateStatus, string> = {
   REJECTED: 'Rejected',
 };
 
-const formatEnumLabel = (value: string) =>
-  value
-    .split('_')
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
-    .join(' ');
+const FOLLOWUP_STATUS_LABELS: Record<FollowUpStatus, string> = {
+  SCHEDULED: 'Scheduled',
+  SENT: 'Sent',
+  CANCELLED: 'Cancelled',
+  FAILED: 'Failed',
+};
 
 const resolveTemplateStatus = (status?: TemplateStatus | null): TemplateStatus => {
   if (!status) return 'DRAFT';
   return TEMPLATE_STATUS_ORDER.includes(status) ? status : 'DRAFT';
 };
 
-type FollowUpFormDraft = {
-  conversationId: string;
-  provider: string;
-  scheduledTime: string;
-  message: string;
-  templateId?: string;
-  status: FollowUpRule['status'];
-};
-
-const DEFAULT_PROVIDER = 'whatsapp';
-
-const createFollowupDefaults = (conversationId = ''): FollowUpFormDraft => ({
-  conversationId,
-  provider: DEFAULT_PROVIDER,
-  scheduledTime: '',
-  message: '',
-  templateId: undefined,
-  status: 'SCHEDULED',
-});
-
-type ConversationOption = {
-  id: string;
-  label: string;
-  channel?: string | null;
-  contactName?: string | null;
-};
-
-const toDateTimeLocalInput = (value?: string | null) => {
-  if (!value) return '';
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '—';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const pad = (num: number) => num.toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 };
 
-const parseDateTimeLocal = (value?: string) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+type UnknownRecord = Record<string, unknown>;
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const extractTemplates = (payload: unknown): Template[] => {
+  if (Array.isArray(payload)) return payload as Template[];
+  if (payload && typeof payload === 'object') {
+    const record = payload as UnknownRecord;
+    if (Array.isArray(record.templates)) return record.templates as Template[];
+    const data = record.data;
+    if (Array.isArray(data)) return data as Template[];
+    if (data && typeof data === 'object') {
+      const nested = data as UnknownRecord;
+      if (Array.isArray(nested.templates)) return nested.templates as Template[];
+    }
+  }
+  return [];
 };
+
+const extractFollowUps = (payload: unknown): FollowUpRule[] => {
+  if (Array.isArray(payload)) return payload as FollowUpRule[];
+  if (payload && typeof payload === 'object') {
+    const record = payload as UnknownRecord;
+    if (Array.isArray(record.followUps)) return record.followUps as FollowUpRule[];
+    const data = record.data;
+    if (Array.isArray(data)) return data as FollowUpRule[];
+    if (data && typeof data === 'object') {
+      const nested = data as UnknownRecord;
+      if (Array.isArray(nested.followUps)) return nested.followUps as FollowUpRule[];
+    }
+  }
+  return [];
+};
+
+const extractThreads = (payload: unknown): ConversationOption[] => {
+  const resolveCandidates = (input: unknown): unknown[] => {
+    if (Array.isArray(input)) return input;
+    if (input && typeof input === 'object') {
+      const record = input as UnknownRecord;
+      if (Array.isArray(record.threads)) return record.threads;
+      const data = record.data;
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === 'object') {
+        const nested = data as UnknownRecord;
+        if (Array.isArray(nested.threads)) return nested.threads;
+      }
+    }
+    return [];
+  };
+
+  const raw = resolveCandidates(payload);
+
+  return raw
+    .map((thread) => {
+      if (!thread || typeof thread !== 'object') return null;
+      const record = thread as UnknownRecord;
+      const id = isNonEmptyString(record.id) ? record.id : '';
+      if (!id) return null;
+
+      const contact = (record.contact ?? {}) as UnknownRecord;
+      const channel = (record.channel ?? {}) as UnknownRecord;
+
+      const label =
+        [contact.displayName, contact.phone, contact.waId, contact.email].find(isNonEmptyString) || 'Conversation';
+
+      const channelLabel = [channel.displayName, channel.type].find(isNonEmptyString) ?? null;
+
+      return {
+        id,
+        label,
+        channel: channelLabel,
+        contactName: label,
+      } satisfies ConversationOption;
+    })
+    .filter((option): option is Required<ConversationOption> => Boolean(option))
+    .sort((a, b) => a.label.localeCompare(b.label));
+};
+
+const WhatsAppPrinciples = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle className='text-base'>WhatsApp policy quick tips</CardTitle>
+      <CardDescription>Stay in Meta’s good graces while keeping prospects warm.</CardDescription>
+    </CardHeader>
+    <CardContent className='space-y-2 text-sm text-muted-foreground'>
+      <p>✅ Get explicit opt-in before you automate outreach.</p>
+      <p>✅ Use approved templates for any follow-up sent after the 24-hour customer care window.</p>
+      <p>✅ Keep one clear purpose per template—mixing marketing and transactional content causes rejections.</p>
+      <p>
+        ✅ Personalize with{' '}
+        <code className='rounded bg-muted px-1 py-0.5 font-mono text-xs'>{'{'}{'{name}}'}</code>{' '}
+        style placeholders but avoid dynamic URLs or phone numbers in the copy.
+      </p>
+      <p>✅ Schedule reminders during reasonable hours to minimise spam complaints.</p>
+    </CardContent>
+  </Card>
+);
 
 const AutomationsPage: React.FC = () => {
   const { user } = useAuth();
-  // Sorting state for templates
-  const [templateStatusFilter, setTemplateStatusFilter] = useState<TemplateStatusFilter>('ALL');
-  const [statusSortDirection, setStatusSortDirection] = useState<'ASC' | 'DESC'>('ASC');
-  const [flows, setFlows] = useLocalStorage<AutomationFlow[]>(FLOWS_COLLECTION_KEY, []);
-  const [builderOpen, setBuilderOpen] = useState(false);
-  const [editingFlow, setEditingFlow] = useState<AutomationFlow | undefined>();
-  // --- Templates ---
+  const organizationId = user?.orgId || user?.currentOrgId || getOrgId();
+  const userId = user?.id;
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  // --- Follow-ups ---
-  const [allFollowups, setAllFollowups] = useState<FollowUpRule[]>([]);
-  const [followupsLoading, setFollowupsLoading] = useState(false);
-  const [conversationFilter, setConversationFilter] = useState<string>('ALL');
-  const [editingFollowup, setEditingFollowup] = useState<FollowUpRule | null>(null);
-  const [editingFollowupDraft, setEditingFollowupDraft] = useState<Partial<FollowUpRule>>({});
-  const [editingFollowupVariables, setEditingFollowupVariables] = useState('');
-  const [createFollowupOpen, setCreateFollowupOpen] = useState(false);
-  const [createFollowupDraft, setCreateFollowupDraft] = useState<FollowUpFormDraft>(() => createFollowupDefaults());
-  const [createFollowupVariables, setCreateFollowupVariables] = useState('');
-  const [availableConversations, setAvailableConversations] = useState<ConversationOption[]>([]);
+
+  const [followUps, setFollowUps] = useState<FollowUpRule[]>([]);
+  const [followUpsLoading, setFollowUpsLoading] = useState(false);
+
+  const [conversations, setConversations] = useState<ConversationOption[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
 
-  const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
-  const [editTemplateError, setEditTemplateError] = useState<string | null>(null);
+  const [templateComposerOpen, setTemplateComposerOpen] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<Template | null>(null);
 
-  const conversationOptions = useMemo(() => {
-    const merged = new Map<string, ConversationOption>();
-    availableConversations.forEach((option) => {
-      merged.set(option.id, option);
-    });
-    allFollowups.forEach((followup) => {
-      const id = followup.conversationId;
-      if (!id) return;
-      if (!merged.has(id)) {
-        merged.set(id, { id, label: id });
-      }
-    });
-    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [availableConversations, allFollowups]);
+  const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
+  const [followUpMode, setFollowUpMode] = useState<'create' | 'edit'>('create');
+  const [activeFollowUp, setActiveFollowUp] = useState<FollowUpRule | null>(null);
 
-  const filteredFollowups = useMemo(() => {
-    const source =
-      conversationFilter === 'ALL'
-        ? allFollowups
-        : allFollowups.filter((followup) => followup.conversationId === conversationFilter);
+  const [flows, setFlows] = useLocalStorage<AutomationFlow[]>(FLOWS_COLLECTION_KEY, []);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderFlow, setBuilderFlow] = useState<AutomationFlow | null>(null);
+  const [builderKey, setBuilderKey] = useState(0);
 
-    const toTimestamp = (value?: string | null) => {
-      if (!value) return Number.POSITIVE_INFINITY;
-      const time = new Date(value).getTime();
-      return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
-    };
-
-    return [...source].sort((a, b) => {
-      const aTime = toTimestamp(a.scheduledTime ?? a.createdAt);
-      const bTime = toTimestamp(b.scheduledTime ?? b.createdAt);
-      return aTime - bTime;
-    });
-  }, [allFollowups, conversationFilter]);
-
-  useEffect(() => {
-    if (conversationFilter === 'ALL') return;
-    const exists = conversationOptions.some((option) => option.id === conversationFilter);
-    if (!exists) {
-      setConversationFilter('ALL');
-    }
-  }, [conversationFilter, conversationOptions]);
-
-  const formatConversationLabel = (option: ConversationOption) => {
-    if (!option.channel) return option.label;
-    const channel = option.channel.toUpperCase();
-    switch (channel) {
-      case 'WHATSAPP':
-        return `${option.label} · WhatsApp`;
-      case 'TELEGRAM':
-        return `${option.label} · Telegram`;
-      case 'INSTAGRAM':
-        return `${option.label} · Instagram`;
-      case 'FACEBOOK':
-        return `${option.label} · Facebook`;
-      default:
-        return `${option.label} · ${formatEnumLabel(option.channel)}`;
-    }
-  };
-
-  const selectedConversationLabel = useMemo(() => {
-    if (conversationFilter === 'ALL') return 'All conversations';
-    const option = conversationOptions.find((candidate) => candidate.id === conversationFilter);
-    return option ? formatConversationLabel(option) : conversationFilter;
-  }, [conversationFilter, conversationOptions]);
-
-  const resetCreateFollowupForm = useCallback(
-    (prefillConversationId?: string) => {
-      const fallback = (
-        prefillConversationId ??
-        (conversationFilter !== 'ALL'
-          ? conversationFilter
-          : conversationOptions[0]?.id ?? '')
-      );
-      setCreateFollowupDraft(createFollowupDefaults(fallback));
-      setCreateFollowupVariables('');
-      setCreateTemplateError(null);
-    },
-    [conversationFilter, conversationOptions]
-  );
-
-  const resetEditingFollowup = () => {
-    setEditingFollowup(null);
-    setEditingFollowupDraft({});
-    setEditingFollowupVariables('');
-    setEditTemplateError(null);
-  };
-
-  // Fetch templates
-  useEffect(() => {
+  const loadTemplates = useCallback(async () => {
     setTemplatesLoading(true);
-    client
-      .get(endpoints.templates)
-      .then((res) => setTemplates(Array.isArray(res.data?.data) ? res.data.data : []))
-      .catch(() => setTemplates([]))
-      .finally(() => setTemplatesLoading(false));
+    try {
+      const res = await client.get(endpoints.templates);
+      const list = extractTemplates(res.data);
+      setTemplates(list);
+    } catch (error: unknown) {
+      setTemplates([]);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load templates.';
+      toast.error(message);
+    } finally {
+      setTemplatesLoading(false);
+    }
   }, []);
-  const fetchAllFollowups = useCallback(async () => {
-    setFollowupsLoading(true);
+
+  const loadFollowUps = useCallback(async () => {
+    setFollowUpsLoading(true);
     try {
       const res = await client.get(endpoints.followups);
-      const payload = res.data?.data;
-      const followUps = Array.isArray(payload?.followUps)
-        ? (payload.followUps as FollowUpRule[])
-        : Array.isArray(payload)
-        ? (payload as FollowUpRule[])
-        : Array.isArray(res.data)
-        ? (res.data as FollowUpRule[])
-        : [];
-      setAllFollowups(followUps);
+      const list = extractFollowUps(res.data);
+      setFollowUps(list);
     } catch (error: unknown) {
-      setAllFollowups([]);
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      if (message) {
-        toast.error(message);
-      }
+      setFollowUps([]);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load follow-ups.';
+      toast.error(message);
     } finally {
-      setFollowupsLoading(false);
+      setFollowUpsLoading(false);
     }
   }, []);
 
-  const fetchConversations = useCallback(async () => {
+  const loadConversations = useCallback(async () => {
     setConversationsLoading(true);
     try {
       const res = await client.get(endpoints.threads, {
         params: { include: 'contact,channel' },
       });
-      const threads =
-        (res.data?.data?.threads as Array<{
-          id: string;
-          contact?: { displayName?: string | null; phone?: string | null; waId?: string | null; email?: string | null };
-          channel?: { type?: string | null; displayName?: string | null };
-        }>) || [];
-
-      const rawThreads = (Array.isArray(res.data?.data?.threads)
-        ? res.data.data.threads
-        : Array.isArray(res.data?.threads)
-        ? res.data.threads
-        : Array.isArray(res.data)
-        ? res.data
-        : threads) as typeof threads;
-
-      const options = (Array.isArray(rawThreads) ? rawThreads : threads).map<ConversationOption>((thread) => {
-        const contactNameRaw =
-          thread.contact?.displayName || thread.contact?.phone || thread.contact?.waId || thread.contact?.email || 'Conversation';
-        const contactName = contactNameRaw ? contactNameRaw.trim() : 'Conversation';
-        const channel = thread.channel?.displayName || thread.channel?.type || null;
-        return {
-          id: thread.id,
-          label: contactName,
-          channel,
-          contactName,
-        };
-      });
-
-      const sorted = options.sort((a, b) => a.label.localeCompare(b.label));
-      setAvailableConversations(sorted);
+      const list = extractThreads(res.data);
+      setConversations(list);
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      if (message) {
-        toast.error(message);
-      }
-      setAvailableConversations([]);
+      setConversations([]);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load conversations.';
+      toast.error(message);
     } finally {
       setConversationsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAllFollowups();
-    fetchConversations();
-  }, [fetchAllFollowups, fetchConversations]);
+    loadTemplates();
+    loadFollowUps();
+    loadConversations();
+  }, [loadTemplates, loadFollowUps, loadConversations]);
 
-  useEffect(() => {
-    if (!createFollowupOpen) return;
-    resetCreateFollowupForm();
-  }, [createFollowupOpen, conversationFilter, conversationOptions, resetCreateFollowupForm]);
+  const conversationMap = useMemo(() => {
+    const map = new Map<string, ConversationOption>();
+    conversations.forEach((option) => {
+      if (option.id) {
+        map.set(option.id, option);
+      }
+    });
+    return map;
+  }, [conversations]);
+
+  const approvedTemplates = useMemo(
+    () => templates.filter((template) => resolveTemplateStatus(template.status) === 'APPROVED'),
+    [templates],
+  );
+
+  const hasOrgContext = Boolean(userId && organizationId);
+
+  const flowsSummary = useMemo(() => {
+    if (!flows.length) return 'No automations yet';
+    const live = flows.filter((flow) => flow.status === 'ON').length;
+    return `${live} live · ${flows.length} total`;
+  }, [flows]);
+
+  const openTemplateComposer = (template?: Template | null) => {
+    setActiveTemplate(template ?? null);
+    setTemplateComposerOpen(true);
+  };
+
+  const handleTemplateSaved = async () => {
+    await loadTemplates();
+  };
+
+  const handleTemplateDeleted = (templateId: string) => {
+    setTemplates((current) => current.filter((template) => template.id !== templateId));
+  };
+
+  const handleSubmitTemplate = async (template: Template) => {
+    try {
+      const status = resolveTemplateStatus(template.status);
+      if (status === 'APPROVED' || status === 'PENDING_APPROVAL') {
+        toast.info('Template is already submitted.');
+        return;
+      }
+      const res = await client.post(endpoints.submitTemplate, { templateId: template.id });
+      const updated = extractTemplates(res.data).find((candidate) => candidate.id === template.id);
+      toast.success('Template submitted to WhatsApp.');
+      if (updated) {
+        setTemplates((current) => current.map((item) => (item.id === template.id ? updated : item)));
+      } else {
+        await loadTemplates();
+      }
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Submission failed.';
+      toast.error(message);
+    }
+  };
+
+  const handleRefreshTemplate = async (template: Template) => {
+    try {
+      const res = await client.get(endpoints.templateStatus(template.id));
+      const refreshed = (res.data?.data as Template) ?? (res.data as Template) ?? null;
+      if (refreshed) {
+        setTemplates((current) => current.map((item) => (item.id === refreshed.id ? refreshed : item)));
+        toast.success('Template status updated.');
+      } else {
+        await loadTemplates();
+      }
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to refresh status.';
+      toast.error(message);
+    }
+  };
+
+  const openFollowUpModal = (mode: 'create' | 'edit', followUp?: FollowUpRule | null) => {
+    if (!hasOrgContext) {
+      toast.error('Missing user or organization context.');
+      return;
+    }
+    setFollowUpMode(mode);
+    setActiveFollowUp(followUp ?? null);
+    setFollowUpModalOpen(true);
+  };
+
+  const handleFollowUpCompleted = async () => {
+    await loadFollowUps();
+  };
+
+  const handleFollowUpCancelled = (followUpId: string) => {
+    setFollowUps((current) => current.filter((followUp) => followUp.id !== followUpId));
+  };
+
+  const cancelFollowUp = async (followUp: FollowUpRule) => {
+    if (followUp.status !== 'SCHEDULED') {
+      toast.info('Only scheduled follow-ups can be cancelled.');
+      return;
+    }
+    if (!window.confirm('Cancel this follow-up?')) return;
+    try {
+      const res = await client.post(endpoints.followupCancel(followUp.id));
+      const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
+      toast.success('Follow-up cancelled.');
+      if (payload) {
+        await loadFollowUps();
+      } else {
+        handleFollowUpCancelled(followUp.id);
+      }
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to cancel follow-up.';
+      toast.error(message);
+    }
+  };
 
   const openBuilder = (flow?: AutomationFlow) => {
-    setEditingFlow(flow ?? { ...createDefaultFlow(), name: 'Untitled automation' });
+    const draft = flow ? { ...flow, updatedAt: new Date().toISOString() } : createDefaultFlow();
+    setBuilderFlow(draft);
+    setBuilderKey(Date.now());
     setBuilderOpen(true);
   };
 
-  const handleSaveFlow = (saved: AutomationFlow) => {
+  const handleFlowSaved = (saved: AutomationFlow) => {
     setFlows((current) => {
       const exists = current.some((flow) => flow.id === saved.id);
-      const next = exists ? current.map((flow) => (flow.id === saved.id ? saved : flow)) : [...current, saved];
-      return next;
+      return exists ? current.map((flow) => (flow.id === saved.id ? saved : flow)) : [...current, saved];
     });
+    toast.success('Automation saved.');
   };
 
-  const handleDuplicate = (flow: AutomationFlow) => {
-    const duplicated: AutomationFlow = {
+  const handleFlowToggle = (flow: AutomationFlow) => {
+    const validation = validateFlow(flow);
+    if (!validation.ok) {
+      toast.error(validation.issues[0] ?? 'Please fix flow validation issues before turning it on.');
+      return;
+    }
+    setFlows((current) =>
+      current.map((candidate) =>
+        candidate.id === flow.id
+          ? {
+              ...candidate,
+              status: flow.status === 'ON' ? 'OFF' : 'ON',
+              updatedAt: new Date().toISOString(),
+            }
+          : candidate,
+      ),
+    );
+  };
+
+  const handleFlowDuplicate = (flow: AutomationFlow) => {
+    const copy: AutomationFlow = {
       ...flow,
       id: `${flow.id}-copy-${Date.now()}`,
       name: `${flow.name} (Copy)`,
@@ -319,249 +390,43 @@ const AutomationsPage: React.FC = () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setFlows((current) => [...current, duplicated]);
-    toast.success('Flow duplicated.');
+    setFlows((current) => [...current, copy]);
+    toast.success('Automation duplicated.');
   };
 
-  const handleDelete = (flowId: string) => {
+  const handleFlowDelete = (flow: AutomationFlow) => {
     if (!window.confirm('Delete this automation? This cannot be undone.')) return;
-    setFlows((current) => current.filter((flow) => flow.id !== flowId));
+    setFlows((current) => current.filter((candidate) => candidate.id !== flow.id));
     toast.info('Automation deleted.');
   };
 
-  const handleToggle = (flow: AutomationFlow) => {
-    const result = validateFlow(flow);
-    if (!result.ok) {
-      toast.error('Please resolve validation issues before turning it on.');
-      return;
-    }
-    setFlows((current) =>
-      current.map((candidate) =>
-        candidate.id === flow.id ? { ...candidate, status: flow.status === 'ON' ? 'OFF' : 'ON', updatedAt: new Date().toISOString() } : candidate
-      )
-    );
-  };
-
-  const flowsSummary = useMemo(() => {
-    if (!flows.length) return 'No automations yet';
-    const active = flows.filter((flow) => flow.status === 'ON').length;
-    return `${active} live · ${flows.length} total`;
-  }, [flows]);
-
-  const filteredTemplates = useMemo(() => {
-    const byStatus =
-      templateStatusFilter === 'ALL' ? templates : templates.filter((template) => resolveTemplateStatus(template.status) === templateStatusFilter);
-
-    const resolvedOrder = TEMPLATE_STATUS_ORDER;
-    const sortMultiplier = statusSortDirection === 'ASC' ? 1 : -1;
-
-    return [...byStatus].sort((a, b) => {
-      const aStatus = resolveTemplateStatus(a?.status);
-      const bStatus = resolveTemplateStatus(b?.status);
-      const aIndex = resolvedOrder.indexOf(aStatus);
-      const bIndex = resolvedOrder.indexOf(bStatus);
-
-      const safeA = aIndex === -1 ? resolvedOrder.length : aIndex;
-      const safeB = bIndex === -1 ? resolvedOrder.length : bIndex;
-
-      return (safeA - safeB) * sortMultiplier;
+  const sortedTemplates = useMemo(() => {
+    return [...templates].sort((a, b) => {
+      const statusA = resolveTemplateStatus(a.status);
+      const statusB = resolveTemplateStatus(b.status);
+      const diff = TEMPLATE_STATUS_ORDER.indexOf(statusA) - TEMPLATE_STATUS_ORDER.indexOf(statusB);
+      if (diff !== 0) return diff;
+      return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
     });
-  }, [templates, templateStatusFilter, statusSortDirection]);
+  }, [templates]);
 
-  const approvedTemplates = useMemo(
-    () => templates.filter((template) => resolveTemplateStatus(template.status) === 'APPROVED'),
-    [templates]
-  );
-
-  const parseVariablesInput = (input: string) => {
-    if (!input.trim()) return undefined;
-
-    try {
-      const parsed = JSON.parse(input.trim());
-      if (!parsed || typeof parsed !== 'object') {
-        throw new Error('Variables must be a JSON object');
-      }
-
-      return Object.fromEntries(
-        Object.entries(parsed).map(([key, value]) => [key, String(value ?? '')])
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Variables must be valid JSON';
-      throw new Error(message);
-    }
-  };
-
-  const handleCreateFollowup = async () => {
-    setCreateTemplateError(null);
-
-    const conversationId = createFollowupDraft.conversationId.trim();
-    if (!conversationId) {
-      toast.error('Conversation ID is required');
-      return;
-    }
-
-    const provider = (createFollowupDraft.provider || DEFAULT_PROVIDER).trim();
-    if (!provider) {
-      toast.error('Select a provider');
-      return;
-    }
-
-    const scheduledDate = parseDateTimeLocal(createFollowupDraft.scheduledTime);
-    if (!scheduledDate) {
-      toast.error('Choose a valid scheduled time');
-      return;
-    }
-
-    if (scheduledDate.getTime() <= Date.now()) {
-      toast.error('Scheduled time must be in the future');
-      return;
-    }
-
-    const organizationId = user?.orgId || user?.currentOrgId || getOrgId();
-    if (!user?.id || !organizationId) {
-      toast.error('We could not determine your organization context.');
-      return;
-    }
-
-    let variables: Record<string, string> | undefined;
-    try {
-      variables = parseVariablesInput(createFollowupVariables);
-    } catch (error) {
-      toast.error((error as Error).message);
-      return;
-    }
-
-    const payload = {
-      conversationId,
-      provider,
-      scheduledTime: scheduledDate.toISOString(),
-      message: createFollowupDraft.message.trim() || undefined,
-      userId: user.id,
-      organizationId,
-      templateId: createFollowupDraft.templateId || undefined,
-      variables,
-    };
-
-    try {
-      await client.post(endpoints.followups, payload);
-      toast.success('Workflow created');
-      setCreateFollowupOpen(false);
-      resetCreateFollowupForm(conversationId);
-      setConversationFilter(conversationId);
-      await fetchAllFollowups();
-      await fetchConversations();
-    } catch (error: unknown) {
-      let message = 'Failed to create follow-up';
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
-      ) {
-        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
-      }
-      toast.error(message);
-      if (typeof message === 'string' && message.includes('approved template')) {
-        setCreateTemplateError(
-          'WhatsApp requires an approved template for messages outside the 24-hour window. Select an approved template to continue.'
-        );
-      }
-    }
-  };
-
-  const handleUpdateFollowup = async () => {
-    if (!editingFollowup) return;
-
-    setEditTemplateError(null);
-
-    const conversationId = (editingFollowupDraft.conversationId || editingFollowup.conversationId || '').trim();
-    if (!conversationId) {
-      toast.error('Conversation ID is required');
-      return;
-    }
-
-    const provider = ((editingFollowupDraft.provider as string | undefined) || editingFollowup.provider || DEFAULT_PROVIDER).trim();
-    if (!provider) {
-      toast.error('Select a provider');
-      return;
-    }
-
-    const scheduledInput = editingFollowupDraft.scheduledTime ?? toDateTimeLocalInput(editingFollowup.scheduledTime);
-    const scheduledDate = parseDateTimeLocal(scheduledInput);
-    if (!scheduledDate) {
-      toast.error('Choose a valid scheduled time');
-      return;
-    }
-
-    if (scheduledDate.getTime() <= Date.now()) {
-      toast.error('Scheduled time must be in the future');
-      return;
-    }
-
-    let variables: Record<string, string> | undefined;
-    try {
-      variables = parseVariablesInput(editingFollowupVariables);
-    } catch (error) {
-      toast.error((error as Error).message);
-      return;
-    }
-
-    const status = editingFollowupDraft.status || editingFollowup.status || 'SCHEDULED';
-    const trimmedMessage =
-      editingFollowupDraft.message !== undefined ? editingFollowupDraft.message.trim() : undefined;
-
-    const payload: Record<string, unknown> = {
-      scheduledTime: scheduledDate.toISOString(),
-      status,
-      provider,
-    };
-
-    if (trimmedMessage !== undefined) {
-      payload.message = trimmedMessage;
-    }
-
-    if (editingFollowupDraft.templateId !== undefined) {
-      payload.templateId = editingFollowupDraft.templateId || null;
-    }
-
-    if (variables !== undefined) {
-      payload.variables = variables;
-    }
-
-    try {
-      await client.put(endpoints.followup(editingFollowup.id), payload);
-      toast.success('Workflow updated');
-      resetEditingFollowup();
-      setConversationFilter(conversationId);
-      await fetchAllFollowups();
-      await fetchConversations();
-    } catch (error: unknown) {
-      let message = 'Failed to save workflow';
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
-      ) {
-        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
-      }
-      toast.error(message);
-      if (typeof message === 'string' && message.includes('approved template')) {
-        setEditTemplateError('WhatsApp requires an approved template for messages outside the 24-hour window. Select an approved template to continue.');
-      }
-    }
-  };
+  const sortedFollowUps = useMemo(() => {
+    return [...followUps].sort((a, b) => {
+      const aTime = a.scheduledTime ? new Date(a.scheduledTime).getTime() : Number.POSITIVE_INFINITY;
+      const bTime = b.scheduledTime ? new Date(b.scheduledTime).getTime() : Number.POSITIVE_INFINITY;
+      return aTime - bTime;
+    });
+  }, [followUps]);
 
   return (
-    <div className='p-4 sm:p-6 space-y-6'>
+    <div className='space-y-6 p-4 sm:p-6'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
         <div>
-          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Automations</h1>
+          <h1 className='text-2xl sm:text-3xl font-bold'>Automations</h1>
           <p className='text-sm text-muted-foreground'>{flowsSummary}</p>
         </div>
         <div className='flex gap-2'>
-          <Button variant='outline'>View activity</Button>
-          <Button onClick={() => openBuilder()}>
+          <Button variant='outline' onClick={() => openBuilder()}>
             <Sparkles className='mr-2 h-4 w-4' />
             Build automation
           </Button>
@@ -569,779 +434,327 @@ const AutomationsPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue='templates' className='w-full'>
-        <TabsList className='grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4'>
+        <TabsList className='grid w-full grid-cols-3 sm:w-auto'>
           <TabsTrigger value='templates'>Templates</TabsTrigger>
-          <TabsTrigger value='auto-responses'>Auto-responses</TabsTrigger>
-          <TabsTrigger value='follow-ups'>Follow-ups</TabsTrigger>
+          <TabsTrigger value='followups'>Follow-ups</TabsTrigger>
           <TabsTrigger value='flows'>Flows</TabsTrigger>
         </TabsList>
+
         <TabsContent value='templates' className='space-y-6 pt-4'>
-          {/* Card for creating a new template */}
-          <Card className='mb-6 border-muted'>
-            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <CardTitle>Create New Template</CardTitle>
-                <CardDescription>Create a quick reply template for your team.</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {editingTemplate && editingTemplate.id === '' ? (
-                <div className='space-y-3'>
-                  <input
-                    className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
-                    placeholder='Name'
-                    value={editingTemplate.name}
-                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                  />
-                  <textarea
-                    className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm resize-none'
-                    placeholder='Body'
-                    rows={3}
-                    value={editingTemplate.body}
-                    onChange={(e) => setEditingTemplate({ ...editingTemplate, body: e.target.value })}
-                  />
-                  <input
-                    className='border border-input rounded px-3 py-2 w-full bg-muted focus:outline-none focus:ring focus:ring-primary/30 text-sm'
-                    placeholder='Variables (comma separated)'
-                    value={editingTemplate.variables.join(',')}
-                    onChange={(e) =>
-                      setEditingTemplate({
-                        ...editingTemplate,
-                        variables: e.target.value
-                          .split(',')
-                          .map((v) => v.trim())
-                          .filter(Boolean),
-                      })
-                    }
-                  />
-                  <div className='flex gap-2 pt-2'>
-                    <Button
-                      size='sm'
-                      variant='default'
-                      onClick={async () => {
-                        const name = editingTemplate.name?.trim();
-                        const body = editingTemplate.body?.trim();
-
-                        if (name && body) {
-                          try {
-                            const variables = Array.isArray(editingTemplate.variables)
-                              ? editingTemplate.variables.map((variable) => variable.trim()).filter(Boolean)
-                              : [];
-                            const category = (editingTemplate.category ?? 'MARKETING') as Template['category'];
-
-                            const payload = {
-                              name,
-                              body,
-                              variables,
-                              category,
-                              language: editingTemplate.language,
-                            };
-
-                            const res = await client.post(endpoints.templates, payload);
-                            const createdTemplate = res.data?.data;
-                            if (createdTemplate) {
-                              setTemplates((prev) => [...prev, createdTemplate]);
-                              toast.success('Template created');
-                            } else {
-                              toast.warn('Template created but response was empty');
-                            }
-                            setEditingTemplate(null);
-                          } catch (error: unknown) {
-                            let message = 'Failed to create template';
-                            if (typeof error === 'object' && error !== null && 'response' in error) {
-                              const err = error as { response?: { data?: { message?: string } } };
-                              message = err.response?.data?.message || message;
-                            }
-                            toast.error(message);
-                          }
-                        } else {
-                          toast.error('Name and body are required');
-                        }
-                      }}
-                    >
-                      Save
-                    </Button>
-                    <Button size='sm' variant='outline' onClick={() => setEditingTemplate(null)}>
-                      Cancel
-                    </Button>
+          <div className='flex flex-col gap-4 lg:flex-row'>
+            <div className='flex-1'>
+              <Card>
+                <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                  <div>
+                    <CardTitle>Template library</CardTitle>
+                    <CardDescription>Save canned replies and request WhatsApp approval in one place.</CardDescription>
                   </div>
-                </div>
-              ) : (
-                <Button
-                  size='sm'
-                  onClick={() =>
-                    setEditingTemplate({
-                      id: '',
-                      name: '',
-                      body: '',
-                      variables: [],
-                      category: 'MARKETING',
-                      status: 'DRAFT',
-                    })
-                  }
-                >
-                  New template
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Card for listing and sorting templates */}
-          <Card>
-            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <CardTitle>Quick reply library</CardTitle>
-                <CardDescription>Save your most common answers so the team replies in seconds.</CardDescription>
-              </div>
-              <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-                <select
-                  className='border border-input rounded px-2 py-1 text-sm bg-muted focus:outline-none focus:ring focus:ring-primary/30'
-                  value={templateStatusFilter}
-                  onChange={(e) => setTemplateStatusFilter(e.target.value as TemplateStatusFilter)}
-                >
-                  <option value='ALL'>All statuses</option>
-                  {TEMPLATE_STATUS_ORDER.map((status) => (
-                    <option key={status} value={status}>
-                      {TEMPLATE_STATUS_LABELS[status]}
-                    </option>
-                  ))}
-                </select>
-                <Button size='sm' variant='outline' onClick={() => setStatusSortDirection((current) => (current === 'ASC' ? 'DESC' : 'ASC'))}>
-                  <ArrowUpDown className='mr-2 h-4 w-4' />
-                  Status order: {statusSortDirection === 'ASC' ? 'Ascending' : 'Descending'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {templatesLoading ? (
-                <div className='space-y-3'>
-                  {[0, 1, 2].map((key) => (
-                    <Skeleton key={key} className='h-24 w-full' />
-                  ))}
-                </div>
-              ) : filteredTemplates.length ? (
-                <div className='space-y-3'>
-                  {filteredTemplates.map((template, index) => {
-                    if (!template) return null;
-
-                    const variables = Array.isArray(template.variables) ? template.variables : [];
-                    const normalizedStatus = resolveTemplateStatus(template.status);
-                    const statusLabel = TEMPLATE_STATUS_LABELS[normalizedStatus] ?? formatEnumLabel(normalizedStatus);
-                    const category = (template.category ?? 'MARKETING') as Template['category'];
-                    const categoryLabel = formatEnumLabel(category);
-
-                    return (
-                      <div key={template.id || `template-${index}`} className='rounded-lg border border-muted bg-background/40 p-4 shadow-sm'>
-                        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                          <div className='space-y-2'>
-                            <div className='flex flex-col gap-1'>
-                              <span className='text-base font-semibold text-foreground'>{template.name || 'Untitled template'}</span>
-                              <span className='text-sm text-muted-foreground line-clamp-2'>{template.body || 'No content provided.'}</span>
-                            </div>
-                            {variables.length > 0 && (
-                              <div className='flex flex-wrap gap-1'>
-                                {variables.map((variable) => (
-                                  <Badge key={variable} variant='secondary' className='text-xs font-normal'>
-                                    {variable}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className='flex flex-col items-start gap-2 sm:items-end'>
-                            <Badge variant='outline' className='tracking-wide'>
-                              {statusLabel}
-                            </Badge>
-                            <span className='text-xs text-muted-foreground'>Category: {categoryLabel}</span>
-                          </div>
-                        </div>
-                        <div className='mt-4 flex flex-wrap gap-2'>
-                          <Button size='sm' onClick={() => setEditingTemplate(template)}>
-                            Edit
-                          </Button>
-                          <Button
-                            size='sm'
-                            variant='destructive'
-                            onClick={async () => {
-                              try {
-                                await client.delete(`${endpoints.templates}/${template.id}`);
-                                setTemplates((prev) => prev.filter((x) => x.id !== template.id));
-                                toast.success('Template deleted');
-                              } catch (error: unknown) {
-                                let message = 'Failed to delete template';
-                                if (
-                                  typeof error === 'object' &&
-                                  error !== null &&
-                                  'response' in error &&
-                                  typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
-                                ) {
-                                  message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
-                                }
-                                toast.error(message);
-                              }
-                            }}
+                  <Button onClick={() => openTemplateComposer()}>
+                    <Plus className='mr-2 h-4 w-4' />
+                    New template
+                  </Button>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  {templatesLoading ? (
+                    <div className='space-y-3'>
+                      {[...Array(4)].map((_, index) => (
+                        <Skeleton key={index} className='h-20 w-full rounded-md' />
+                      ))}
+                    </div>
+                  ) : sortedTemplates.length ? (
+                    <div className='space-y-4'>
+                      {sortedTemplates.map((template) => {
+                        const status = resolveTemplateStatus(template.status);
+                        const approved = status === 'APPROVED';
+                        return (
+                          <div
+                            key={template.id}
+                            className='rounded-lg border border-border/70 bg-card p-4 shadow-sm transition hover:border-primary/50'
                           >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className='text-sm text-muted-foreground'>No templates found for the selected filters.</p>
-              )}
-            </CardContent>
-          </Card>
+                            <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                              <div className='space-y-2'>
+                                <div className='flex flex-wrap items-center gap-2'>
+                                  <h3 className='text-base font-semibold'>{template.name}</h3>
+                                  <Badge variant={approved ? 'default' : 'secondary'}>
+                                    {TEMPLATE_STATUS_LABELS[status]}
+                                  </Badge>
+                                  <Badge variant='outline'>{template.category.toLowerCase()}</Badge>
+                                </div>
+                                <p className='text-sm text-muted-foreground line-clamp-3 whitespace-pre-line'>
+                                  {template.body}
+                                </p>
+                              </div>
+                              <div className='flex flex-wrap gap-2'>
+                                <Button size='sm' variant='outline' onClick={() => openTemplateComposer(template)}>
+                                  <MessageSquare className='mr-2 h-3.5 w-3.5' />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size='sm'
+                                  variant='outline'
+                                  onClick={() => handleRefreshTemplate(template)}
+                                >
+                                  <RefreshCw className='mr-2 h-3.5 w-3.5' />
+                                  Refresh
+                                </Button>
+                                <Button
+                                  size='sm'
+                                  disabled={approved}
+                                  onClick={() => handleSubmitTemplate(template)}
+                                >
+                                  <CheckCircle2 className='mr-2 h-3.5 w-3.5' />
+                                  Submit
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
+                      No templates yet. Draft your first template to keep conversations alive after 24 hours.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            <div className='w-full lg:w-[320px]'>
+              <WhatsAppPrinciples />
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value='auto-responses' className='space-y-6 pt-4'>
+        <TabsContent value='followups' className='space-y-6 pt-4'>
           <Card>
             <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
               <div>
-                <CardTitle>Instant replies</CardTitle>
-                <CardDescription>Keep leads warm, even when your team is busy or offline.</CardDescription>
+                <CardTitle>Scheduled follow-ups</CardTitle>
+                <CardDescription>Line up nudges before the chat goes cold. WhatsApp templates keep you compliant.</CardDescription>
               </div>
-              <Button size='sm'>Create auto-response</Button>
+              <Button onClick={() => openFollowUpModal('create')}>
+                <Plus className='mr-2 h-4 w-4' />
+                Schedule follow-up
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {followUpsLoading ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Conversation</TableHead>
+                      <TableHead>Send at</TableHead>
+                      <TableHead>Channel</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Template</TableHead>
+                      <TableHead className='text-right'>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...Array(4)].map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell colSpan={6}>
+                          <Skeleton className='h-6 w-full' />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : sortedFollowUps.length ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <span className='inline-flex items-center gap-1'>
+                          Conversation
+                          <ArrowUpDown className='h-3.5 w-3.5 text-muted-foreground' />
+                        </span>
+                      </TableHead>
+                      <TableHead>Send at</TableHead>
+                      <TableHead>Channel</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Template</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead className='text-right'>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedFollowUps.map((followUp) => {
+                      const conversation = conversationMap.get(followUp.conversationId);
+                      const status = followUp.status ?? 'SCHEDULED';
+                      const templateStatus = followUp.template?.status
+                        ? TEMPLATE_STATUS_LABELS[resolveTemplateStatus(followUp.template.status)]
+                        : null;
+                      return (
+                        <TableRow key={followUp.id}>
+                          <TableCell>
+                            <div className='flex flex-col'>
+                              <span className='font-medium'>{conversation?.label ?? followUp.conversationId}</span>
+                              {conversation?.channel && (
+                                <span className='text-xs text-muted-foreground'>{conversation.channel}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDateTime(followUp.scheduledTime)}</TableCell>
+                          <TableCell className='uppercase text-xs text-muted-foreground'>{followUp.provider}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                status === 'SENT'
+                                  ? 'default'
+                                  : status === 'FAILED'
+                                  ? 'destructive'
+                                  : status === 'CANCELLED'
+                                  ? 'outline'
+                                  : 'secondary'
+                              }
+                            >
+                              {FOLLOWUP_STATUS_LABELS[status]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {followUp.template ? (
+                              <div className='flex flex-col'>
+                                <span className='text-sm font-medium'>{followUp.template.name}</span>
+                                <span className='text-xs text-muted-foreground'>{templateStatus}</span>
+                              </div>
+                            ) : (
+                              <span className='text-xs text-muted-foreground'>Custom message</span>
+                            )}
+                          </TableCell>
+                          <TableCell className='max-w-xs text-sm text-muted-foreground'>
+                            {followUp.message ? followUp.message.slice(0, 80) : '—'}
+                          </TableCell>
+                          <TableCell className='text-right'>
+                            <div className='flex justify-end gap-2'>
+                              <Button size='sm' variant='outline' onClick={() => openFollowUpModal('edit', followUp)}>
+                                <MessageSquare className='mr-2 h-3.5 w-3.5' />
+                                Edit
+                              </Button>
+                              <Button size='sm' variant='outline' onClick={() => cancelFollowUp(followUp)}>
+                                <Trash2 className='mr-2 h-3.5 w-3.5' />
+                                Cancel
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
+                  No follow-ups scheduled. Your next follow-up can be ready in under a minute.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          <WhatsAppPrinciples />
+        </TabsContent>
+
+        <TabsContent value='flows' className='space-y-6 pt-4'>
+          <Card>
+            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+              <div>
+                <CardTitle>Flow builder</CardTitle>
+                <CardDescription>Automate multi-step journeys across triggers, conditions, and actions.</CardDescription>
+              </div>
+              <Button variant='outline' onClick={() => openBuilder()}>
+                <Sparkles className='mr-2 h-4 w-4' />
+                New flow
+              </Button>
             </CardHeader>
             <CardContent className='space-y-4'>
-              {/* Auto-responses UI is placeholder, remove dead code. Implement real auto-response CRUD if needed. */}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Response windows</CardTitle>
-              <CardDescription>Define office hours and escalation rules when nobody replies.</CardDescription>
-            </CardHeader>
-            <CardContent className='grid gap-4 md:grid-cols-2'>
-              <Card className='border-muted'>
-                <CardHeader>
-                  <CardTitle className='flex items-center gap-2 text-base'>
-                    <Clock className='h-4 w-4 text-primary' />
-                    Business hours
-                  </CardTitle>
-                  <CardDescription>Auto-detect when the team is offline and set the right expectations.</CardDescription>
-                </CardHeader>
-              </Card>
-              <Card className='border-muted'>
-                <CardHeader>
-                  <CardTitle className='flex items-center gap-2 text-base'>
-                    <Wand2 className='h-4 w-4 text-primary' />
-                    Escalations
-                  </CardTitle>
-                  <CardDescription>Route important conversations to the right teammate instantly.</CardDescription>
-                </CardHeader>
-              </Card>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value='follow-ups' className='space-y-6 pt-4'>
-          <Card className='border-muted'>
-            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <CardTitle>Schedule follow-up</CardTitle>
-                <CardDescription>Line up the next message before the thread goes cold.</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {createFollowupOpen ? (
-                <div className='space-y-3'>
-                  <div className='grid gap-3 sm:grid-cols-2'>
-                    <div className='space-y-1'>
-                      <label className='text-xs font-medium text-muted-foreground'>Conversation<span className='text-destructive'>*</span></label>
-                      {conversationsLoading ? (
-                        <Skeleton className='h-9 w-full' />
-                      ) : conversationOptions.length ? (
-                        <select
-                          className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                          value={createFollowupDraft.conversationId}
-                          onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, conversationId: e.target.value })}
-                        >
-                          <option value=''>Select a chat</option>
-                          {conversationOptions.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {formatConversationLabel(option)}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <div className='rounded border border-dashed border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground'>
-                          No conversations available yet. Head to the inbox to start a chat first.
-                        </div>
-                      )}
-                    </div>
-                    <div className='space-y-1'>
-                      <label className='text-xs font-medium text-muted-foreground'>Channel</label>
-                      <select
-                        className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                        value={createFollowupDraft.provider}
-                        onChange={(e) => {
-                          const provider = e.target.value;
-                          setCreateFollowupDraft({ ...createFollowupDraft, provider });
-                          if (provider !== 'whatsapp') {
-                            setCreateTemplateError(null);
-                          }
-                        }}
-                      >
-                        <option value='whatsapp'>WhatsApp</option>
-                        <option value='sms'>SMS</option>
-                        <option value='email'>Email</option>
-                        <option value='telegram'>Telegram</option>
-                        <option value='instagram'>Instagram</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className='grid gap-3 sm:grid-cols-2'>
-                    <div className='space-y-1'>
-                      <label className='text-xs font-medium text-muted-foreground'>Scheduled time<span className='text-destructive'>*</span></label>
-                      <input
-                        type='datetime-local'
-                        className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                        value={createFollowupDraft.scheduledTime}
-                        onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, scheduledTime: e.target.value })}
-                      />
-                    </div>
-                    {approvedTemplates.length > 0 && (
-                      <div className='space-y-1'>
-                        <label className='text-xs font-medium text-muted-foreground'>Template (approved)</label>
-                        <select
-                          className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                          value={createFollowupDraft.templateId ?? ''}
-                          onChange={(e) => {
-                            setCreateFollowupDraft({ ...createFollowupDraft, templateId: e.target.value || undefined });
-                            setCreateTemplateError(null);
-                          }}
-                        >
-                          <option value=''>No template</option>
-                          {approvedTemplates.map((template) => (
-                            <option key={template.id} value={template.id}>
-                              {template.name} · {formatEnumLabel(template.category)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                  {createTemplateError && approvedTemplates.length === 0 && (
-                    <p className='text-xs text-destructive'>{createTemplateError}</p>
-                  )}
-                  <div className='space-y-1'>
-                    <label className='text-xs font-medium text-muted-foreground'>Message</label>
-                    <textarea
-                      className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                      rows={4}
-                      placeholder='Hi there! Checking in on our conversation...'
-                      value={createFollowupDraft.message}
-                      onChange={(e) => setCreateFollowupDraft({ ...createFollowupDraft, message: e.target.value })}
-                    />
-                    <p className='text-[11px] text-muted-foreground'>Required for 24-hour window follow-ups when no template is selected.</p>
-                  </div>
-                  <div className='space-y-1'>
-                    <label className='text-xs font-medium text-muted-foreground'>Template variables (JSON)</label>
-                    <textarea
-                      className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                      rows={3}
-                      placeholder='{"name":"Alex"}'
-                      value={createFollowupVariables}
-                      onChange={(e) => setCreateFollowupVariables(e.target.value)}
-                    />
-                    <p className='text-[11px] text-muted-foreground'>Only needed when the selected template includes placeholders.</p>
-                  </div>
-                  <div className='flex flex-wrap gap-2 pt-2'>
-                    <Button size='sm' disabled={conversationsLoading || !createFollowupDraft.conversationId} onClick={handleCreateFollowup}>Save</Button>
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      onClick={() => {
-                        setCreateFollowupOpen(false);
-                        resetCreateFollowupForm();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                  <p className='text-sm text-muted-foreground'>Schedule the perfect follow-up once and reuse it whenever a lead goes quiet.</p>
-                  <Button
-                    size='sm'
-                    disabled={conversationsLoading || conversationOptions.length === 0}
-                    onClick={() => {
-                      if (!user?.id) {
-                        toast.error('You must be signed in to create follow-ups');
-                        return;
-                      }
-                      if (conversationOptions.length === 0) {
-                        toast.error('No conversations available to schedule a follow-up yet.');
-                        return;
-                      }
-                      setCreateFollowupOpen(true);
-                      resetCreateFollowupForm();
-                    }}
-                  >
-                    Schedule follow-up
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className='border-muted'>
-            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <CardTitle>Follow-up log</CardTitle>
-                <CardDescription>Review and manage the nudges queued for a conversation.</CardDescription>
-              </div>
-              <div className='flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center'>
-                <select
-                  className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30 sm:w-60'
-                  value={conversationFilter}
-                  onChange={(e) => setConversationFilter(e.target.value)}
-                >
-                  <option value='ALL'>All conversations</option>
-                  {conversationOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {formatConversationLabel(option)}
-                    </option>
-                  ))}
-                </select>
-                <Badge variant='outline' className='justify-center'>{filteredFollowups.length} {filteredFollowups.length === 1 ? 'workflow' : 'workflows'}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-4'>
-                {editingFollowup && (
-                  <Card className='border-muted bg-background/80'>
-                    <CardHeader className='space-y-1 pb-2'>
-                      <CardTitle className='text-lg font-semibold'>Edit workflow</CardTitle>
-                      <CardDescription className='text-muted-foreground'>Adjust the timing or content before the follow-up fires.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className='space-y-3'>
-                        <div className='grid gap-3 sm:grid-cols-2'>
-                          <div className='space-y-1'>
-                            <label className='text-xs font-medium text-muted-foreground'>Conversation ID</label>
-                            <input
-                              className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                              value={editingFollowupDraft.conversationId ?? editingFollowup.conversationId}
-                              onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, conversationId: e.target.value })}
-                            />
-                          </div>
-                          <div className='space-y-1'>
-                            <label className='text-xs font-medium text-muted-foreground'>Channel</label>
-                            <select
-                              className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                              value={(editingFollowupDraft.provider as string) ?? editingFollowup.provider ?? DEFAULT_PROVIDER}
-                              onChange={(e) => {
-                                const provider = e.target.value;
-                                setEditingFollowupDraft({ ...editingFollowupDraft, provider });
-                                if (provider !== 'whatsapp') {
-                                  setEditTemplateError(null);
-                                }
-                              }}
-                            >
-                              <option value='whatsapp'>WhatsApp</option>
-                              <option value='sms'>SMS</option>
-                              <option value='email'>Email</option>
-                              <option value='telegram'>Telegram</option>
-                              <option value='instagram'>Instagram</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className='grid gap-3 sm:grid-cols-2'>
-                          <div className='space-y-1'>
-                            <label className='text-xs font-medium text-muted-foreground'>Scheduled time</label>
-                            <input
-                              type='datetime-local'
-                              className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                              value={editingFollowupDraft.scheduledTime ?? toDateTimeLocalInput(editingFollowup.scheduledTime)}
-                              onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, scheduledTime: e.target.value })}
-                            />
-                          </div>
-                          <div className='space-y-1'>
-                            <label className='text-xs font-medium text-muted-foreground'>Status</label>
-                            <select
-                              className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                              value={editingFollowupDraft.status ?? editingFollowup.status}
-                              onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, status: e.target.value as FollowUpRule['status'] })}
-                            >
-                              <option value='SCHEDULED'>SCHEDULED</option>
-                              <option value='SENT'>SENT</option>
-                              <option value='CANCELLED'>CANCELLED</option>
-                              <option value='FAILED'>FAILED</option>
-                            </select>
-                          </div>
-                        </div>
-                        {approvedTemplates.length > 0 && (
-                          <div className='space-y-1'>
-                            <label className='text-xs font-medium text-muted-foreground'>Template (approved)</label>
-                            <select
-                              className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                              value={editingFollowupDraft.templateId ?? editingFollowup.templateId ?? ''}
-                              onChange={(e) => {
-                                setEditingFollowupDraft({ ...editingFollowupDraft, templateId: e.target.value || undefined });
-                                setEditTemplateError(null);
-                              }}
-                            >
-                              <option value=''>No template</option>
-                              {approvedTemplates.map((template) => (
-                                <option key={template.id} value={template.id}>
-                                  {template.name} · {formatEnumLabel(template.category)}
-                                </option>
-                              ))}
-                            </select>
-                            {editTemplateError && (
-                              <p className='text-xs text-destructive'>{editTemplateError}</p>
-                            )}
-                          </div>
-                        )}
-                        {editTemplateError && approvedTemplates.length === 0 && (
-                          <p className='text-xs text-destructive'>{editTemplateError}</p>
-                        )}
-                        <div className='space-y-1'>
-                          <label className='text-xs font-medium text-muted-foreground'>Message</label>
-                          <textarea
-                            className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                            rows={4}
-                            value={editingFollowupDraft.message ?? editingFollowup.message ?? ''}
-                            onChange={(e) => setEditingFollowupDraft({ ...editingFollowupDraft, message: e.target.value })}
-                          />
-                        </div>
-                        <div className='space-y-1'>
-                          <label className='text-xs font-medium text-muted-foreground'>Template variables (JSON)</label>
-                          <textarea
-                            className='w-full rounded border border-input bg-muted px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-primary/30'
-                            rows={3}
-                            value={editingFollowupVariables}
-                            onChange={(e) => setEditingFollowupVariables(e.target.value)}
-                          />
-                          <p className='text-[11px] text-muted-foreground'>Only needed when the selected template includes placeholders.</p>
-                        </div>
-                        <div className='flex flex-wrap gap-2 pt-2'>
-                          <Button size='sm' onClick={handleUpdateFollowup}>Save</Button>
-                          <Button size='sm' variant='outline' onClick={resetEditingFollowup}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {followupsLoading ? (
-                  <div className='space-y-3'>
-                    {[0, 1].map((key) => (
-                      <Skeleton key={key} className='h-24 w-full' />
-                    ))}
-                  </div>
-                ) : filteredFollowups.length === 0 ? (
-                  <p className='text-sm text-muted-foreground'>
-                    {conversationFilter === 'ALL'
-                      ? 'No follow-ups scheduled yet.'
-                      : `No follow-ups scheduled for ${selectedConversationLabel}.`}
-                  </p>
-                ) : (
-                  filteredFollowups.map((item, index) => (
-                    <Card key={item.id} className='border-muted'>
-                      <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-                        <div className='space-y-1'>
-                          <CardTitle className='text-base font-semibold text-foreground'>Follow-up #{index + 1}</CardTitle>
-                          <div className='text-xs text-muted-foreground space-y-1'>
-                            <p>Conversation: {item.conversationId}</p>
-                            <p>Channel: {item.provider}</p>
-                            <p>Template: {item.template?.name || '—'}</p>
-                          </div>
-                        </div>
-                        <div className='flex flex-col items-start gap-2 sm:items-end'>
-                          <Badge variant='outline' className='bg-primary/10 text-primary uppercase tracking-wide'>
-                            {item.status}
-                          </Badge>
-                          <span className='text-xs text-muted-foreground'>
-                            {item.scheduledTime ? new Date(item.scheduledTime).toLocaleString() : 'No schedule'}
-                          </span>
-                        </div>
+              {flows.length ? (
+                <div className='grid gap-4 md:grid-cols-2'>
+                  {flows.map((flow) => (
+                    <Card key={flow.id} className='border-border/70'>
+                      <CardHeader className='space-y-1'>
+                        <CardTitle className='text-lg'>{flow.name}</CardTitle>
+                        <CardDescription className='flex items-center gap-2 text-xs'>
+                          <span>{flow.status === 'ON' ? 'Running' : 'Draft'}</span>
+                          <span>•</span>
+                          <span>Updated {formatDateTime(flow.updatedAt)}</span>
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className='space-y-3'>
-                        <div className='rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground'>
-                          <h4 className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <MessageSquare className='h-4 w-4 text-primary' /> Message
-                          </h4>
-                          <p className='mt-1 whitespace-pre-wrap'>{item.message || '—'}</p>
-                        </div>
                         <div className='flex flex-wrap gap-2'>
-                          <Button
-                            size='sm'
-                            onClick={() => {
-                              setEditingFollowup(item);
-                              setEditingFollowupDraft({
-                                conversationId: item.conversationId,
-                                provider: item.provider,
-                                scheduledTime: toDateTimeLocalInput(item.scheduledTime),
-                                status: item.status,
-                                message: item.message ?? '',
-                                templateId: item.templateId ?? undefined,
-                              });
-                              setEditingFollowupVariables(item.variables ? JSON.stringify(item.variables, null, 2) : '');
-                            }}
-                          >
+                          <Button size='sm' variant='outline' onClick={() => openBuilder(flow)}>
+                            <MessageSquare className='mr-2 h-3.5 w-3.5' />
                             Edit
                           </Button>
-                          <Button
-                            size='sm'
-                            variant='destructive'
-                            onClick={async () => {
-                              try {
-                                await client.delete(endpoints.followup(item.id));
-                                toast.success('Workflow deleted');
-                                if (editingFollowup?.id === item.id) {
-                                  resetEditingFollowup();
-                                }
-                                await fetchAllFollowups();
-                                await fetchConversations();
-                              } catch (error: unknown) {
-                                let message = 'Failed to delete workflow';
-                                if (
-                                  typeof error === 'object' &&
-                                  error !== null &&
-                                  'response' in error &&
-                                  typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
-                                ) {
-                                  message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
-                                }
-                                toast.error(message);
-                              }
-                            }}
-                          >
+                          <Button size='sm' variant='outline' onClick={() => handleFlowDuplicate(flow)}>
+                            <ArrowUpDown className='mr-2 h-3.5 w-3.5' />
+                            Duplicate
+                          </Button>
+                          <Button size='sm' variant='outline' onClick={() => handleFlowToggle(flow)}>
+                            <Clock className='mr-2 h-3.5 w-3.5' />
+                            {flow.status === 'ON' ? 'Turn off' : 'Activate'}
+                          </Button>
+                          <Button size='sm' variant='destructive' onClick={() => handleFlowDelete(flow)}>
+                            <Trash2 className='mr-2 h-3.5 w-3.5' />
                             Delete
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
+                  Build your first automation flow to route conversations, send templates, and trigger follow-ups automatically.
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Reminder channels</CardTitle>
-              <CardDescription>Choose how the team gets nudged when a lead is going quiet.</CardDescription>
-            </CardHeader>
-            <CardContent className='grid gap-4 md:grid-cols-2'>
-              <Card className='border-muted'>
-                <CardHeader>
-                  <CardTitle className='text-base'>Inbox notifications</CardTitle>
-                  <CardDescription>Create tasks inside LeadsBox when a follow-up is due.</CardDescription>
-                </CardHeader>
-              </Card>
-              <Card className='border-muted'>
-                <CardHeader>
-                  <CardTitle className='text-base'>Slack & email</CardTitle>
-                  <CardDescription>Ping the team where they work so nothing slips through.</CardDescription>
-                </CardHeader>
-              </Card>
-            </CardContent>
-          </Card>
-
-          <TagsTab />
-        </TabsContent>
-
-        <TabsContent value='flows' className='space-y-4 pt-4'>
-          {flows.length === 0 ? (
-            <Card className='border-dashed border-primary/40 bg-muted/50'>
-              <CardHeader>
-                <CardTitle>No automations yet</CardTitle>
-                <CardDescription>Design your first journey to keep leads warm around the clock.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={() => openBuilder()} className='gap-2'>
-                  <Sparkles className='h-4 w-4' />
-                  Build your first flow
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className='grid gap-4 lg:grid-cols-2'>
-              {flows.map((flow) => (
-                <Card key={flow.id} className='border-muted transition hover:border-primary/40'>
-                  <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-                    <div>
-                      <CardTitle className='flex items-center gap-2 text-lg text-foreground'>
-                        {flow.name}
-                        <Badge variant='outline' className={flow.status === 'ON' ? 'border-green-500 text-green-500' : ''}>
-                          {flow.status}
-                        </Badge>
-                      </CardTitle>
-                      <CardDescription>
-                        {flow.nodes.length} blocks · {flow.edges.length} links · v{flow.version}
-                      </CardDescription>
-                    </div>
-                    <div className='flex items-center gap-2'>
-                      <Switch checked={flow.status === 'ON'} onCheckedChange={() => handleToggle(flow)} aria-label='Toggle automation' />
-                      <Badge variant='secondary' className='hidden sm:inline-flex items-center gap-1'>
-                        <Power className='h-3 w-3' /> {flow.status === 'ON' ? 'Live' : 'Off'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className='flex flex-wrap items-center justify-between gap-3'>
-                    <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
-                      <Badge variant='outline'>Trigger: {flow.nodes.find((node) => node.type === 'trigger') ? 'Configured' : 'Missing'}</Badge>
-                      <Badge variant='outline'>Updated: {flow.updatedAt ? new Date(flow.updatedAt).toLocaleString() : '—'}</Badge>
-                    </div>
-                    <div className='flex flex-wrap gap-2'>
-                      <Button size='sm' variant='outline' className='gap-1' onClick={() => openBuilder(flow)}>
-                        <Pencil className='h-3.5 w-3.5' /> Edit
-                      </Button>
-                      <Button size='sm' variant='outline' className='gap-1' onClick={() => handleDuplicate(flow)}>
-                        <Copy className='h-3.5 w-3.5' /> Duplicate
-                      </Button>
-                      <Button
-                        size='sm'
-                        variant='ghost'
-                        className='gap-1 text-destructive hover:text-destructive'
-                        onClick={() => handleDelete(flow.id)}
-                      >
-                        <Trash2 className='h-3.5 w-3.5' /> Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
         </TabsContent>
       </Tabs>
 
-      <Separator />
+      <TemplateComposer
+        open={templateComposerOpen}
+        onOpenChange={(open) => {
+          setTemplateComposerOpen(open);
+          if (!open) {
+            setActiveTemplate(null);
+          }
+        }}
+        template={activeTemplate}
+        onSaved={handleTemplateSaved}
+        onDeleted={handleTemplateDeleted}
+      />
 
-      <Card className='border-muted bg-muted/40'>
-        <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-          <div>
-            <CardTitle className='flex items-center gap-2'>
-              <Sparkles className='h-4 w-4 text-primary' />
-              Automation ideas for later
-            </CardTitle>
-            <CardDescription>Coming soon: AI-powered suggestions based on your best reps.</CardDescription>
-          </div>
-          <Button variant='outline' size='sm'>
-            Join beta list
-          </Button>
-        </CardHeader>
-        <CardContent className='grid gap-4 md:grid-cols-2'>
-          <div className='rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground'>
-            Smart tagging to auto-classify new leads by intent and sentiment.
-          </div>
-          <div className='rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground'>
-            Predictive reminders that choose the best time to follow up based on results.
-          </div>
-        </CardContent>
-      </Card>
+      {hasOrgContext && (
+        <ScheduleFollowUpModal
+          open={followUpModalOpen}
+          onOpenChange={(open) => {
+            setFollowUpModalOpen(open);
+            if (!open) {
+              setActiveFollowUp(null);
+            }
+          }}
+          mode={followUpMode}
+          followUp={activeFollowUp}
+          conversationOptions={conversations}
+          templateOptions={approvedTemplates}
+          userId={userId!}
+          organizationId={organizationId!}
+          onCompleted={handleFollowUpCompleted}
+          onCancelled={handleFollowUpCancelled}
+        />
+      )}
 
-      <NewAutomationModal open={builderOpen} onOpenChange={setBuilderOpen} initialFlow={editingFlow} onSave={handleSaveFlow} />
+      {builderFlow && (
+        <NewAutomationModal
+          key={builderKey}
+          open={builderOpen}
+          onOpenChange={setBuilderOpen}
+          initialFlow={builderFlow}
+          onSave={handleFlowSaved}
+        />
+      )}
     </div>
   );
 };
