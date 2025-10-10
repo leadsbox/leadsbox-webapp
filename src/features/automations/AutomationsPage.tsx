@@ -441,91 +441,119 @@ const AutomationsPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value='templates' className='space-y-6 pt-4'>
-          <div className='flex flex-col gap-4 lg:flex-row'>
-            <div className='flex-1'>
-              <Card>
-                <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                  <div>
-                    <CardTitle>Template library</CardTitle>
-                    <CardDescription>Save canned replies and request WhatsApp approval in one place.</CardDescription>
-                  </div>
-                  <Button onClick={() => openTemplateComposer()}>
-                    <Plus className='mr-2 h-4 w-4' />
-                    New template
-                  </Button>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                  {templatesLoading ? (
-                    <div className='space-y-3'>
-                      {[...Array(4)].map((_, index) => (
-                        <Skeleton key={index} className='h-20 w-full rounded-md' />
-                      ))}
-                    </div>
-                  ) : sortedTemplates.length ? (
-                    <div className='space-y-4'>
-                      {sortedTemplates.map((template) => {
-                        const status = resolveTemplateStatus(template.status);
-                        const approved = status === 'APPROVED';
-                        return (
-                          <div
-                            key={template.id}
-                            className='rounded-lg border border-border/70 bg-card p-4 shadow-sm transition hover:border-primary/50'
-                          >
-                            <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                              <div className='space-y-2'>
-                                <div className='flex flex-wrap items-center gap-2'>
-                                  <h3 className='text-base font-semibold'>{template.name}</h3>
-                                  <Badge variant={approved ? 'default' : 'secondary'}>
-                                    {TEMPLATE_STATUS_LABELS[status]}
-                                  </Badge>
-                                  <Badge variant='outline'>{template.category.toLowerCase()}</Badge>
-                                </div>
-                                <p className='text-sm text-muted-foreground line-clamp-3 whitespace-pre-line'>
-                                  {template.body}
-                                </p>
-                              </div>
-                              <div className='flex flex-wrap gap-2'>
-                                <Button size='sm' variant='outline' onClick={() => openTemplateComposer(template)}>
-                                  <MessageSquare className='mr-2 h-3.5 w-3.5' />
-                                  Edit
-                                </Button>
-                                <Button
-                                  size='sm'
-                                  variant='outline'
-                                  onClick={() => handleRefreshTemplate(template)}
-                                >
-                                  <RefreshCw className='mr-2 h-3.5 w-3.5' />
-                                  Refresh
-                                </Button>
-                                <Button
-                                  size='sm'
-                                  disabled={approved}
-                                  onClick={() => handleSubmitTemplate(template)}
-                                >
-                                  <CheckCircle2 className='mr-2 h-3.5 w-3.5' />
-                                  Submit
-                                </Button>
-                              </div>
+          {templateComposerOpen && (
+            <TemplateComposer
+              open={templateComposerOpen}
+              onOpenChange={(open) => {
+                setTemplateComposerOpen(open);
+                if (!open) {
+                  setActiveTemplate(null);
+                }
+              }}
+              template={activeTemplate}
+              onSaved={handleTemplateSaved}
+              onDeleted={handleTemplateDeleted}
+            />
+          )}
+          <Card>
+            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+              <div>
+                <CardTitle>Template library</CardTitle>
+                <CardDescription>Save canned replies and request WhatsApp approval in one place.</CardDescription>
+              </div>
+              <Button onClick={() => openTemplateComposer()}>
+                <Plus className='mr-2 h-4 w-4' />
+                New template
+              </Button>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              {templatesLoading ? (
+                <div className='space-y-3'>
+                  {[...Array(4)].map((_, index) => (
+                    <Skeleton key={index} className='h-20 w-full rounded-md' />
+                  ))}
+                </div>
+              ) : sortedTemplates.length ? (
+                <div className='space-y-4'>
+                  {sortedTemplates.map((template) => {
+                    const status = resolveTemplateStatus(template.status);
+                    const approved = status === 'APPROVED';
+                    return (
+                      <div
+                        key={template.id}
+                        className='rounded-lg border border-border/70 bg-card p-4 shadow-sm transition hover:border-primary/50'
+                      >
+                        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                          <div className='space-y-2'>
+                            <div className='flex flex-wrap items-center gap-2'>
+                              <h3 className='text-base font-semibold'>{template.name}</h3>
+                              <Badge variant={approved ? 'default' : 'secondary'}>
+                                {TEMPLATE_STATUS_LABELS[status]}
+                              </Badge>
+                              <Badge variant='outline'>{template.category.toLowerCase()}</Badge>
                             </div>
+                            <p className='text-sm text-muted-foreground line-clamp-3 whitespace-pre-line'>
+                              {template.body}
+                            </p>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
-                      No templates yet. Draft your first template to keep conversations alive after 24 hours.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            <div className='w-full lg:w-[320px]'>
-              <WhatsAppPrinciples />
-            </div>
-          </div>
+                          <div className='flex flex-wrap gap-2'>
+                            <Button size='sm' variant='outline' onClick={() => openTemplateComposer(template)}>
+                              <MessageSquare className='mr-2 h-3.5 w-3.5' />
+                              Edit
+                            </Button>
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() => handleRefreshTemplate(template)}
+                            >
+                              <RefreshCw className='mr-2 h-3.5 w-3.5' />
+                              Refresh
+                            </Button>
+                            <Button
+                              size='sm'
+                              disabled={approved}
+                              onClick={() => handleSubmitTemplate(template)}
+                            >
+                              <CheckCircle2 className='mr-2 h-3.5 w-3.5' />
+                              Submit
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
+                  No templates yet. Draft your first template to keep conversations alive after 24 hours.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <WhatsAppPrinciples />
         </TabsContent>
 
         <TabsContent value='followups' className='space-y-6 pt-4'>
+          {hasOrgContext && followUpModalOpen && (
+            <ScheduleFollowUpModal
+              open={followUpModalOpen}
+              onOpenChange={(open) => {
+                setFollowUpModalOpen(open);
+                if (!open) {
+                  setActiveFollowUp(null);
+                }
+              }}
+              mode={followUpMode}
+              followUp={activeFollowUp}
+              conversationOptions={conversations}
+              templateOptions={approvedTemplates}
+              conversationsLoading={conversationsLoading}
+              userId={userId!}
+              organizationId={organizationId!}
+              onCompleted={handleFollowUpCompleted}
+              onCancelled={handleFollowUpCancelled}
+            />
+          )}
           <Card>
             <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
               <div>
@@ -712,39 +740,6 @@ const AutomationsPage: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <TemplateComposer
-        open={templateComposerOpen}
-        onOpenChange={(open) => {
-          setTemplateComposerOpen(open);
-          if (!open) {
-            setActiveTemplate(null);
-          }
-        }}
-        template={activeTemplate}
-        onSaved={handleTemplateSaved}
-        onDeleted={handleTemplateDeleted}
-      />
-
-      {hasOrgContext && (
-        <ScheduleFollowUpModal
-          open={followUpModalOpen}
-          onOpenChange={(open) => {
-            setFollowUpModalOpen(open);
-            if (!open) {
-              setActiveFollowUp(null);
-            }
-          }}
-          mode={followUpMode}
-          followUp={activeFollowUp}
-          conversationOptions={conversations}
-          templateOptions={approvedTemplates}
-          userId={userId!}
-          organizationId={organizationId!}
-          onCompleted={handleFollowUpCompleted}
-          onCancelled={handleFollowUpCancelled}
-        />
-      )}
 
       {builderFlow && (
         <NewAutomationModal

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'react-toastify';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
@@ -118,6 +119,8 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
       return next;
     });
   }, [form.variables]);
+
+  if (!open) return null;
 
   const previewText = useMemo(
     () => renderPreview(form.body || '', previewValues),
@@ -240,15 +243,14 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-3xl'>
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit WhatsApp template' : 'Create WhatsApp template'}</DialogTitle>
-          <DialogDescription>
-            Draft clear, policy-compliant messages. Templates let you reach contacts even after the 24-hour WhatsApp window closes.
-          </DialogDescription>
-        </DialogHeader>
-
+    <Card className='border-primary/30 shadow-sm'>
+      <CardHeader>
+        <CardTitle>{isEditing ? 'Edit WhatsApp template' : 'Create WhatsApp template'}</CardTitle>
+        <CardDescription>
+          Draft clear, policy-compliant messages. Templates let you reach contacts even after the 24-hour WhatsApp window closes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className='space-y-6'>
         <div className='grid gap-6 md:grid-cols-[2fr_1fr]'>
           <div className='space-y-4'>
             <div className='space-y-1.5'>
@@ -264,19 +266,22 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
 
             <div className='space-y-1.5'>
               <Label htmlFor='template-language'>Language</Label>
-              <select
-                id='template-language'
-                className='w-full rounded border border-input bg-background px-3 py-2 text-sm'
+              <Select
                 value={form.language}
-                onChange={(event) => setForm((prev) => ({ ...prev, language: event.target.value }))}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, language: value }))}
                 disabled={busy}
               >
-                {LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.code} value={option.code}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id='template-language'>
+                  <SelectValue placeholder='Select language' />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.code} value={option.code}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className='space-y-2'>
@@ -343,24 +348,27 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
 
             <div className='space-y-1.5'>
               <Label htmlFor='template-category'>Category</Label>
-              <select
-                id='template-category'
-                className='w-full rounded border border-input bg-background px-3 py-2 text-sm'
+              <Select
                 value={form.category}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setForm((prev) => ({
                     ...prev,
-                    category: event.target.value as TemplateCategory,
+                    category: value as TemplateCategory,
                   }))
                 }
                 disabled={busy}
               >
-                {CATEGORY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id='template-category'>
+                  <SelectValue placeholder='Select category' />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className='text-xs text-muted-foreground'>
                 {
                   CATEGORY_OPTIONS.find((option) => option.value === form.category)?.helper ??
@@ -395,7 +403,7 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
           </div>
         </div>
 
-        <DialogFooter className='flex flex-col gap-3 sm:flex-row sm:justify-between'>
+        <div className='flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
             {template?.status && (
               <Badge variant='secondary'>Status: {template.status.replace('_', ' ')}</Badge>
@@ -420,9 +428,9 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
               {busy ? 'Saving…' : isEditing ? 'Save changes' : 'Create template'}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

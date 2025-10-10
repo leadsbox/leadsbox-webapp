@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'react-toastify';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
@@ -26,6 +28,7 @@ interface ScheduleFollowUpModalProps {
   organizationId: string;
   conversationOptions: ConversationOption[];
   templateOptions: Template[];
+  conversationsLoading?: boolean;
   followUp?: FollowUpRule | null;
   onCompleted?: (followUp: FollowUpRule, meta: { mode: 'create' | 'update' }) => void;
   onCancelled?: (followUpId: string) => void;
@@ -48,6 +51,7 @@ const PROVIDER_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 const DEFAULT_PROVIDER = 'whatsapp';
+const NO_TEMPLATE_VALUE = '__NO_TEMPLATE__';
 
 const FOLLOWUP_TIPS = [
   'WhatsApp enforces a 24-hour customer care window. Past that window, only approved templates get delivered.',
@@ -88,6 +92,7 @@ const ScheduleFollowUpModal = ({
   templateOptions,
   onCompleted,
   onCancelled,
+  conversationsLoading = false,
 }: ScheduleFollowUpModalProps) => {
   const [form, setForm] = useState<FollowUpFormState>({
     conversationId: '',
@@ -153,6 +158,8 @@ const ScheduleFollowUpModal = ({
       return { ...prev, variables: nextVariables };
     });
   }, [selectedTemplate, templateVariableNames]);
+
+  if (!open) return null;
 
   const requiresTemplate = useMemo(() => {
     if (form.provider !== 'whatsapp') return false;
@@ -290,54 +297,65 @@ const ScheduleFollowUpModal = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-2xl'>
-        <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Edit follow-up' : 'Schedule follow-up'}</DialogTitle>
-          <DialogDescription>
-            {form.provider === 'whatsapp'
-              ? 'Plan the next message. WhatsApp templates are required if you reach out after the 24-hour support window.'
-              : 'Plan the next message for this channel.'}
-          </DialogDescription>
-        </DialogHeader>
-
+    <Card className='border-primary/30 shadow-sm'>
+      <CardHeader>
+        <CardTitle>{mode === 'edit' ? 'Edit follow-up' : 'Schedule follow-up'}</CardTitle>
+        <CardDescription>
+          {form.provider === 'whatsapp'
+            ? 'Plan the next message. WhatsApp templates are required if you reach out after the 24-hour support window.'
+            : 'Plan the next message for this channel.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className='space-y-6'>
         <div className='grid gap-6 md:grid-cols-[3fr_2fr]'>
           <div className='space-y-4'>
             <div className='space-y-1.5'>
               <Label htmlFor='followup-conversation'>Conversation</Label>
-              <select
-                id='followup-conversation'
-                className='w-full rounded border border-input bg-background px-3 py-2 text-sm'
-                value={form.conversationId}
-                onChange={(event) => handleChange('conversationId', event.target.value)}
-                disabled={busy || mode === 'edit'}
-              >
-                <option value=''>Select a conversation</option>
-                {conversationOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                    {option.channel ? ` · ${option.channel}` : ''}
-                  </option>
-                ))}
-              </select>
+              {conversationsLoading ? (
+                <Skeleton className='h-9 w-full' />
+              ) : conversationOptions.length ? (
+                <Select
+                  value={form.conversationId || undefined}
+                  onValueChange={(value) => handleChange('conversationId', value)}
+                  disabled={busy || mode === 'edit'}
+                >
+                  <SelectTrigger id='followup-conversation'>
+                    <SelectValue placeholder='Select a conversation' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {conversationOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.channel ? `${option.label} · ${option.channel}` : option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className='rounded border border-dashed border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground'>
+                  No conversations available yet. Head to the inbox to start a chat first.
+                </div>
+              )}
             </div>
 
             <div className='grid gap-3 sm:grid-cols-2'>
               <div className='space-y-1.5'>
                 <Label htmlFor='followup-provider'>Channel</Label>
-                <select
-                  id='followup-provider'
-                  className='w-full rounded border border-input bg-background px-3 py-2 text-sm'
+                <Select
                   value={form.provider}
-                  onChange={(event) => handleChange('provider', event.target.value)}
+                  onValueChange={(value) => handleChange('provider', value)}
                   disabled={busy}
                 >
-                  {PROVIDER_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id='followup-provider'>
+                    <SelectValue placeholder='Select channel' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDER_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className='space-y-1.5'>
                 <Label htmlFor='followup-scheduled'>Send at</Label>
@@ -353,25 +371,27 @@ const ScheduleFollowUpModal = ({
 
             <div className='space-y-1.5'>
               <Label htmlFor='followup-template'>Template (optional)</Label>
-              <select
-                id='followup-template'
-                className='w-full rounded border border-input bg-background px-3 py-2 text-sm'
-                value={form.templateId}
-                onChange={(event) => handleChange('templateId', event.target.value)}
+              <Select
+                value={form.templateId ? form.templateId : NO_TEMPLATE_VALUE}
+                onValueChange={(value) => handleChange('templateId', value === NO_TEMPLATE_VALUE ? '' : value)}
                 disabled={busy || templateOptions.length === 0}
               >
-                <option value=''>Send a custom message</option>
-                {templateOptions.map((templateOption) => (
-                  <option key={templateOption.id} value={templateOption.id}>
-                    {templateOption.name} · {templateOption.status.toLowerCase()}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id='followup-template'>
+                  <SelectValue placeholder='Send a custom message' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_TEMPLATE_VALUE}>Send a custom message</SelectItem>
+                  {templateOptions.map((templateOption) => (
+                    <SelectItem key={templateOption.id} value={templateOption.id}>
+                      {templateOption.name} · {templateOption.status.toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className='text-xs text-muted-foreground'>
                 Only approved WhatsApp templates can bypass the 24-hour window. Drafts will not send automatically.
               </p>
             </div>
-
             {!form.templateId && (
               <div className='space-y-1.5'>
                 <Label htmlFor='followup-message'>Message</Label>
@@ -446,7 +466,7 @@ const ScheduleFollowUpModal = ({
           </div>
         </div>
 
-        <DialogFooter className='flex flex-col gap-3 sm:flex-row sm:justify-between'>
+        <div className='flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
             <Badge variant='secondary'>Status: {mode === 'edit' ? followUp?.status ?? 'SCHEDULED' : 'SCHEDULED'}</Badge>
             <span>Automations free your team to focus on live chats.</span>
@@ -464,9 +484,9 @@ const ScheduleFollowUpModal = ({
               {busy ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Schedule follow-up'}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
