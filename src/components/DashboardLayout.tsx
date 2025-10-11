@@ -1,7 +1,7 @@
 // Dashboard Layout Component for LeadsBox
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Users,
@@ -16,6 +16,7 @@ import {
   FileText,
   Sparkles,
   Home,
+  CreditCard,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -83,6 +84,12 @@ const sidebarItems: SidebarItem[] = [
     description: 'Create and manage invoices',
   },
   {
+    title: 'Billing',
+    href: '/dashboard/billing',
+    icon: CreditCard,
+    description: 'Plans, subscriptions, payments',
+  },
+  {
     title: 'Settings',
     href: '/dashboard/settings',
     icon: Settings,
@@ -91,6 +98,7 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 export const DashboardLayout: React.FC = () => {
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('lb_sidebar_collapsed');
@@ -103,6 +111,7 @@ export const DashboardLayout: React.FC = () => {
   const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false));
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number>(14);
   const location = useLocation();
 
   // Fetch actual inbox count
@@ -170,6 +179,29 @@ export const DashboardLayout: React.FC = () => {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    try {
+      const key = 'lb_trial_started_at';
+      const trialLength = 14;
+      const stored = localStorage.getItem(key);
+      let startDate = stored ? new Date(stored) : new Date();
+
+      if (!stored || Number.isNaN(startDate.getTime())) {
+        startDate = new Date();
+        localStorage.setItem(key, startDate.toISOString());
+      }
+
+      const now = new Date();
+      const diffMs = now.getTime() - startDate.getTime();
+      const daysElapsed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const daysRemaining = Math.max(0, trialLength - daysElapsed);
+      setTrialDaysLeft(daysRemaining);
+    } catch (error) {
+      console.error('Failed to compute trial period:', error);
+      setTrialDaysLeft(0);
+    }
+  }, []);
+
   const toggleSidebar = () => {
     if (isMobile) {
       setMobileOpen((v) => !v);
@@ -179,6 +211,8 @@ export const DashboardLayout: React.FC = () => {
   };
 
   const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
+  const trialCopy = trialDaysLeft > 0 ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial` : 'Trial ended';
+  const handleGoToBilling = () => navigate('/dashboard/billing');
 
   return (
     <div className='dashboard-container flex h-screen overflow-hidden'>
@@ -277,10 +311,29 @@ export const DashboardLayout: React.FC = () => {
 
         {/* Sidebar footer */}
         <div className='border-t border-sidebar-border p-4'>
-          {!sidebarCollapsed && (
-            <div className='text-xs text-sidebar-foreground/70'>
-              <div className='font-medium mb-1'>LeadsBox Dashboard</div>
-              <div>Manage your leads efficiently</div>
+          {sidebarCollapsed ? (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'
+            >
+              <CreditCard className='h-5 w-5 text-primary' />
+              <span className='text-center leading-tight'>{trialCopy}</span>
+              <Button size='sm' className='w-full text-xs' onClick={handleGoToBilling}>
+                Upgrade
+              </Button>
+            </motion.div>
+          ) : (
+            <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
+              <div className='flex items-center justify-between gap-2'>
+                <div>
+                  <div className='font-semibold text-sm text-primary'>Manage your leads efficiently</div>
+                  <div className='text-sidebar-foreground/70 mt-1'>{trialCopy}</div>
+                </div>
+                <CreditCard className='h-6 w-6 text-primary flex-shrink-0' />
+              </div>
+              <Button size='sm' className='mt-3 w-full' onClick={handleGoToBilling}>
+                View payment plans
+              </Button>
             </div>
           )}
         </div>
@@ -360,9 +413,17 @@ export const DashboardLayout: React.FC = () => {
           </nav>
           {/* Sidebar footer */}
           <div className='border-t border-sidebar-border p-4'>
-            <div className='text-xs text-sidebar-foreground/70'>
-              <div className='font-medium mb-1'>LeadsBox Dashboard</div>
-              <div>Manage your leads efficiently</div>
+            <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
+              <div className='flex items-center justify-between gap-2'>
+                <div>
+                  <div className='font-semibold text-sm text-primary'>Manage your leads efficiently</div>
+                  <div className='text-sidebar-foreground/70 mt-1'>{trialCopy}</div>
+                </div>
+                <CreditCard className='h-6 w-6 text-primary flex-shrink-0' />
+              </div>
+              <Button size='sm' className='mt-3 w-full' onClick={handleGoToBilling}>
+                View payment plans
+              </Button>
             </div>
           </div>
         </aside>

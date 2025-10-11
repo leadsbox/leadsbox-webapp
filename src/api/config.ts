@@ -88,6 +88,11 @@ export const endpoints = {
   followupConversation: (conversationId: string) => `/followups/conversation/${conversationId}`,
   followup: (id: string) => `/followups/${id}`,
   followupCancel: (id: string) => `/followups/${id}/cancel`,
+
+  billing: {
+    plans: '/billing/plans',
+    initialize: '/billing/paystack/initialize',
+  },
 } as const;
 
 // HTTP Methods
