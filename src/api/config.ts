@@ -20,6 +20,7 @@ export const endpoints = {
 
   // Orgs (backend path is /orgs)
   orgs: '/orgs',
+  orgMembers: (orgId: string) => `/orgs/${orgId}/members`,
 
   // OAuth & Social Auth
   google: {
@@ -41,6 +42,7 @@ export const endpoints = {
   updateLead: (id: string) => `/leads/${id}`,
   deleteLead: (id: string) => `/leads/${id}`,
   archiveLead: (id: string) => `/leads/${id}/archive`,
+  moveLead: (id: string) => `/leads/${id}/move`,
 
   // Contacts (central contact management)
   contacts: '/contacts',
@@ -59,7 +61,6 @@ export const endpoints = {
 
   // Pipeline
   pipeline: '/pipeline',
-  moveLead: '/pipeline/move',
 
   // Settings
   settings: '/settings',

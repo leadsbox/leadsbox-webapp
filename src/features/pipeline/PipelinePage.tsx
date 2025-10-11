@@ -1,7 +1,7 @@
 // Pipeline Page Component for LeadsBox Dashboard
 
-import React, { useState } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useDroppable, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -11,25 +11,123 @@ import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { mockLeads, mockUsers, getLeadsByStage } from '../../data/mockData';
 import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
+import client from '@/api/client';
+import { endpoints } from '@/api/config';
+import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { toast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const PIPELINE_COLUMNS: Array<{ key: LeadLabel; title: string; color: string }> = [
+  { key: 'NEW_LEAD', title: 'New Leads', color: 'bg-blue-500' },
+  { key: 'ENGAGED', title: 'Engaged', color: 'bg-indigo-500' },
+  { key: 'FOLLOW_UP_REQUIRED', title: 'Follow Up', color: 'bg-amber-500' },
+  { key: 'TRANSACTION_IN_PROGRESS', title: 'In Progress', color: 'bg-purple-500' },
+  { key: 'PAYMENT_PENDING', title: 'Payment Pending', color: 'bg-orange-500' },
+  { key: 'TRANSACTION_SUCCESSFUL', title: 'Won', color: 'bg-green-500' },
+  { key: 'CLOSED_LOST_TRANSACTION', title: 'Closed Lost', color: 'bg-red-500' },
+];
+
+const LEGACY_STAGE_MAP: Record<string, LeadLabel> = {
+  NEW: 'NEW_LEAD',
+  QUALIFIED: 'ENGAGED',
+  IN_PROGRESS: 'TRANSACTION_IN_PROGRESS',
+  WON: 'TRANSACTION_SUCCESSFUL',
+  LOST: 'CLOSED_LOST_TRANSACTION',
+};
+
+const normalizeLabelToPipeline = (label?: string): LeadLabel => {
+  if (!label) return 'NEW_LEAD';
+  const normalized = label.toUpperCase();
+  if (PIPELINE_COLUMNS.some((column) => column.key === normalized)) {
+    return normalized as LeadLabel;
+  }
+  if (normalized in LEGACY_STAGE_MAP) {
+    return LEGACY_STAGE_MAP[normalized];
+  }
+  return 'NEW_LEAD';
+};
+
+const mapStageToPipelineColumn = (stage: Stage): LeadLabel =>
+  normalizeLabelToPipeline(stage);
+
+const labelToPriority = (label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  const labelUpper = (label || '').toUpperCase();
+
+  if (
+    labelUpper.includes('PAYMENT_PENDING') ||
+    labelUpper.includes('FOLLOW_UP_REQUIRED') ||
+    labelUpper.includes('DEMO_REQUEST') ||
+    labelUpper.includes('TECHNICAL_SUPPORT')
+  ) {
+    return 'HIGH';
+  }
+
+  if (
+    labelUpper.includes('FEEDBACK') ||
+    labelUpper.includes('NOT_A_LEAD') ||
+    labelUpper.includes('CLOSED_LOST_TRANSACTION')
+  ) {
+    return 'LOW';
+  }
+
+  return 'MEDIUM';
+};
+
+interface BackendLead {
+  id: string;
+  organizationId: string;
+  conversationId?: string;
+  providerId?: string;
+  provider?: string;
+  label?: string;
+  userId?: string;
+  user?: {
+    id: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    username?: string | null;
+    profileImage?: string | null;
+  };
+  notes?: Array<{
+    id: string;
+    note: string;
+    createdAt: string;
+    author?: {
+      id: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      username?: string | null;
+      profileImage?: string | null;
+    };
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt?: string;
+}
+
+interface PipelineAssignedUser {
+  id: string;
+  name: string;
+  avatar?: string | null;
+}
 
 interface SortableLeadCardProps {
   lead: Lead;
+  assignedUser?: PipelineAssignedUser;
 }
 
-const SortableLeadCard: React.FC<SortableLeadCardProps> = ({ lead }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
+const SortableLeadCard: React.FC<SortableLeadCardProps> = ({ lead, assignedUser }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, data: { stage: lead.stage } });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-
-  const assignedUser = mockUsers.find((user) => user.id === lead.assignedTo);
-
   const getPriorityColor = (priority: Lead['priority']) => {
     switch (priority) {
       case 'HIGH':
@@ -95,12 +193,17 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({ lead }) => {
               {lead.priority}
             </Badge>
 
-            {assignedUser && (
+            {assignedUser ? (
               <Avatar className='h-6 w-6'>
-                <AvatarImage src={assignedUser.avatar} />
-                <AvatarFallback className='text-xs'>{assignedUser.name.charAt(0).toUpperCase()}</AvatarFallback>
+                {assignedUser.avatar ? (
+                  <AvatarImage src={assignedUser.avatar} />
+                ) : (
+                  <AvatarFallback className='text-xs'>
+                    {assignedUser.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                )}
               </Avatar>
-            )}
+            ) : null}
           </div>
 
           {lead.tags.length > 0 && (
@@ -124,17 +227,20 @@ const SortableLeadCard: React.FC<SortableLeadCardProps> = ({ lead }) => {
 };
 
 interface PipelineStageProps {
-  stage: Stage;
+  stage: LeadLabel;
   title: string;
   leads: Lead[];
   color: string;
+  resolveAssignedUser: (userId?: string | null) => PipelineAssignedUser | undefined;
 }
 
-const PipelineStage: React.FC<PipelineStageProps> = ({ stage, title, leads, color }) => {
+const PipelineStage: React.FC<PipelineStageProps> = ({ stage, title, leads, color, resolveAssignedUser }) => {
+  const droppableId = `column-${stage}`;
+  const { setNodeRef, isOver } = useDroppable({ id: droppableId });
   const totalValue = leads.reduce((sum, lead) => sum + (lead.value || 0), 0);
 
   return (
-    <div className='flex-1 min-w-80'>
+    <div ref={setNodeRef} className={`flex-1 min-w-80 transition-colors ${isOver ? 'bg-muted/40 rounded-lg' : ''}`}>
       <Card className='h-full'>
         <CardHeader className='pb-3'>
           <div className='flex items-center justify-between'>
@@ -155,7 +261,11 @@ const PipelineStage: React.FC<PipelineStageProps> = ({ stage, title, leads, colo
           <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
             <div className='space-y-3 max-h-[calc(100vh-300px)] overflow-auto'>
               {leads.map((lead) => (
-                <SortableLeadCard key={lead.id} lead={lead} />
+                <SortableLeadCard
+                  key={lead.id}
+                  lead={lead}
+                  assignedUser={resolveAssignedUser(lead.assignedTo)}
+                />
               ))}
               {leads.length === 0 && (
                 <div className='text-center py-8 text-muted-foreground'>
@@ -176,7 +286,9 @@ const PipelineStage: React.FC<PipelineStageProps> = ({ stage, title, leads, colo
 };
 
 const PipelinePage: React.FC = () => {
-  const [leads, setLeads] = useState(mockLeads);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { members, getMemberByUserId } = useOrgMembers();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -185,67 +297,202 @@ const PipelinePage: React.FC = () => {
     })
   );
 
-  const stageConfig = {
-    NEW: { title: 'New Leads', color: 'bg-blue-500' },
-    QUALIFIED: { title: 'Qualified', color: 'bg-amber-500' },
-    IN_PROGRESS: { title: 'In Progress', color: 'bg-purple-500' },
-    WON: { title: 'Won', color: 'bg-green-500' },
-    LOST: { title: 'Lost', color: 'bg-red-500' },
-  };
+  const fetchLeads = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await client.get(endpoints.leads);
+      const list: BackendLead[] = response?.data?.data?.leads || response?.data || [];
 
-  const handleDragEnd = (event: DragEndEvent) => {
+      const mapped: Lead[] = list.map((l) => {
+        const normalizedLabel = normalizeLabelToPipeline(l.label);
+        return {
+          id: l.id,
+          name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
+          email: l.user?.email || '',
+          phone: undefined,
+          company: undefined,
+          source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
+          stage: normalizedLabel,
+          priority: labelToPriority(l.label),
+          tags: normalizedLabel ? [normalizedLabel] : [],
+          assignedTo: l.user?.id || l.userId || '',
+          value: undefined,
+          createdAt: l.createdAt,
+          updatedAt: l.updatedAt,
+          lastActivity: l.lastMessageAt,
+          conversationId: l.conversationId,
+          providerId: l.providerId,
+          from: l.providerId || l.conversationId,
+          label: normalizedLabel,
+          notes: l.notes?.[0]?.note || '',
+          noteHistory:
+            l.notes?.map((note) => ({
+              id: note.id,
+              note: note.note,
+              createdAt: note.createdAt,
+              author: note.author
+                ? {
+                    id: note.author.id,
+                    email: note.author.email ?? null,
+                    firstName: note.author.firstName ?? null,
+                    lastName: note.author.lastName ?? null,
+                    username: note.author.username ?? null,
+                    profileImage: note.author.profileImage ?? null,
+                  }
+                : undefined,
+            })) || [],
+        };
+      });
+
+      setLeads(mapped);
+    } catch (error: any) {
+      console.error('Failed to load pipeline leads', error);
+      setLeads([]);
+      toast({
+        title: 'Unable to load pipeline',
+        description:
+          error?.response?.data?.message || error?.message || 'Try refreshing the page.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
+
+  const resolveAssignedUser = useCallback(
+    (userId?: string | null): PipelineAssignedUser | undefined => {
+      if (!userId) return undefined;
+      const member = getMemberByUserId(userId);
+      if (!member) return undefined;
+
+      const { user } = member;
+      const fullName = [user?.firstName, user?.lastName]
+        .filter(Boolean)
+        .join(' ');
+      const name =
+        fullName || user?.username || user?.email || 'Team member';
+
+      return {
+        id: member.userId,
+        name,
+        avatar: user?.profileImage ?? null,
+      };
+    },
+    [getMemberByUserId]
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (!over) return;
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
-    // Find the lead being dragged
     const draggedLead = leads.find((lead) => lead.id === activeId);
     if (!draggedLead) return;
 
-    // Determine the new stage based on the drop zone
-    let newStage: Stage | null = null;
+    const currentColumn = mapStageToPipelineColumn(draggedLead.stage);
 
-    // Check if dropping over another lead (same stage)
-    const overLead = leads.find((lead) => lead.id === overId);
-    if (overLead) {
-      newStage = overLead.stage;
+    let targetColumn: LeadLabel | null = null;
+
+    if (overId.startsWith('column-')) {
+      targetColumn = normalizeLabelToPipeline(overId.replace('column-', ''));
     } else {
-      // Check if dropping over a stage area
-      const stageFromId = Object.keys(stageConfig).find((stage) => overId.includes(stage.toLowerCase())) as Stage;
-      if (stageFromId) {
-        newStage = stageFromId;
+      const overStage = over?.data?.current?.stage as Stage | undefined;
+      if (overStage) {
+        targetColumn = mapStageToPipelineColumn(overStage);
+      } else {
+        const overLead = leads.find((lead) => lead.id === overId);
+        if (overLead) {
+          targetColumn = mapStageToPipelineColumn(overLead.stage);
+        }
       }
     }
 
-    if (newStage && newStage !== draggedLead.stage) {
-      // Update the lead's stage
-      setLeads((prevLeads) =>
-        prevLeads.map((lead) => (lead.id === activeId ? { ...lead, stage: newStage!, updatedAt: new Date().toISOString() } : lead))
-      );
-
-      // Show toast notification (would use actual toast in real app)
-      console.log(`Moved ${draggedLead.name} to ${newStage}`);
+    if (!targetColumn) {
+      return;
     }
 
-    // Handle reordering within the same stage
-    if (activeId !== overId && overLead && draggedLead.stage === overLead.stage) {
-      const activeIndex = leads.findIndex((lead) => lead.id === activeId);
-      const overIndex = leads.findIndex((lead) => lead.id === overId);
+    if (targetColumn === currentColumn) {
+      const overLead = leads.find((lead) => lead.id === overId);
+      if (overLead && overLead.id !== draggedLead.id) {
+        const activeIndex = leads.findIndex((lead) => lead.id === draggedLead.id);
+        const overIndex = leads.findIndex((lead) => lead.id === overLead.id);
+        if (activeIndex !== -1 && overIndex !== -1) {
+          setLeads((prevLeads) => arrayMove(prevLeads, activeIndex, overIndex));
+        }
+      }
+      return;
+    }
 
-      setLeads((prevLeads) => arrayMove(prevLeads, activeIndex, overIndex));
+    const note =
+      typeof window !== 'undefined'
+        ? window.prompt('Add an optional note for this move', '')
+        : '';
+
+    const previousState = leads;
+    const updatedAt = new Date().toISOString();
+
+    setLeads((prevLeads) =>
+      prevLeads.map((lead) =>
+        lead.id === activeId
+          ? {
+              ...lead,
+              stage: targetColumn!,
+              label: targetColumn!,
+              tags: [targetColumn!],
+              updatedAt,
+            }
+          : lead
+      )
+    );
+
+    try {
+      await client.post(endpoints.moveLead(activeId), {
+        label: targetColumn,
+        note: note && note.trim().length > 0 ? note.trim() : undefined,
+      });
+
+      toast({
+        title: 'Lead updated',
+        description: `Moved ${draggedLead.name} to ${leadLabelUtils.getDisplayName(targetColumn)}`,
+      });
+
+      await fetchLeads();
+    } catch (error: any) {
+      console.error('Failed to move lead', error);
+      setLeads(previousState);
+      toast({
+        title: 'Failed to move lead',
+        description:
+          error?.response?.data?.message ||
+          error?.message ||
+          'Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
   // Calculate pipeline stats
-  const pipelineStats = {
-    totalValue: leads.reduce((sum, lead) => sum + (lead.value || 0), 0),
-    totalLeads: leads.length,
-    conversionRate: leads.length > 0 ? (leads.filter((l) => l.stage === 'WON').length / leads.length) * 100 : 0,
-    avgDealSize: leads.length > 0 ? leads.reduce((sum, lead) => sum + (lead.value || 0), 0) / leads.length : 0,
-  };
+  const pipelineStats = useMemo(() => {
+    const totalValue = leads.reduce((sum, lead) => sum + (lead.value || 0), 0);
+    const totalLeads = leads.length;
+    const wonCount = leads.filter((lead) => lead.stage === 'TRANSACTION_SUCCESSFUL').length;
+    const avgDealSize = totalLeads > 0 ? totalValue / totalLeads : 0;
+    const conversionRate = totalLeads > 0 ? (wonCount / totalLeads) * 100 : 0;
+
+    return {
+      totalValue,
+      totalLeads,
+      conversionRate,
+      avgDealSize,
+    };
+  }, [leads]);
 
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
@@ -319,14 +566,41 @@ const PipelinePage: React.FC = () => {
       {/* Pipeline Board */}
       <div className='min-h-[540px] sm:min-h-[600px]'>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className='flex gap-6 overflow-x-auto pb-6'>
-            {(Object.keys(stageConfig) as Stage[]).map((stage) => {
-              const stageLeads = leads.filter((lead) => lead.stage === stage);
-              const config = stageConfig[stage];
+          {isLoading ? (
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={`pipeline-skeleton-${index}`} className='h-[420px]'>
+                  <CardHeader className='pb-2'>
+                    <Skeleton className='h-4 w-32' />
+                  </CardHeader>
+                  <CardContent className='space-y-3'>
+                    {Array.from({ length: 4 }).map((__, cardIndex) => (
+                      <Skeleton key={`pipeline-card-skeleton-${index}-${cardIndex}`} className='h-24 w-full rounded-md' />
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className='flex gap-6 overflow-x-auto pb-6'>
+              {PIPELINE_COLUMNS.map((column) => {
+                const stageLeads = leads.filter(
+                  (lead) => mapStageToPipelineColumn(lead.stage) === column.key
+                );
 
-              return <PipelineStage key={stage} stage={stage} title={config.title} leads={stageLeads} color={config.color} />;
-            })}
-          </div>
+                return (
+                  <PipelineStage
+                    key={column.key}
+                    stage={column.key}
+                    title={column.title}
+                    leads={stageLeads}
+                    color={column.color}
+                    resolveAssignedUser={resolveAssignedUser}
+                  />
+                );
+              })}
+            </div>
+          )}
         </DndContext>
       </div>
     </div>

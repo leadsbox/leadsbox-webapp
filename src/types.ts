@@ -41,6 +41,8 @@ export interface User {
   id: string;
   username: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   orgId?: string;
   profileImage?: string;
@@ -64,6 +66,7 @@ export interface Lead {
   assignedTo?: string;
   value?: number;
   notes?: string;
+  noteHistory?: LeadNote[];
   createdAt: string;
   updatedAt: string;
   lastActivity?: string;
@@ -73,6 +76,7 @@ export interface Lead {
   contactId?: string; // References Contact.id
   threadId?: string; // References Thread.id
   from?: string;
+  label?: LeadLabel;
 }
 
 export interface Thread {
@@ -109,6 +113,13 @@ export interface Attachment {
   url: string;
   type: string;
   size: number;
+}
+
+export interface LeadNote {
+  id: string;
+  note: string;
+  createdAt: string;
+  author?: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'username' | 'profileImage'>;
 }
 
 export interface Task {

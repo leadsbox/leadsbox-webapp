@@ -1,6 +1,6 @@
 // Lead Detail Page Component for LeadsBox Dashboard
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Save, X, Mail, Phone, Building, Tag, Calendar, DollarSign, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -21,7 +21,7 @@ import {
 } from '../../components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { mockUsers } from '../../data/mockData';
+import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { Lead, Stage, LEAD_LABELS, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
@@ -102,22 +102,52 @@ const LeadDetailPage: React.FC = () => {
   const [editForm, setEditForm] = useState<Partial<Lead>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { members, isLoading: membersLoading, getMemberByUserId } = useOrgMembers();
 
   const labelToStage = (label?: string): Stage => {
-    switch ((label || '').toUpperCase()) {
+    if (!label) {
+      return 'NEW_LEAD';
+    }
+
+    const normalized = label.toUpperCase();
+
+    if (
+      [
+        'NEW_LEAD',
+        'ENGAGED',
+        'FOLLOW_UP_REQUIRED',
+        'TRANSACTION_IN_PROGRESS',
+        'PAYMENT_PENDING',
+        'TRANSACTION_SUCCESSFUL',
+        'CLOSED_LOST_TRANSACTION',
+        'PRICING_INQUIRY',
+        'DEMO_REQUEST',
+        'NEW_INQUIRY',
+        'TECHNICAL_SUPPORT',
+        'PARTNERSHIP_OPPORTUNITY',
+        'FEEDBACK',
+        'NOT_A_LEAD',
+      ].includes(normalized)
+    ) {
+      return normalized as Stage;
+    }
+
+    switch (normalized) {
       case 'NEW':
-        return 'NEW';
+        return 'NEW_LEAD';
       case 'QUALIFIED':
-        return 'QUALIFIED';
-      case 'CUSTOMER':
-        return 'WON';
+        return 'ENGAGED';
+      case 'IN_PROGRESS':
       case 'CONTACTED':
-        return 'IN_PROGRESS';
+        return 'TRANSACTION_IN_PROGRESS';
+      case 'CUSTOMER':
+      case 'WON':
+        return 'TRANSACTION_SUCCESSFUL';
       case 'UNQUALIFIED':
       case 'LOST':
-        return 'LOST';
+        return 'CLOSED_LOST_TRANSACTION';
       default:
-        return 'NEW';
+        return 'NEW_LEAD';
     }
   };
 
@@ -143,21 +173,42 @@ const LeadDetailPage: React.FC = () => {
     return 'MEDIUM';
   };
 
-  const getAssignedUser = (userId: string) => {
-    return mockUsers.find((user) => user.id === userId);
-  };
+  const getAssignedUser = useCallback(
+    (userId?: string | null) => {
+      if (!userId) return undefined;
+
+      const member = getMemberByUserId(userId);
+      if (!member) return undefined;
+
+      const { user } = member;
+      const fullName = [user?.firstName, user?.lastName]
+        .filter(Boolean)
+        .join(' ');
+
+      return {
+        id: member.userId,
+        name: fullName || user?.username || user?.email || 'Team member',
+        avatar: user?.profileImage ?? undefined,
+        email: user?.email ?? undefined,
+      };
+    },
+    [getMemberByUserId]
+  );
 
   const getStageColor = (stage: Stage) => {
     switch (stage) {
-      case 'NEW':
+      case 'NEW_LEAD':
         return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'QUALIFIED':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'IN_PROGRESS':
+      case 'ENGAGED':
+      case 'FOLLOW_UP_REQUIRED':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-      case 'WON':
+      case 'TRANSACTION_IN_PROGRESS':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'PAYMENT_PENDING':
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      case 'TRANSACTION_SUCCESSFUL':
         return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'LOST':
+      case 'CLOSED_LOST_TRANSACTION':
         return 'bg-red-500/10 text-red-400 border-red-500/20';
       default:
         return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
@@ -295,6 +346,8 @@ const LeadDetailPage: React.FC = () => {
             source = backendLead.thread.channel.type.toLowerCase() as Lead['source'];
           }
 
+          const normalizedLabel = backendLead.label ? backendLead.label.toUpperCase() : undefined;
+
           const mappedLead: Lead = {
             id: backendLead.id,
             name,
@@ -304,17 +357,34 @@ const LeadDetailPage: React.FC = () => {
             source,
             stage: labelToStage(backendLead.label),
             priority: labelToPriority(backendLead.label),
-            tags: backendLead.label ? [backendLead.label] : [],
-            assignedTo: mockUsers[0]?.id,
+            tags: normalizedLabel ? [normalizedLabel] : [],
+            assignedTo: backendLead.user?.id || backendLead.userId || '',
             createdAt: backendLead.createdAt,
             updatedAt: backendLead.updatedAt,
             lastActivity: backendLead.lastMessageAt || backendLead.updatedAt,
-            notes: '',
+            notes: backendLead.notes?.[0]?.note || '',
+            noteHistory:
+              backendLead.notes?.map((note) => ({
+                id: note.id,
+                note: note.note,
+                createdAt: note.createdAt,
+                author: note.author
+                  ? {
+                      id: note.author.id,
+                      email: note.author.email ?? null,
+                      firstName: note.author.firstName ?? null,
+                      lastName: note.author.lastName ?? null,
+                      username: note.author.username ?? null,
+                      profileImage: note.author.profileImage ?? null,
+                    }
+                  : undefined,
+              })) || [],
             value: 0,
             conversationId: backendLead.conversationId,
             threadId: backendLead.threadId,
             providerId: backendLead.providerId,
             contactId: backendLead.contactId,
+            label: normalizedLabel as LeadLabel | undefined,
           };
 
           console.log('Final mapped lead:', mappedLead);
@@ -962,17 +1032,31 @@ const LeadDetailPage: React.FC = () => {
                     <SelectValue placeholder='Assign to user' />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockUsers.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        <div className='flex items-center space-x-2'>
-                          <Avatar className='h-6 w-6'>
-                            <AvatarImage src={user.avatar} />
-                            <AvatarFallback className='text-xs'>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span>{user.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {members.map((member) => {
+                      const { user } = member;
+                      const fullName = [user?.firstName, user?.lastName]
+                        .filter(Boolean)
+                        .join(' ');
+                      const displayName =
+                        fullName || user?.username || user?.email || 'Team member';
+
+                      return (
+                        <SelectItem key={member.userId} value={member.userId}>
+                          <div className='flex items-center space-x-2'>
+                            <Avatar className='h-6 w-6'>
+                              {user?.profileImage ? (
+                                <AvatarImage src={user.profileImage} />
+                              ) : (
+                                <AvatarFallback className='text-xs'>
+                                  {displayName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <span>{displayName}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               ) : (
@@ -980,8 +1064,13 @@ const LeadDetailPage: React.FC = () => {
                   {lead.assignedTo ? (
                     <div className='flex items-center space-x-3'>
                       <Avatar className='h-8 w-8'>
-                        <AvatarImage src={getAssignedUser(lead.assignedTo)?.avatar} />
-                        <AvatarFallback className='text-xs'>{getAssignedUser(lead.assignedTo)?.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        {getAssignedUser(lead.assignedTo)?.avatar ? (
+                          <AvatarImage src={getAssignedUser(lead.assignedTo)?.avatar} />
+                        ) : (
+                          <AvatarFallback className='text-xs'>
+                            {getAssignedUser(lead.assignedTo)?.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <span className='text-sm'>{getAssignedUser(lead.assignedTo)?.name}</span>
                     </div>

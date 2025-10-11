@@ -1,6 +1,6 @@
 // Leads Page Component for LeadsBox Dashboard
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -34,7 +34,6 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { mockUsers } from '../../data/mockData';
 import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
@@ -42,42 +41,90 @@ import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { toast } from '../../hooks/use-toast';
 import { Skeleton } from '../../components/ui/skeleton';
+import { useOrgMembers } from '@/hooks/useOrgMembers';
 
 // Backend lead type
 interface BackendLead {
   id: string;
+  organizationId: string;
   conversationId?: string;
   providerId?: string;
   provider?: string;
   label?: string;
+  userId?: string;
+  user?: {
+    id: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    username?: string | null;
+    profileImage?: string | null;
+  };
+  notes?: Array<{
+    id: string;
+    note: string;
+    createdAt: string;
+    author?: {
+      id: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      username?: string | null;
+      profileImage?: string | null;
+    };
+  }>;
   createdAt: string;
   updatedAt: string;
   lastMessageAt?: string;
 }
+
+const PIPELINE_STAGES: Stage[] = [
+  'NEW_LEAD',
+  'ENGAGED',
+  'FOLLOW_UP_REQUIRED',
+  'TRANSACTION_IN_PROGRESS',
+  'PAYMENT_PENDING',
+  'TRANSACTION_SUCCESSFUL',
+  'CLOSED_LOST_TRANSACTION',
+];
+
+const LEGACY_STAGE_MAP: Record<string, Stage> = {
+  NEW: 'NEW_LEAD',
+  QUALIFIED: 'ENGAGED',
+  IN_PROGRESS: 'TRANSACTION_IN_PROGRESS',
+  WON: 'TRANSACTION_SUCCESSFUL',
+  LOST: 'CLOSED_LOST_TRANSACTION',
+};
 
 const LeadsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<Stage | 'ALL'>('ALL');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { members, isLoading: membersLoading, getMemberByUserId } = useOrgMembers();
   const navigate = useNavigate();
 
+  const stageFilters = useMemo(
+    () => [
+      { value: 'ALL' as const, label: 'All' },
+      ...PIPELINE_STAGES.map((stage) => ({
+        value: stage,
+        label: leadLabelUtils.getDisplayName(stage as LeadLabel),
+      })),
+    ],
+    []
+  );
+
   const labelToStage = (label?: string): Stage => {
-    switch ((label || '').toUpperCase()) {
-      case 'NEW':
-        return 'NEW';
-      case 'QUALIFIED':
-        return 'QUALIFIED';
-      case 'CUSTOMER':
-        return 'WON';
-      case 'CONTACTED':
-        return 'IN_PROGRESS';
-      case 'UNQUALIFIED':
-      case 'LOST':
-        return 'LOST';
-      default:
-        return 'NEW';
+    if (!label) return 'NEW_LEAD';
+    const normalized = label.toUpperCase();
+    if (PIPELINE_STAGES.includes(normalized as Stage)) {
+      return normalized as Stage;
     }
+    if (normalized in LEGACY_STAGE_MAP) {
+      return LEGACY_STAGE_MAP[normalized];
+    }
+    return 'NEW_LEAD';
   };
 
   const labelToPriority = (label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
@@ -108,26 +155,49 @@ const LeadsPage: React.FC = () => {
         setIsLoading(true);
         const resp = await client.get(endpoints.leads);
         const list: BackendLead[] = resp?.data?.data?.leads || resp?.data || [];
-        const mapped: Lead[] = list.map((l: BackendLead) => ({
-          id: l.id,
-          name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
-          email: '',
-          phone: undefined,
-          company: undefined,
-          source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
-          stage: labelToStage(l.label),
-          priority: labelToPriority(l.label),
-          tags: l.label ? [l.label] : [], // Show the actual lead classification as a tag
-          assignedTo: '',
-          value: undefined,
-          createdAt: l.createdAt,
-          updatedAt: l.updatedAt,
-          lastActivity: l.lastMessageAt,
-          // Store original conversation info for WhatsApp navigation
-          conversationId: l.conversationId,
-          providerId: l.providerId,
-          from: l.providerId || l.conversationId,
-        }));
+        const mapped: Lead[] = list.map((l: BackendLead) => {
+          const normalizedLabel = l.label ? (l.label.toUpperCase() as LeadLabel) : undefined;
+          const stage = labelToStage(l.label);
+          const assignedUserId = l.user?.id || l.userId || '';
+
+          return {
+            id: l.id,
+            name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
+            email: l.user?.email || '',
+            phone: undefined,
+            company: undefined,
+            source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
+            stage,
+            priority: labelToPriority(l.label),
+            tags: normalizedLabel ? [normalizedLabel] : [],
+            assignedTo: assignedUserId,
+            value: undefined,
+            createdAt: l.createdAt,
+            updatedAt: l.updatedAt,
+            lastActivity: l.lastMessageAt,
+            conversationId: l.conversationId,
+            providerId: l.providerId,
+            from: l.providerId || l.conversationId,
+            label: normalizedLabel,
+            notes: l.notes?.[0]?.note || '',
+            noteHistory:
+              l.notes?.map((note) => ({
+                id: note.id,
+                note: note.note,
+                createdAt: note.createdAt,
+                author: note.author
+                  ? {
+                      id: note.author.id,
+                      email: note.author.email ?? null,
+                      firstName: note.author.firstName ?? null,
+                      lastName: note.author.lastName ?? null,
+                      username: note.author.username ?? null,
+                      profileImage: note.author.profileImage ?? null,
+                    }
+                  : undefined,
+              })) || [],
+          };
+        });
         setLeads(mapped);
       } catch (e) {
         console.error('Failed to load leads', e);
@@ -137,6 +207,8 @@ const LeadsPage: React.FC = () => {
       }
     })();
   }, []);
+
+  const isDataLoading = isLoading || membersLoading;
 
   const filteredLeads = useMemo(
     () =>
@@ -153,18 +225,55 @@ const LeadsPage: React.FC = () => {
     [leads, searchQuery, stageFilter]
   );
 
+  const engagedCount = useMemo(
+    () =>
+      leads.filter((lead) =>
+        ['ENGAGED', 'FOLLOW_UP_REQUIRED', 'TRANSACTION_IN_PROGRESS'].includes(
+          lead.stage
+        )
+      ).length,
+    [leads]
+  );
+
+  const wonCount = useMemo(
+    () =>
+      leads.filter((lead) => lead.stage === 'TRANSACTION_SUCCESSFUL').length,
+    [leads]
+  );
+
+  const lostCount = useMemo(
+    () =>
+      leads.filter((lead) => lead.stage === 'CLOSED_LOST_TRANSACTION').length,
+    [leads]
+  );
+
   const getStageColor = (stage: Stage) => {
     switch (stage) {
-      case 'NEW':
+      case 'NEW_LEAD':
         return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'QUALIFIED':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'IN_PROGRESS':
+      case 'ENGAGED':
+      case 'FOLLOW_UP_REQUIRED':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-      case 'WON':
+      case 'TRANSACTION_IN_PROGRESS':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'PAYMENT_PENDING':
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      case 'TRANSACTION_SUCCESSFUL':
         return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'LOST':
+      case 'CLOSED_LOST_TRANSACTION':
         return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'PRICING_INQUIRY':
+      case 'DEMO_REQUEST':
+      case 'NEW_INQUIRY':
+        return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+      case 'TECHNICAL_SUPPORT':
+        return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      case 'PARTNERSHIP_OPPORTUNITY':
+        return 'bg-teal-500/10 text-teal-400 border-teal-500/20';
+      case 'FEEDBACK':
+        return 'bg-lime-500/10 text-lime-500 border-lime-500/20';
+      case 'NOT_A_LEAD':
+        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
       default:
         return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
@@ -210,9 +319,29 @@ const LeadsPage: React.FC = () => {
     }
   };
 
-  const getAssignedUser = (userId: string) => {
-    return mockUsers.find((user) => user.id === userId);
-  };
+  const getAssignedUser = useCallback(
+    (userId?: string | null) => {
+      if (!userId) return undefined;
+
+      const member = getMemberByUserId(userId);
+      if (!member) return undefined;
+
+      const { user } = member;
+      const fullName = [user?.firstName, user?.lastName]
+        .filter(Boolean)
+        .join(' ');
+      const displayName =
+        fullName || user?.username || user?.email || 'Team member';
+
+      return {
+        id: member.userId,
+        name: displayName,
+        avatar: user?.profileImage ?? undefined,
+        email: user?.email ?? undefined,
+      };
+    },
+    [getMemberByUserId]
+  );
 
   const handleLeadSelection = (lead: Lead) => {
     navigate(`/dashboard/leads/${lead.id}`);
@@ -261,14 +390,13 @@ const LeadsPage: React.FC = () => {
           <Input placeholder='Search leads...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
         </div>
 
-        <Tabs value={stageFilter} onValueChange={(value: Stage | 'ALL') => setStageFilter(value)}>
+        <Tabs value={stageFilter} onValueChange={(value) => setStageFilter(value as Stage | 'ALL')}>
           <TabsList className='flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto'>
-            <TabsTrigger value='ALL'>All</TabsTrigger>
-            <TabsTrigger value='NEW'>New</TabsTrigger>
-            <TabsTrigger value='QUALIFIED'>Qualified</TabsTrigger>
-            <TabsTrigger value='IN_PROGRESS'>In Progress</TabsTrigger>
-            <TabsTrigger value='WON'>Won</TabsTrigger>
-            <TabsTrigger value='LOST'>Lost</TabsTrigger>
+            {stageFilters.map(({ value, label }) => (
+              <TabsTrigger key={value} value={value} className='whitespace-nowrap'>
+                {label}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
 
@@ -280,7 +408,7 @@ const LeadsPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-        {isLoading
+        {isDataLoading
           ? Array.from({ length: 4 }).map((_, index) => (
               <Card key={`lead-stat-skeleton-${index}`} className='h-full'>
                 <CardHeader className='pb-2 space-y-2'>
@@ -305,11 +433,11 @@ const LeadsPage: React.FC = () => {
                 </Card>
                 <Card>
                   <CardHeader className='pb-2'>
-                    <CardTitle className='text-sm font-medium'>Qualified</CardTitle>
+                    <CardTitle className='text-sm font-medium'>Active Pipeline</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className='text-2xl font-bold'>{leads.filter((l) => l.stage === 'QUALIFIED').length}</div>
-                    <p className='text-xs text-muted-foreground'>+8% from last month</p>
+                    <div className='text-2xl font-bold'>{engagedCount}</div>
+                    <p className='text-xs text-muted-foreground'>Leads currently in motion</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -323,11 +451,19 @@ const LeadsPage: React.FC = () => {
                 </Card>
                 <Card>
                   <CardHeader className='pb-2'>
-                    <CardTitle className='text-sm font-medium'>Active Leads</CardTitle>
+                    <CardTitle className='text-sm font-medium'>Recent Outcomes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className='text-2xl font-bold'>{filteredLeads.length}</div>
-                    <p className='text-xs text-muted-foreground'>Based on current filters</p>
+                    <div className='text-sm text-muted-foreground space-y-1'>
+                      <div className='flex items-center justify-between'>
+                        <span>Won</span>
+                        <span className='font-semibold text-green-500'>{wonCount}</span>
+                      </div>
+                      <div className='flex items-center justify-between'>
+                        <span>Lost</span>
+                        <span className='font-semibold text-red-500'>{lostCount}</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </>
@@ -338,7 +474,7 @@ const LeadsPage: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isLoading ? <Skeleton className='h-6 w-32' /> : `Leads (${filteredLeads.length})`}
+            {isDataLoading ? <Skeleton className='h-6 w-32' /> : `Leads (${filteredLeads.length})`}
           </CardTitle>
         </CardHeader>
         <CardContent className='overflow-x-auto'>
@@ -357,7 +493,7 @@ const LeadsPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isDataLoading ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <TableRow key={`lead-row-skel-${index}`}>
                     <TableCell>
@@ -437,7 +573,9 @@ const LeadsPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Badge variant='outline' className={getStageColor(lead.stage)}>
-                        {lead.stage}
+                        {leadLabelUtils.isValidLabel(lead.stage as LeadLabel)
+                          ? leadLabelUtils.getDisplayName(lead.stage as LeadLabel)
+                          : lead.stage.replace(/_/g, ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -456,14 +594,21 @@ const LeadsPage: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {assignedUser && (
+                      {assignedUser ? (
                         <div className='flex items-center space-x-2'>
                           <Avatar className='h-6 w-6'>
-                            <AvatarImage src={assignedUser.avatar} />
-                            <AvatarFallback className='text-xs'>{assignedUser.name.charAt(0).toUpperCase()}</AvatarFallback>
+                            {assignedUser.avatar ? (
+                              <AvatarImage src={assignedUser.avatar} />
+                            ) : (
+                              <AvatarFallback className='text-xs'>
+                                {assignedUser.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            )}
                           </Avatar>
                           <span className='text-sm'>{assignedUser.name}</span>
                         </div>
+                      ) : (
+                        <span className='text-sm text-muted-foreground'>Unassigned</span>
                       )}
                     </TableCell>
 
