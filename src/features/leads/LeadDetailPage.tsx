@@ -65,6 +65,19 @@ interface BackendLead {
   contactId?: string;
   threadId?: string;
   // Included relations
+  notes?: {
+    id: string;
+    note: string;
+    createdAt: string;
+    author?: {
+      id: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      username?: string | null;
+      profileImage?: string | null;
+    };
+  }[];
   contact?: {
     id: string;
     displayName?: string;
@@ -358,7 +371,7 @@ const LeadDetailPage: React.FC = () => {
             stage: labelToStage(backendLead.label),
             priority: labelToPriority(backendLead.label),
             tags: normalizedLabel ? [normalizedLabel] : [],
-            assignedTo: backendLead.user?.id || backendLead.userId || '',
+            assignedTo: backendLead.userId || '',
             createdAt: backendLead.createdAt,
             updatedAt: backendLead.updatedAt,
             lastActivity: backendLead.lastMessageAt || backendLead.updatedAt,

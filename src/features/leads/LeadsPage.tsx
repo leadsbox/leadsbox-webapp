@@ -33,7 +33,13 @@ import {
 } from '../../components/ui/dropdown-menu';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
@@ -114,6 +120,18 @@ const LeadsPage: React.FC = () => {
     ],
     []
   );
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      ALL: leads.length,
+    };
+
+    PIPELINE_STAGES.forEach((stage) => {
+      counts[stage] = leads.filter((lead) => lead.stage === stage).length;
+    });
+
+    return counts;
+  }, [leads]);
 
   const labelToStage = (label?: string): Stage => {
     if (!label) return 'NEW_LEAD';
@@ -390,15 +408,26 @@ const LeadsPage: React.FC = () => {
           <Input placeholder='Search leads...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
         </div>
 
-        <Tabs value={stageFilter} onValueChange={(value) => setStageFilter(value as Stage | 'ALL')}>
-          <TabsList className='flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto'>
+        <Select
+          value={stageFilter}
+          onValueChange={(value) => setStageFilter(value as Stage | 'ALL')}
+        >
+          <SelectTrigger className='w-full sm:w-[220px]'>
+            <SelectValue placeholder='All stages' />
+          </SelectTrigger>
+          <SelectContent align='end'>
             {stageFilters.map(({ value, label }) => (
-              <TabsTrigger key={value} value={value} className='whitespace-nowrap'>
-                {label}
-              </TabsTrigger>
+              <SelectItem key={value} value={value}>
+                <div className='flex items-center justify-between gap-4'>
+                  <span>{label}</span>
+                  <span className='text-xs text-muted-foreground'>
+                    {stageCounts[value] ?? 0}
+                  </span>
+                </div>
+              </SelectItem>
             ))}
-          </TabsList>
-        </Tabs>
+          </SelectContent>
+        </Select>
 
         <Button variant='outline'>
           <Filter className='h-4 w-4 mr-2' />

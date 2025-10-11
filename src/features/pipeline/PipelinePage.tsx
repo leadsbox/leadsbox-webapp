@@ -345,13 +345,28 @@ const PipelinePage: React.FC = () => {
       });
 
       setLeads(mapped);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load pipeline leads', error);
       setLeads([]);
+
+      const getErrorMessage = (err: unknown): string => {
+        if (!err) return 'Try refreshing the page.';
+        if (typeof err === 'string') return err;
+        if (err instanceof Error && err.message) return err.message;
+
+        if (typeof err === 'object' && err !== null) {
+          const response = (err as Record<string, unknown>)['response'] as Record<string, unknown> | undefined;
+          const data = response?.['data'] as Record<string, unknown> | undefined;
+          const respMessage = data?.['message'] as string | undefined;
+          if (respMessage) return respMessage;
+        }
+
+        return 'Try refreshing the page.';
+      };
+
       toast({
         title: 'Unable to load pipeline',
-        description:
-          error?.response?.data?.message || error?.message || 'Try refreshing the page.',
+        description: getErrorMessage(error),
         variant: 'destructive',
       });
     } finally {
@@ -464,15 +479,28 @@ const PipelinePage: React.FC = () => {
       });
 
       await fetchLeads();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to move lead', error);
       setLeads(previousState);
+
+      let errorMessage = 'Please try again.';
+
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error instanceof Error && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        const errObj = error as Record<string, unknown>;
+        const response = errObj['response'] as Record<string, unknown> | undefined;
+        const data = response?.['data'] as Record<string, unknown> | undefined;
+        const respMessage = data?.['message'] as string | undefined;
+        const topMessage = errObj['message'] as string | undefined;
+        errorMessage = respMessage || topMessage || errorMessage;
+      }
+
       toast({
         title: 'Failed to move lead',
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          'Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -569,7 +597,7 @@ const PipelinePage: React.FC = () => {
           {isLoading ? (
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               {Array.from({ length: 3 }).map((_, index) => (
-                <Card key={`pipeline-skeleton-${index}`} className='h-[420px]'>
+                <Card key={`pipeline-skeleton-${index}`} className='h-[360px]'>
                   <CardHeader className='pb-2'>
                     <Skeleton className='h-4 w-32' />
                   </CardHeader>

@@ -57,7 +57,7 @@ export interface ClientToServerEvents {
   'dashboard:unsubscribe': () => void;
 
   // Analytics subscriptions
-  'analytics:subscribe': (data: { range?: string }) => void;
+  'analytics:subscribe': (data: { range?: string }, callback?: (response?: { success?: boolean; data?: Analytics }) => void) => void;
   'analytics:unsubscribe': () => void;
 }
 
@@ -285,7 +285,20 @@ export class SocketIOService {
       }
     }
 
-    this.socket?.emit('analytics:subscribe', { range });
+    this.socket?.emit(
+      'analytics:subscribe',
+      { range },
+      (response?: { success?: boolean; data?: Analytics }) => {
+        if (response?.success && response.data) {
+          this.emitToListeners('analytics:overview', response.data);
+        } else if (response && response.success === false) {
+          this.emitToListeners('error', {
+            message: 'Failed to load analytics overview',
+            code: 'ANALYTICS_OVERVIEW_FAILED',
+          });
+        }
+      }
+    );
   }
 
   unsubscribeFromAnalytics(): void {
