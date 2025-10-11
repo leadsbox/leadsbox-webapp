@@ -92,6 +92,7 @@ export const endpoints = {
   billing: {
     plans: '/billing/plans',
     initialize: '/billing/paystack/initialize',
+    subscription: '/billing/subscription',
   },
 } as const;
 

@@ -24,6 +24,21 @@ type BillingPlan = {
   };
 };
 
+type SubscriptionSummary = {
+  id: string;
+  status: string;
+  plan?: {
+    id: string;
+    name: string;
+    amount: number;
+    currency: string;
+    interval: string;
+  } | null;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
+  reference?: string | null;
+};
+
 const formatCurrency = (amount: number, currency: string) =>
   new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -36,18 +51,36 @@ const PaymentPlansPage: React.FC = () => {
   const [plans, setPlans] = React.useState<BillingPlan[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [initializingPlanId, setInitializingPlanId] = React.useState<string | null>(null);
+  const [subscription, setSubscription] = React.useState<SubscriptionSummary | null>(null);
+  const [trialDaysRemaining, setTrialDaysRemaining] = React.useState<number>(14);
+  const [trialEndsAt, setTrialEndsAt] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    const fetchPlans = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await client.get(endpoints.billing.plans);
-        const list: BillingPlan[] = response?.data?.data?.plans || response?.data?.plans || [];
+        const [plansResp, subscriptionResp] = await Promise.all([
+          client.get(endpoints.billing.plans),
+          client.get(endpoints.billing.subscription).catch(() => null),
+        ]);
+
+        const list: BillingPlan[] = plansResp?.data?.data?.plans || plansResp?.data?.plans || [];
         setPlans(list);
+
+        if (subscriptionResp?.data) {
+          const payload = subscriptionResp.data.data || subscriptionResp.data;
+          setSubscription(payload?.subscription ?? null);
+          if (typeof payload?.trialDaysRemaining === 'number') {
+            setTrialDaysRemaining(payload.trialDaysRemaining);
+          }
+          if (typeof payload?.trialEndsAt === 'string') {
+            setTrialEndsAt(payload.trialEndsAt);
+          }
+        }
       } catch (error: any) {
-        console.error('Failed to load billing plans:', error);
+        console.error('Failed to load billing data:', error);
         toast({
-          title: 'Unable to load plans',
+          title: 'Unable to load billing data',
           description: error?.response?.data?.message || 'Please try again later.',
           variant: 'destructive',
         });
@@ -56,7 +89,7 @@ const PaymentPlansPage: React.FC = () => {
       }
     };
 
-    fetchPlans();
+    fetchData();
   }, [toast]);
 
   const handleChoosePlan = async (plan: BillingPlan) => {
@@ -72,6 +105,26 @@ const PaymentPlansPage: React.FC = () => {
         toast({
           title: 'Redirecting to Paystack',
           description: 'Complete your checkout in the new tab.',
+        });
+        const newTrialEndsAt = plan.trialPeriodDays
+          ? new Date(Date.now() + plan.trialPeriodDays * 24 * 60 * 60 * 1000).toISOString()
+          : trialEndsAt;
+        if (typeof plan.trialPeriodDays === 'number') {
+          setTrialDaysRemaining(plan.trialPeriodDays);
+        }
+        setTrialEndsAt(newTrialEndsAt ?? null);
+        setSubscription({
+          id: payload.reference,
+          status: 'PENDING',
+          plan: {
+            id: plan.id,
+            name: plan.name,
+            amount: plan.amount,
+            currency: plan.currency,
+            interval: plan.interval,
+          },
+          trialEndsAt: newTrialEndsAt,
+          reference: payload.reference,
         });
       } else {
         throw new Error('Missing authorization URL in response.');
@@ -111,6 +164,17 @@ const PaymentPlansPage: React.FC = () => {
     </div>
   );
 
+  const activePlanId = subscription?.plan?.id;
+  const activeStatus = subscription?.status;
+
+  const formattedTrialEnds = trialEndsAt ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+
+  const heroSubtitle = activeStatus === 'ACTIVE' && subscription?.plan
+    ? `You're on the ${subscription.plan.name} plan${formattedTrialEnds ? ` • Next renewal ${formattedTrialEnds}` : ''}`
+    : trialDaysRemaining > 0
+    ? `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in your free trial`
+    : 'Your trial has ended. Pick a plan to keep LeadsBox running.';
+
   return (
     <div className='p-4 sm:p-6 space-y-6'>
       <motion.div
@@ -125,9 +189,7 @@ const PaymentPlansPage: React.FC = () => {
           </div>
           <div>
             <h1 className='text-2xl sm:text-3xl font-bold'>Choose the perfect plan</h1>
-            <p className='text-muted-foreground mt-1'>
-              Scale from solo to full team with realtime inboxes, automations, and analytics powered by LeadsBox.
-            </p>
+            <p className='text-muted-foreground mt-1'>{heroSubtitle}</p>
           </div>
         </div>
         <div className='flex items-center gap-3 text-sm text-muted-foreground'>
@@ -165,6 +227,17 @@ const PaymentPlansPage: React.FC = () => {
                 ? 'per week'
                 : 'per day';
 
+            const isCurrentPlan = activePlanId === plan.id && activeStatus === 'ACTIVE';
+            const isPendingPlan = activePlanId === plan.id && activeStatus === 'PENDING';
+            const buttonDisabled = initializingPlanId === plan.id || isCurrentPlan || isPendingPlan;
+            const buttonLabel = isCurrentPlan
+              ? 'Current plan'
+              : isPendingPlan
+              ? 'Activation pending'
+              : initializingPlanId === plan.id
+              ? 'Opening Paystack…'
+              : 'Choose plan';
+
             return (
               <motion.div
                 key={plan.id}
@@ -173,11 +246,25 @@ const PaymentPlansPage: React.FC = () => {
                   show: { opacity: 1, y: 0 },
                 }}
               >
-                <Card className='h-full flex flex-col border-primary/10 hover:border-primary transition-colors shadow-sm hover:shadow-lg'>
+                <Card
+                  className={cn(
+                    'h-full flex flex-col border-primary/10 hover:border-primary transition-colors shadow-sm hover:shadow-lg',
+                    isCurrentPlan ? 'border-primary bg-primary/5' : '',
+                    isPendingPlan ? 'border-amber-300 bg-amber-50/40' : ''
+                  )}
+                >
                   <CardHeader className='space-y-2'>
                     <div className='flex items-center justify-between'>
                       <CardTitle className='text-xl font-semibold'>{plan.name}</CardTitle>
-                      {plan.trialPeriodDays ? (
+                      {isCurrentPlan ? (
+                        <Badge variant='secondary' className='bg-primary text-primary-foreground'>
+                          Current plan
+                        </Badge>
+                      ) : isPendingPlan ? (
+                        <Badge variant='outline' className='border-amber-400 text-amber-500'>
+                          Pending activation
+                        </Badge>
+                      ) : plan.trialPeriodDays ? (
                         <Badge variant='outline' className='border-primary/40 text-primary'>
                           {plan.trialPeriodDays}-day trial
                         </Badge>
@@ -218,10 +305,15 @@ const PaymentPlansPage: React.FC = () => {
                     <Button
                       className='w-full'
                       onClick={() => handleChoosePlan(plan)}
-                      disabled={initializingPlanId === plan.id}
+                      disabled={buttonDisabled}
                     >
-                      {initializingPlanId === plan.id ? 'Opening Paystack…' : 'Choose Plan'}
+                      {buttonLabel}
                     </Button>
+                    {isCurrentPlan && subscription?.currentPeriodEnd ? (
+                      <p className='text-xs text-muted-foreground text-center mt-2'>
+                        Next renewal {new Date(subscription.currentPeriodEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    ) : null}
                   </CardContent>
                 </Card>
               </motion.div>

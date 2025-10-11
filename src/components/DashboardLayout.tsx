@@ -24,6 +24,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import DashboardHeader from './DashboardHeader';
 import client from '../api/client';
+import { endpoints } from '../api/config';
 
 interface SidebarItem {
   title: string;
@@ -31,6 +32,20 @@ interface SidebarItem {
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   badge?: number;
+}
+
+interface SubscriptionSummary {
+  id: string;
+  status: string;
+  plan?: {
+    id: string;
+    name: string;
+    amount: number;
+    currency: string;
+    interval: string;
+  } | null;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -112,6 +127,9 @@ export const DashboardLayout: React.FC = () => {
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number>(14);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState<boolean>(false);
   const location = useLocation();
 
   // Fetch actual inbox count
@@ -180,26 +198,28 @@ export const DashboardLayout: React.FC = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    try {
-      const key = 'lb_trial_started_at';
-      const trialLength = 14;
-      const stored = localStorage.getItem(key);
-      let startDate = stored ? new Date(stored) : new Date();
-
-      if (!stored || Number.isNaN(startDate.getTime())) {
-        startDate = new Date();
-        localStorage.setItem(key, startDate.toISOString());
+    const fetchSubscription = async () => {
+      try {
+        setSubscriptionLoading(true);
+        const response = await client.get(endpoints.billing.subscription);
+        const payload = response?.data?.data || response?.data;
+        if (payload) {
+          setSubscription(payload.subscription ?? null);
+          if (typeof payload.trialDaysRemaining === 'number') {
+            setTrialDaysLeft(payload.trialDaysRemaining);
+          }
+          if (typeof payload.trialEndsAt === 'string') {
+            setTrialEndsAt(payload.trialEndsAt);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load subscription info:', error);
+      } finally {
+        setSubscriptionLoading(false);
       }
+    };
 
-      const now = new Date();
-      const diffMs = now.getTime() - startDate.getTime();
-      const daysElapsed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const daysRemaining = Math.max(0, trialLength - daysElapsed);
-      setTrialDaysLeft(daysRemaining);
-    } catch (error) {
-      console.error('Failed to compute trial period:', error);
-      setTrialDaysLeft(0);
-    }
+    fetchSubscription();
   }, []);
 
   const toggleSidebar = () => {
@@ -211,8 +231,24 @@ export const DashboardLayout: React.FC = () => {
   };
 
   const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
-  const trialCopy = trialDaysLeft > 0 ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial` : 'Trial ended';
+  const formattedRenewal = trialEndsAt ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  const bannerTitle = subscription?.status === 'ACTIVE' && subscription.plan
+    ? `${subscription.plan.name} plan active`
+    : 'Manage your leads efficiently';
+  const bannerSubtitle = subscriptionLoading
+    ? 'Checking subscription status…'
+    : subscription?.status === 'ACTIVE'
+    ? formattedRenewal
+      ? `Renews ${formattedRenewal}`
+      : 'Thanks for being part of LeadsBox!'
+    : trialDaysLeft > 0
+    ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial`
+    : 'Trial ended — choose a plan to stay connected.';
+  const collapsedSubtitle = subscription?.status === 'ACTIVE' && subscription.plan
+    ? subscription.plan.name
+    : bannerSubtitle;
   const handleGoToBilling = () => navigate('/dashboard/billing');
+  const billingButtonText = subscription?.status === 'ACTIVE' ? 'Manage billing' : 'View payment plans';
 
   return (
     <div className='dashboard-container flex h-screen overflow-hidden'>
@@ -317,22 +353,22 @@ export const DashboardLayout: React.FC = () => {
               className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'
             >
               <CreditCard className='h-5 w-5 text-primary' />
-              <span className='text-center leading-tight'>{trialCopy}</span>
+              <span className='text-center leading-tight'>{collapsedSubtitle}</span>
               <Button size='sm' className='w-full text-xs' onClick={handleGoToBilling}>
-                Upgrade
+                {billingButtonText}
               </Button>
             </motion.div>
           ) : (
             <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
               <div className='flex items-center justify-between gap-2'>
                 <div>
-                  <div className='font-semibold text-sm text-primary'>Manage your leads efficiently</div>
-                  <div className='text-sidebar-foreground/70 mt-1'>{trialCopy}</div>
+                  <div className='font-semibold text-sm text-primary'>{bannerTitle}</div>
+                  <div className='text-sidebar-foreground/70 mt-1'>{bannerSubtitle}</div>
                 </div>
                 <CreditCard className='h-6 w-6 text-primary flex-shrink-0' />
               </div>
               <Button size='sm' className='mt-3 w-full' onClick={handleGoToBilling}>
-                View payment plans
+                {billingButtonText}
               </Button>
             </div>
           )}
@@ -416,13 +452,13 @@ export const DashboardLayout: React.FC = () => {
             <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
               <div className='flex items-center justify-between gap-2'>
                 <div>
-                  <div className='font-semibold text-sm text-primary'>Manage your leads efficiently</div>
-                  <div className='text-sidebar-foreground/70 mt-1'>{trialCopy}</div>
+                  <div className='font-semibold text-sm text-primary'>{bannerTitle}</div>
+                  <div className='text-sidebar-foreground/70 mt-1'>{bannerSubtitle}</div>
                 </div>
                 <CreditCard className='h-6 w-6 text-primary flex-shrink-0' />
               </div>
               <Button size='sm' className='mt-3 w-full' onClick={handleGoToBilling}>
-                View payment plans
+                {billingButtonText}
               </Button>
             </div>
           </div>
