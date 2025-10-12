@@ -42,9 +42,10 @@ import {
 } from 'recharts';
 import type { Analytics } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { socketService } from '@/lib/socket';
-import { useSocketIO } from '@/lib/socket';
 import { useToast } from '@/components/ui/use-toast';
+import client from '@/api/client';
+import { endpoints } from '@/api/config';
+import type { AxiosError } from 'axios';
 
 const EMPTY_ANALYTICS: Analytics = {
   overview: {
@@ -71,69 +72,50 @@ const AnalyticsPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { isConnected } = useSocketIO();
+const { toast } = useToast();
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
-    const unsubscribeOverview = socketService.on('analytics:overview', (data) => {
-      if (!mounted) return;
-      setAnalytics(data as Analytics);
-      setLoading(false);
-      setRefreshing(false);
+  const fetchAnalytics = React.useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!background) {
+        setLoading(true);
+      }
       setError(null);
-    });
 
-    const unsubscribeError = socketService.on('error', (payload) => {
-      if (!mounted) return;
-      if (payload.code === 'ANALYTICS_OVERVIEW_FAILED') {
-        setError(payload.message);
-        setLoading(false);
-        setRefreshing(false);
+      try {
+        const response = await client.get(endpoints.analytics.overview(dateRange));
+        const payload = response?.data?.data ?? {};
+        const analyticsData = (payload.analytics ?? payload) as Analytics | null;
+        setAnalytics(analyticsData ?? EMPTY_ANALYTICS);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to load analytics overview:', err);
+        const message =
+          ((err as AxiosError<{ message?: string }>).response?.data?.message) ||
+          'Unable to load analytics overview.';
+        setError(message);
         toast({
           title: 'Analytics unavailable',
-          description: payload.message,
+          description: message,
           variant: 'destructive',
         });
-      }
-    });
-
-    socketService
-      .connect()
-      .catch((err) => {
-        console.error('Analytics socket connect failed', err);
-        if (mounted) {
-          setError('Unable to connect to real-time analytics');
+        setAnalytics(null);
+      } finally {
+        if (!background) {
           setLoading(false);
-          setRefreshing(false);
         }
-      })
-      .finally(() => {
-        if (socketService.isConnected()) {
-          socketService.subscribeToAnalytics(dateRange);
-        }
-      });
-
-    return () => {
-      mounted = false;
-      unsubscribeOverview();
-      unsubscribeError();
-      socketService.unsubscribeFromAnalytics();
-    };
-  }, [dateRange, toast]);
+        setRefreshing(false);
+      }
+    },
+    [dateRange, toast]
+  );
 
   useEffect(() => {
-    if (isConnected) {
-      socketService.subscribeToAnalytics(dateRange);
-    }
-  }, [isConnected, dateRange]);
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    socketService.subscribeToAnalytics(dateRange);
+    fetchAnalytics({ background: true });
   };
 
   const currentAnalytics = useMemo(

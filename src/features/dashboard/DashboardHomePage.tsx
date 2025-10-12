@@ -11,8 +11,6 @@ import { getTodayTasks, getOverdueTasks, mockOrganization } from '@/data/mockDat
 import { IntegrationBadge } from '@/components/ui/integrationbadge';
 import client from '@/api/client';
 import { API_BASE, endpoints } from '@/api/config';
-import { useSocketIO } from '@/lib/socket';
-import { Thread } from '@/types';
 import type { Analytics } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -100,8 +98,6 @@ export default function DashboardHomePage() {
   const [isAnalyticsPending, setIsAnalyticsPending] = useState(true);
   const [isLeadsPending, setIsLeadsPending] = useState(true);
 
-  // Socket.IO integration for real-time updates
-  const { socket, isConnected } = useSocketIO();
   const todayTasks = getTodayTasks();
   const overdueTasks = getOverdueTasks();
 
@@ -115,7 +111,6 @@ export default function DashboardHomePage() {
   const fetchDashboardData = React.useCallback(async () => {
     try {
       setIsLeadsPending(true);
-      setAnalyticsError(null);
 
       const leadsResp = await client.get(endpoints.leads);
 
@@ -150,6 +145,41 @@ export default function DashboardHomePage() {
       setIsLeadsPending(false);
     }
   }, []);
+
+  const fetchAnalyticsOverview = React.useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!background) {
+        setIsAnalyticsPending(true);
+      }
+      setAnalyticsError(null);
+
+      try {
+        const response = await client.get(endpoints.analytics.overview(timeRange));
+        const payload = response?.data?.data ?? {};
+        const analyticsData = (payload.analytics ?? payload) as Analytics | null;
+        const overview = analyticsData?.overview ?? DEFAULT_ANALYTICS_OVERVIEW;
+        setAnalyticsOverview(overview);
+        if (typeof overview.totalLeads === 'number') {
+          setActualLeadsCount(overview.totalLeads);
+        }
+        if (typeof overview.activeThreads === 'number') {
+          setActualThreadsCount(overview.activeThreads);
+        }
+      } catch (error) {
+        console.error('Failed to fetch analytics overview:', error);
+        const apiError = error as ApiError;
+        setAnalyticsError(
+          apiError.response?.data?.message || 'Unable to load analytics overview.'
+        );
+        setAnalyticsOverview(DEFAULT_ANALYTICS_OVERVIEW);
+      } finally {
+        if (!background) {
+          setIsAnalyticsPending(false);
+        }
+      }
+    },
+    [timeRange]
+  );
 
   // Helper function to process leads over time data
   const processLeadsOverTime = (leads: BackendLead[]): ChartDataPoint[] => {
@@ -196,74 +226,9 @@ export default function DashboardHomePage() {
     }));
   };
 
-  // Subscribe to analytics overview via Socket.IO for real-time updates
   useEffect(() => {
-    let isMounted = true;
-
-    setIsAnalyticsPending(true);
-    setAnalyticsError(null);
-
-    const unsubscribeOverview = socket.on('analytics:overview', (data: Analytics) => {
-      if (!isMounted) return;
-
-      const overview = data?.overview ?? DEFAULT_ANALYTICS_OVERVIEW;
-      setAnalyticsOverview(overview);
-      if (typeof overview.totalLeads === 'number') {
-        setActualLeadsCount(overview.totalLeads);
-      }
-      if (typeof overview.activeThreads === 'number') {
-        setActualThreadsCount(overview.activeThreads);
-      }
-      setIsAnalyticsPending(false);
-      setAnalyticsError(null);
-    });
-
-    const unsubscribeError = socket.on('error', (payload: { message: string; code?: string }) => {
-      if (!isMounted) return;
-      if (payload.code === 'ANALYTICS_OVERVIEW_FAILED') {
-        setAnalyticsError(payload.message || 'Unable to load analytics overview.');
-        setIsAnalyticsPending(false);
-      }
-    });
-
-    const subscribe = async () => {
-      try {
-        if (!socket.isConnected()) {
-          await socket.connect();
-        }
-        await socket.subscribeToAnalytics(timeRange);
-      } catch (error) {
-        if (!isMounted) return;
-        console.error('Analytics subscription failed:', error);
-        setAnalyticsError('Unable to connect to real-time analytics.');
-        setIsAnalyticsPending(false);
-      }
-    };
-
-    subscribe();
-
-    return () => {
-      isMounted = false;
-      unsubscribeOverview();
-      unsubscribeError();
-      socket.unsubscribeFromAnalytics();
-    };
-  }, [socket, timeRange]);
-
-  useEffect(() => {
-    if (!isConnected) {
-      return;
-    }
-    setIsAnalyticsPending(true);
-    setAnalyticsError(null);
-    socket
-      .subscribeToAnalytics(timeRange)
-      .catch((error) => {
-        console.error('Failed to refresh analytics subscription:', error);
-        setAnalyticsError('Unable to refresh analytics overview.');
-        setIsAnalyticsPending(false);
-      });
-  }, [isConnected, socket, timeRange]);
+    fetchAnalyticsOverview();
+  }, [fetchAnalyticsOverview]);
 
   // Check WhatsApp and Telegram connection status
   useEffect(() => {
@@ -334,57 +299,6 @@ export default function DashboardHomePage() {
     fetchDashboardData();
   }, [fetchDashboardData, timeRange]);
 
-  // Real-time Socket.IO event listeners for instant dashboard updates
-  useEffect(() => {
-    if (!socket || !isConnected) return;
-
-    // Handle new leads - update counts and recent leads instantly
-    const handleNewLead = (data: { lead: BackendLead }) => {
-      setActualLeadsCount((prev) => prev + 1);
-
-      // Add to recent leads list (remove oldest if > 5)
-      setRecentLeadsData((prev) => {
-        const updated = [data.lead, ...prev];
-        return updated.slice(0, 5);
-      });
-
-      // Refresh charts data to include new lead
-      fetchDashboardData();
-    };
-
-    // Handle lead updates - refresh recent leads and charts
-    const handleLeadUpdate = (data: { lead: BackendLead }) => {
-      setRecentLeadsData((prev) => prev.map((lead) => (lead.id === data.lead.id ? data.lead : lead)));
-
-      // Refresh charts data for updated pipeline stages
-      fetchDashboardData();
-    };
-
-    // Handle new threads - update thread count instantly
-    const handleNewThread = (data: { thread: Thread }) => {
-      setActualThreadsCount((prev) => prev + 1);
-    };
-
-    // Handle dashboard stats broadcasts (if backend sends aggregated stats)
-    const handleDashboardStats = (data: { totalLeads: number; activeThreads: number; [key: string]: unknown }) => {
-      if (data.totalLeads !== undefined) setActualLeadsCount(data.totalLeads);
-      if (data.activeThreads !== undefined) setActualThreadsCount(data.activeThreads);
-    };
-
-    // Subscribe to real-time events and get unsubscribe functions
-    const unsubscribeNewLead = socket.on('lead:new', handleNewLead);
-    const unsubscribeLeadUpdate = socket.on('lead:updated', handleLeadUpdate);
-    const unsubscribeNewThread = socket.on('thread:new', handleNewThread);
-    const unsubscribeDashboardStats = socket.on('dashboard:stats', handleDashboardStats);
-
-    // Cleanup listeners on unmount
-    return () => {
-      unsubscribeNewLead();
-      unsubscribeLeadUpdate();
-      unsubscribeNewThread();
-      unsubscribeDashboardStats();
-    };
-  }, [socket, isConnected, fetchDashboardData]);
 
   const overviewSkeleton = (
     <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
@@ -452,8 +366,14 @@ export default function DashboardHomePage() {
               to='/dashboard/settings?tab=integrations'
             />
             <div className='flex items-center gap-2 px-2 py-1 rounded-full text-xs border'>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-              <span className={isConnected ? 'text-green-700' : 'text-gray-500'}>{isConnected ? '⚡ Real-time' : 'Offline'}</span>
+              <div
+                className={`w-2 h-2 rounded-full ${analyticsError ? 'bg-red-500' : analyticsLoading ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}
+              ></div>
+              <span
+                className={analyticsError ? 'text-red-600' : analyticsLoading ? 'text-blue-600' : 'text-emerald-700'}
+              >
+                {analyticsError ? 'API error' : analyticsLoading ? 'Refreshing…' : 'HTTP API'}
+              </span>
             </div>
           </div>
         </div>

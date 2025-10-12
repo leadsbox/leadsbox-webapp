@@ -89,6 +89,17 @@ export const endpoints = {
   followup: (id: string) => `/followups/${id}`,
   followupCancel: (id: string) => `/followups/${id}/cancel`,
 
+  analytics: {
+    overview: (range?: string) => {
+      const params = new URLSearchParams();
+      if (range) {
+        params.set('range', range);
+      }
+      const query = params.toString();
+      return `/analytics/overview${query ? `?${query}` : ''}`;
+    },
+  },
+
   billing: {
     plans: '/billing/plans',
     initialize: '/billing/paystack/initialize',
