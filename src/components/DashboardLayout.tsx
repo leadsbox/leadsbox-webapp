@@ -231,10 +231,11 @@ export const DashboardLayout: React.FC = () => {
   };
 
   const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
-  const formattedRenewal = trialEndsAt ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
-  const bannerTitle = subscription?.status === 'ACTIVE' && subscription.plan
-    ? `${subscription.plan.name} plan active`
-    : 'Manage your leads efficiently';
+  const formattedRenewal = trialEndsAt
+    ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+  const bannerTitle =
+    subscription?.status === 'ACTIVE' && subscription.plan ? `${subscription.plan.name} plan active` : 'Manage your leads efficiently';
   const bannerSubtitle = subscriptionLoading
     ? 'Checking subscription status…'
     : subscription?.status === 'ACTIVE'
@@ -244,9 +245,7 @@ export const DashboardLayout: React.FC = () => {
     : trialDaysLeft > 0
     ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial`
     : 'Trial ended — choose a plan to stay connected.';
-  const collapsedSubtitle = subscription?.status === 'ACTIVE' && subscription.plan
-    ? subscription.plan.name
-    : bannerSubtitle;
+  const collapsedSubtitle = subscription?.status === 'ACTIVE' && subscription.plan ? subscription.plan.name : bannerSubtitle;
   const handleGoToBilling = () => navigate('/dashboard/billing');
   const billingButtonText = subscription?.status === 'ACTIVE' ? 'Manage billing' : 'View payment plans';
 
@@ -348,14 +347,17 @@ export const DashboardLayout: React.FC = () => {
         {/* Sidebar footer */}
         <div className='border-t border-sidebar-border p-4'>
           {sidebarCollapsed ? (
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'
-            >
-              <CreditCard className='h-5 w-5 text-primary' />
-              <span className='text-center leading-tight'>{collapsedSubtitle}</span>
-              <Button size='sm' className='w-full text-xs' onClick={handleGoToBilling}>
-                {billingButtonText}
+            <motion.div whileHover={{ scale: 1.05 }} className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'>
+              {/* Show only an icon button when collapsed to avoid any text */}
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={handleGoToBilling}
+                className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
+                aria-label={billingButtonText}
+                title={billingButtonText}
+              >
+                <CreditCard className='h-5 w-5 text-primary' />
               </Button>
             </motion.div>
           ) : (
