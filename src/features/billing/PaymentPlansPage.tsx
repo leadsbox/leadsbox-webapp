@@ -98,63 +98,6 @@ const PaymentPlansPage: React.FC = () => {
     fetchBillingData();
   }, [fetchBillingData]);
 
-  const handleCancelSubscription = async (cancelImmediately: boolean) => {
-    try {
-      setCancelLoading(cancelImmediately ? 'immediate' : 'period');
-      await client.post(endpoints.billing.cancelSubscription, {
-        cancelImmediately,
-      });
-      toast({
-        title: cancelImmediately ? 'Subscription canceled' : 'Auto-renew disabled',
-        description: cancelImmediately
-          ? 'Your subscription has been canceled immediately.'
-          : 'Your subscription will end at the close of the current period.',
-      });
-      await fetchBillingData();
-    } catch (error: any) {
-      console.error('Failed to cancel subscription:', error);
-      toast({
-        title: 'Unable to update subscription',
-        description:
-          error?.response?.data?.message || 'Please try again later.',
-        variant: 'destructive',
-      });
-    } finally {
-      setCancelLoading(null);
-    }
-  };
-
-  const handleChangePlan = async (plan: BillingPlan) => {
-    try {
-      setChangingPlanId(plan.id);
-      const response = await client.post(endpoints.billing.changePlan, {
-        planId: plan.id,
-        cancelCurrent: true,
-      });
-      const payload = response?.data?.data || response?.data;
-      if (payload?.authorizationUrl || payload?.authorization_url) {
-        const url = payload.authorizationUrl || payload.authorization_url;
-        window.open(url, '_blank', 'noopener noreferrer');
-        toast({
-          title: 'Redirecting to Paystack',
-          description: `Switching to the ${plan.name} plan. Complete checkout in the new tab.`,
-        });
-      } else {
-        throw new Error('Missing authorization URL in response.');
-      }
-      await fetchBillingData();
-    } catch (error: any) {
-      console.error('Failed to change plan:', error);
-      toast({
-        title: 'Unable to change plan',
-        description: error?.response?.data?.message || error?.message || 'Please try again later.',
-        variant: 'destructive',
-      });
-    } finally {
-      setChangingPlanId(null);
-    }
-  };
-
 
   const handleCancelSubscription = async (cancelImmediately: boolean) => {
     try {
