@@ -435,46 +435,80 @@ const Index = () => {
 
       {/* Pricing */}
       <section id='pricing' className='container mx-auto px-4 py-16 bg-muted/30'>
-        <div className='max-w-5xl mx-auto grid lg:grid-cols-2 gap-6'>
-          <Card>
-            <CardContent className='p-6 space-y-4'>
-              <Badge variant='secondary'>Starter</Badge>
-              <div className='flex items-baseline gap-2'>
-                <span className='text-4xl font-bold'>₦0</span>
-                <span className='text-muted-foreground'>/ month</span>
-              </div>
-              <ul className='space-y-2 text-sm'>
-                {['Unified inbox', 'AI tagging (starter)', 'Basic pipeline', 'Simple analytics'].map((f, i) => (
-                  <li key={i} className='flex items-center gap-2'>
-                    <CheckIcon className='h-4 w-4 text-success' /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Button className='w-full' onClick={() => setWaitlistOpen(true)} data-cta='pricing_starter'>
-                Lock Early Access
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className='border-primary/30'>
-            <CardContent className='p-6 space-y-4'>
-              <Badge>Pro</Badge>
-              <div className='flex items-baseline gap-2'>
-                <span className='text-4xl font-bold'>₦</span>
-                <span className='text-muted-foreground'>Early-bird</span>
-              </div>
-              <ul className='space-y-2 text-sm'>
-                {['Everything in Starter', 'Advanced AI follow‑ups', 'Team assignments', 'Detailed analytics'].map((f, i) => (
-                  <li key={i} className='flex items-center gap-2'>
-                    <CheckIcon className='h-4 w-4 text-success' /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Button variant='outline' className='w-full' onClick={() => setWaitlistOpen(true)} data-cta='pricing_pro'>
-                Lock Early Access
-              </Button>
-              <p className='text-xs text-muted-foreground'>Influencer partners get special rev‑share.</p>
-            </CardContent>
-          </Card>
+        <div className='max-w-6xl mx-auto grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+          {[
+            {
+              name: 'Starter',
+              badgeVariant: 'secondary' as const,
+              price: '₦0',
+              subtitle: '/ month',
+              features: [
+                'Unified inbox',
+                'AI tagging (starter)',
+                'Basic pipeline',
+                'Simple analytics',
+              ],
+              ctaVariant: 'default' as const,
+              blurb: 'Get your team onboarded in minutes.',
+              ctaEvent: 'pricing_starter',
+            },
+            {
+              name: 'Pro',
+              badgeVariant: 'default' as const,
+              price: '₦4,500',
+              subtitle: '/ month',
+              features: [
+                'Everything in Starter',
+                'Advanced AI follow-ups',
+                'Team assignments',
+                'Detailed analytics',
+              ],
+              ctaVariant: 'outline' as const,
+              blurb: 'Influencer partners get special rev-share.',
+              ctaEvent: 'pricing_pro',
+            },
+            {
+              name: 'Enterprise',
+              badgeVariant: 'default' as const,
+              price: '₦10,000',
+              subtitle: '/ month',
+              features: [
+                'Unlimited seats & workspaces',
+                'Custom integrations & SLAs',
+                'Dedicated success manager',
+                'Advanced security & reporting',
+              ],
+              ctaVariant: 'outline' as const,
+              blurb: 'Tailored for high-volume teams that need white-glove support.',
+              ctaEvent: 'pricing_enterprise',
+            },
+          ].map((plan) => (
+            <Card key={plan.name} className={plan.name === 'Pro' ? 'border-primary/30' : undefined}>
+              <CardContent className='p-6 space-y-4'>
+                <Badge variant={plan.badgeVariant}>{plan.name}</Badge>
+                <div className='flex items-baseline gap-2'>
+                  <span className='text-4xl font-bold'>{plan.price}</span>
+                  <span className='text-muted-foreground'>{plan.subtitle}</span>
+                </div>
+                <ul className='space-y-2 text-sm'>
+                  {plan.features.map((feature) => (
+                    <li key={feature} className='flex items-center gap-2'>
+                      <CheckIcon className='h-4 w-4 text-success' /> {feature}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={plan.ctaVariant}
+                  className='w-full'
+                  onClick={() => setWaitlistOpen(true)}
+                  data-cta={plan.ctaEvent}
+                >
+                  Lock Early Access
+                </Button>
+                <p className='text-xs text-muted-foreground'>{plan.blurb}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </section>
 
