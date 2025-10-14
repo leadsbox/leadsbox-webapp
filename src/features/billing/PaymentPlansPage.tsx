@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { Sparkles, ShieldCheck, Zap, Loader2, ChevronDown } from 'lucide-react';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +38,7 @@ type SubscriptionSummary = {
   trialEndsAt?: string | null;
   currentPeriodEnd?: string | null;
   reference?: string | null;
+  cancelAtPeriodEnd?: boolean | null;
 };
 
 const formatCurrency = (amount: number, currency: string) =>
@@ -51,46 +53,165 @@ const PaymentPlansPage: React.FC = () => {
   const [plans, setPlans] = React.useState<BillingPlan[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [initializingPlanId, setInitializingPlanId] = React.useState<string | null>(null);
+  const [changingPlanId, setChangingPlanId] = React.useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = React.useState<'immediate' | 'period' | null>(null);
   const [subscription, setSubscription] = React.useState<SubscriptionSummary | null>(null);
   const [trialDaysRemaining, setTrialDaysRemaining] = React.useState<number>(14);
   const [trialEndsAt, setTrialEndsAt] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [plansResp, subscriptionResp] = await Promise.all([
-          client.get(endpoints.billing.plans),
-          client.get(endpoints.billing.subscription).catch(() => null),
-        ]);
+  const fetchBillingData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const [plansResp, subscriptionResp] = await Promise.all([
+        client.get(endpoints.billing.plans),
+        client.get(endpoints.billing.subscription).catch(() => null),
+      ]);
 
-        const list: BillingPlan[] = plansResp?.data?.data?.plans || plansResp?.data?.plans || [];
-        setPlans(list);
+      const list: BillingPlan[] = plansResp?.data?.data?.plans || plansResp?.data?.plans || [];
+      setPlans(list);
 
-        if (subscriptionResp?.data) {
-          const payload = subscriptionResp.data.data || subscriptionResp.data;
-          setSubscription(payload?.subscription ?? null);
-          if (typeof payload?.trialDaysRemaining === 'number') {
-            setTrialDaysRemaining(payload.trialDaysRemaining);
-          }
-          if (typeof payload?.trialEndsAt === 'string') {
-            setTrialEndsAt(payload.trialEndsAt);
-          }
+      if (subscriptionResp?.data) {
+        const payload = subscriptionResp.data.data || subscriptionResp.data;
+        setSubscription(payload?.subscription ?? null);
+        if (typeof payload?.trialDaysRemaining === 'number') {
+          setTrialDaysRemaining(payload.trialDaysRemaining);
         }
-      } catch (error: any) {
-        console.error('Failed to load billing data:', error);
-        toast({
-          title: 'Unable to load billing data',
-          description: error?.response?.data?.message || 'Please try again later.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
+        if (typeof payload?.trialEndsAt === 'string') {
+          setTrialEndsAt(payload.trialEndsAt);
+        }
+      } else {
+        setSubscription(null);
       }
-    };
-
-    fetchData();
+    } catch (error: any) {
+      console.error('Failed to load billing data:', error);
+      toast({
+        title: 'Unable to load billing data',
+        description: error?.response?.data?.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [toast]);
+
+  React.useEffect(() => {
+    fetchBillingData();
+  }, [fetchBillingData]);
+
+  const handleCancelSubscription = async (cancelImmediately: boolean) => {
+    try {
+      setCancelLoading(cancelImmediately ? 'immediate' : 'period');
+      await client.post(endpoints.billing.cancelSubscription, {
+        cancelImmediately,
+      });
+      toast({
+        title: cancelImmediately ? 'Subscription canceled' : 'Auto-renew disabled',
+        description: cancelImmediately
+          ? 'Your subscription has been canceled immediately.'
+          : 'Your subscription will end at the close of the current period.',
+      });
+      await fetchBillingData();
+    } catch (error: any) {
+      console.error('Failed to cancel subscription:', error);
+      toast({
+        title: 'Unable to update subscription',
+        description:
+          error?.response?.data?.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancelLoading(null);
+    }
+  };
+
+  const handleChangePlan = async (plan: BillingPlan) => {
+    try {
+      setChangingPlanId(plan.id);
+      const response = await client.post(endpoints.billing.changePlan, {
+        planId: plan.id,
+        cancelCurrent: true,
+      });
+      const payload = response?.data?.data || response?.data;
+      if (payload?.authorizationUrl || payload?.authorization_url) {
+        const url = payload.authorizationUrl || payload.authorization_url;
+        window.open(url, '_blank', 'noopener noreferrer');
+        toast({
+          title: 'Redirecting to Paystack',
+          description: `Switching to the ${plan.name} plan. Complete checkout in the new tab.`,
+        });
+      } else {
+        throw new Error('Missing authorization URL in response.');
+      }
+      await fetchBillingData();
+    } catch (error: any) {
+      console.error('Failed to change plan:', error);
+      toast({
+        title: 'Unable to change plan',
+        description: error?.response?.data?.message || error?.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setChangingPlanId(null);
+    }
+  };
+
+
+  const handleCancelSubscription = async (cancelImmediately: boolean) => {
+    try {
+      setCancelLoading(cancelImmediately ? 'immediate' : 'period');
+      await client.post(endpoints.billing.cancelSubscription, {
+        cancelImmediately,
+      });
+      toast({
+        title: cancelImmediately ? 'Subscription canceled' : 'Auto-renew disabled',
+        description: cancelImmediately
+          ? 'Your subscription has been canceled immediately.'
+          : 'Your subscription will end at the close of the current period.',
+      });
+      await fetchBillingData();
+    } catch (error: any) {
+      console.error('Failed to cancel subscription:', error);
+      toast({
+        title: 'Unable to update subscription',
+        description:
+          error?.response?.data?.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancelLoading(null);
+    }
+  };
+
+  const handleChangePlan = async (plan: BillingPlan) => {
+    try {
+      setChangingPlanId(plan.id);
+      const response = await client.post(endpoints.billing.changePlan, {
+        planId: plan.id,
+        cancelCurrent: true,
+      });
+      const payload = response?.data?.data || response?.data;
+      if (payload?.authorizationUrl || payload?.authorization_url) {
+        const url = payload.authorizationUrl || payload.authorization_url;
+        window.open(url, '_blank', 'noopener noreferrer');
+        toast({
+          title: 'Redirecting to Paystack',
+          description: `Switching to the ${plan.name} plan. Complete checkout in the new tab.`,
+        });
+      } else {
+        throw new Error('Missing authorization URL in response.');
+      }
+      await fetchBillingData();
+    } catch (error: any) {
+      console.error('Failed to change plan:', error);
+      toast({
+        title: 'Unable to change plan',
+        description: error?.response?.data?.message || error?.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setChangingPlanId(null);
+    }
+  };
 
   const handleChoosePlan = async (plan: BillingPlan) => {
     try {
@@ -126,6 +247,7 @@ const PaymentPlansPage: React.FC = () => {
           trialEndsAt: newTrialEndsAt,
           reference: payload.reference,
         });
+        await fetchBillingData();
       } else {
         throw new Error('Missing authorization URL in response.');
       }
@@ -166,14 +288,48 @@ const PaymentPlansPage: React.FC = () => {
 
   const activePlanId = subscription?.plan?.id;
   const activeStatus = subscription?.status;
+  const hasActiveSubscription = Boolean(
+    subscription && !['CANCELED', 'EXPIRED'].includes((subscription.status || '').toUpperCase())
+  );
+  const formattedTrialEnds = trialEndsAt
+    ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+  const formattedCurrentPeriodEnd = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+  const isCancellationScheduled = Boolean(subscription?.cancelAtPeriodEnd);
 
-  const formattedTrialEnds = trialEndsAt ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  const heroSubtitle = (() => {
+    if (subscription?.status === 'ACTIVE' && subscription.plan) {
+      if (isCancellationScheduled) {
+        const cancelLabel = formattedCurrentPeriodEnd || 'at the end of this period';
+        return `You're on the ${subscription.plan.name} plan • Cancels ${cancelLabel}`;
+      }
+      if (formattedCurrentPeriodEnd) {
+        return `You're on the ${subscription.plan.name} plan • Next renewal ${formattedCurrentPeriodEnd}`;
+      }
+      return `You're on the ${subscription.plan.name} plan`;
+    }
 
-  const heroSubtitle = activeStatus === 'ACTIVE' && subscription?.plan
-    ? `You're on the ${subscription.plan.name} plan${formattedTrialEnds ? ` • Next renewal ${formattedTrialEnds}` : ''}`
-    : trialDaysRemaining > 0
-    ? `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in your free trial`
-    : 'Your trial has ended. Pick a plan to keep LeadsBox running.';
+    if (subscription?.status === 'PAST_DUE' && subscription.plan) {
+      return `Payment overdue for the ${subscription.plan.name} plan. Update billing to restore full access.`;
+    }
+
+    if (subscription?.status === 'PENDING' && subscription.plan) {
+      return `Payment pending for the ${subscription.plan.name} plan. Complete Paystack checkout to activate.`;
+    }
+
+    if (subscription?.status === 'CANCELED' && subscription.plan) {
+      return `Your ${subscription.plan.name} plan has been canceled. Choose a new plan to continue service.`;
+    }
+
+    if (trialDaysRemaining > 0) {
+      const trialNote = formattedTrialEnds ? ` • Trial ends ${formattedTrialEnds}` : '';
+      return `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in your free trial${trialNote}`;
+    }
+
+    return 'Your trial has ended. Pick a plan to keep LeadsBox running.';
+  })();
 
   return (
     <div className='p-4 sm:p-6 space-y-6'>
@@ -229,14 +385,35 @@ const PaymentPlansPage: React.FC = () => {
 
             const isCurrentPlan = activePlanId === plan.id && activeStatus === 'ACTIVE';
             const isPendingPlan = activePlanId === plan.id && activeStatus === 'PENDING';
-            const buttonDisabled = initializingPlanId === plan.id || isCurrentPlan || isPendingPlan;
-            const buttonLabel = isCurrentPlan
-              ? 'Current plan'
-              : isPendingPlan
-              ? 'Activation pending'
-              : initializingPlanId === plan.id
-              ? 'Opening Paystack…'
-              : 'Choose plan';
+            const isPastDuePlan = activePlanId === plan.id && activeStatus === 'PAST_DUE';
+            const isPlanLoading = initializingPlanId === plan.id || changingPlanId === plan.id;
+            const disableBecausePending =
+              subscription?.status === 'PENDING' && !isCurrentPlan;
+            const canSwitch =
+              hasActiveSubscription &&
+              !isCurrentPlan &&
+              subscription?.status !== 'PENDING';
+            const buttonDisabled = isPlanLoading || isPendingPlan || disableBecausePending;
+
+            let actionLabel = 'Choose plan';
+            if (canSwitch) {
+              actionLabel = `Switch to ${plan.name}`;
+            }
+            if (!hasActiveSubscription && plan.trialPeriodDays && !subscription) {
+              actionLabel = 'Start free trial';
+            }
+            if (isPlanLoading) {
+              actionLabel = 'Opening Paystack…';
+            } else if (isPendingPlan) {
+              actionLabel = 'Activation pending';
+            }
+
+            const planRenewalDate =
+              isCurrentPlan && formattedCurrentPeriodEnd
+                ? formattedCurrentPeriodEnd
+                : null;
+            const isCancellationScheduledForPlan =
+              isCurrentPlan && isCancellationScheduled;
 
             return (
               <motion.div
@@ -250,25 +427,40 @@ const PaymentPlansPage: React.FC = () => {
                   className={cn(
                     'h-full flex flex-col border-primary/10 hover:border-primary transition-colors shadow-sm hover:shadow-lg',
                     isCurrentPlan ? 'border-primary bg-primary/5' : '',
-                    isPendingPlan ? 'border-amber-300 bg-amber-50/40' : ''
+                    isPendingPlan ? 'border-amber-300 bg-amber-50/40' : '',
+                    isPastDuePlan ? 'border-destructive/50 bg-destructive/5' : ''
                   )}
                 >
                   <CardHeader className='space-y-2'>
-                    <div className='flex items-center justify-between'>
+                    <div className='flex items-center justify-between flex-wrap gap-2'>
                       <CardTitle className='text-xl font-semibold'>{plan.name}</CardTitle>
-                      {isCurrentPlan ? (
-                        <Badge variant='secondary' className='bg-primary text-primary-foreground'>
-                          Current plan
-                        </Badge>
-                      ) : isPendingPlan ? (
-                        <Badge variant='outline' className='border-amber-400 text-amber-500'>
-                          Pending activation
-                        </Badge>
-                      ) : plan.trialPeriodDays ? (
-                        <Badge variant='outline' className='border-primary/40 text-primary'>
-                          {plan.trialPeriodDays}-day trial
-                        </Badge>
-                      ) : null}
+                      <div className='flex items-center gap-2'>
+                        {plan.trialPeriodDays ? (
+                          <Badge variant='outline' className='border-primary/40 text-primary'>
+                            {plan.trialPeriodDays}-day trial
+                          </Badge>
+                        ) : null}
+                        {isCurrentPlan ? (
+                          <Badge variant='secondary' className='bg-primary text-primary-foreground'>
+                            Current plan
+                          </Badge>
+                        ) : null}
+                        {isPendingPlan ? (
+                          <Badge variant='outline' className='border-amber-400 text-amber-600 bg-amber-50'>
+                            Pending activation
+                          </Badge>
+                        ) : null}
+                        {isPastDuePlan ? (
+                          <Badge variant='outline' className='border-destructive/50 text-destructive'>
+                            Payment overdue
+                          </Badge>
+                        ) : null}
+                        {isCancellationScheduledForPlan ? (
+                          <Badge variant='outline' className='border-amber-400 text-amber-600 bg-amber-50'>
+                            Cancels {planRenewalDate || 'this period'}
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
                     {plan.description ? (
                       <p className='text-sm text-muted-foreground'>{plan.description}</p>
@@ -302,21 +494,102 @@ const PaymentPlansPage: React.FC = () => {
                       )}
                     </ul>
 
-                    <Button
-                      className='w-full'
-                      onClick={() => handleChoosePlan(plan)}
-                      disabled={buttonDisabled}
-                    >
-                      {buttonLabel}
-                    </Button>
-                    {isCurrentPlan && subscription?.currentPeriodEnd ? (
+                    {isCurrentPlan ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant='outline'
+                            className='w-full justify-between'
+                            disabled={cancelLoading !== null}
+                          >
+                            <span>Manage plan</span>
+                            {cancelLoading ? (
+                              <Loader2 className='h-4 w-4 animate-spin' />
+                            ) : (
+                              <ChevronDown className='h-4 w-4 opacity-60' />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className='w-64'>
+                          <DropdownMenuLabel>{plan.name}</DropdownMenuLabel>
+                          {isCancellationScheduledForPlan ? (
+                            <DropdownMenuItem disabled>
+                              Auto-renew already disabled
+                            </DropdownMenuItem>
+                          ) : (
+                            <>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  handleCancelSubscription(false);
+                                }}
+                                disabled={cancelLoading !== null}
+                              >
+                                Cancel at end of period
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className='text-destructive focus:text-destructive'
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  handleCancelSubscription(true);
+                                }}
+                                disabled={cancelLoading !== null}
+                              >
+                                Cancel immediately
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem disabled>
+                            Need help? Contact support
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <Button
+                        className='w-full'
+                        disabled={buttonDisabled}
+                        onClick={() => {
+                          if (buttonDisabled) return;
+                          if (canSwitch) {
+                            handleChangePlan(plan);
+                          } else {
+                            handleChoosePlan(plan);
+                          }
+                        }}
+                      >
+                        {isPlanLoading ? (
+                          <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> {actionLabel}</>
+                        ) : (
+                          actionLabel
+                        )}
+                      </Button>
+                    )}
+
+                    {isCurrentPlan && planRenewalDate && !isCancellationScheduledForPlan ? (
                       <p className='text-xs text-muted-foreground text-center mt-2'>
-                        Next renewal {new Date(subscription.currentPeriodEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Next renewal {planRenewalDate}
+                      </p>
+                    ) : null}
+                    {isCancellationScheduledForPlan ? (
+                      <p className='text-xs text-amber-600 text-center mt-2'>
+                        Subscription will terminate {planRenewalDate || 'at the end of this period'}.
+                      </p>
+                    ) : null}
+                    {isPastDuePlan ? (
+                      <p className='text-xs text-destructive text-center mt-2'>
+                        Payment overdue — update billing details to avoid disruption.
+                      </p>
+                    ) : null}
+                    {disableBecausePending && !isPendingPlan ? (
+                      <p className='text-xs text-muted-foreground text-center mt-2'>
+                        Finish the pending checkout to make more changes.
                       </p>
                     ) : null}
                   </CardContent>
                 </Card>
-              </motion.div>
+
+      </motion.div>
             );
           })}
         </motion.div>
