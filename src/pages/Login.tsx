@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { API_BASE, endpoints } from '@/api/config';
 import client from '@/api/client';
 import { loadPendingInvite, savePendingInvite } from '@/lib/inviteStorage';
-import { notify } from '@/lib/toast';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import AuthBrand from '@/components/AuthBrand';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,9 +22,13 @@ const Login = () => {
   const [inviteOrg, setInviteOrg] = useState<string | null>(null);
   const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -60,6 +66,14 @@ const Login = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    const state = location.state as { authNotice?: string; message?: string } | null;
+    if (state?.authNotice === 'password-reset') {
+      setFormSuccess(state.message || 'Your password has been updated. Sign in with your new credentials.');
+      navigate(location.pathname + location.search, { replace: true });
+    }
+  }, [location, navigate]);
+
   const handleGoogleRedirect = () => {
     // Land on home dashboard after OAuth
     const next = encodeURIComponent('/dashboard');
@@ -69,27 +83,38 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
-      notify.warning({
-        key: 'auth:login-missing',
-        title: 'Complete your details',
-        description: 'Enter both your email and password to continue.',
-      });
+    setFormError(null);
+    setFormSuccess(null);
+
+    const nextFieldErrors: { email?: string; password?: string } = {};
+
+    if (!email.trim()) {
+      nextFieldErrors.email = 'Enter your email or username.';
+    }
+
+    if (!password) {
+      nextFieldErrors.password = 'Enter your password.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
 
+    setFieldErrors({});
     setIsLoading(true);
 
     try {
       await login(email, password);
       navigate('/dashboard');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'We couldn’t sign you in.';
-      notify.error({
-        key: 'auth:login-error',
-        title: 'Sign-in failed',
-        description: errorMessage,
-      });
+      const message =
+        error instanceof Error
+          ? error.message
+          : getAuthErrorMessage(error, 'We couldn’t sign you in. Check your email and password and try again.', {
+              unauthorizedMessage: 'We couldn’t verify those details. Check your email and password and try again.',
+            });
+      setFormError(message);
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +123,8 @@ const Login = () => {
   return (
     <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4'>
       <Card className='w-full max-w-md'>
-        <CardHeader className='space-y-1'>
+        <CardHeader className='space-y-2'>
+          <AuthBrand />
           <CardTitle className='text-2xl font-bold text-center'>Welcome back</CardTitle>
           <CardDescription className='text-center'>Sign in to your LeadsBox account</CardDescription>
         </CardHeader>
@@ -115,6 +141,17 @@ const Login = () => {
                 </>
               )}
             </div>
+          )}
+          {formError && (
+            <Alert variant='destructive' className='mb-4'>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+          {formSuccess && (
+            <Alert className='mb-4'>
+              <AlertTitle>Password updated</AlertTitle>
+              <AlertDescription>{formSuccess}</AlertDescription>
+            </Alert>
           )}
           <div className='space-y-4'>
             <Button
@@ -164,11 +201,26 @@ const Login = () => {
                   type='text'
                   placeholder='Enter your email or username'
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldErrors.email) {
+                      setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                    }
+                    if (formError) {
+                      setFormError(null);
+                    }
+                  }}
                   className='pl-10'
                   disabled={isLoading}
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
                 />
               </div>
+              {fieldErrors.email && (
+                <p id='login-email-error' className='text-sm text-destructive'>
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className='space-y-2'>
@@ -180,9 +232,19 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder='Enter your password'
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) {
+                      setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                    }
+                    if (formError) {
+                      setFormError(null);
+                    }
+                  }}
                   className='pl-10 pr-10'
                   disabled={isLoading}
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                 />
                 <button
                   type='button'
@@ -193,6 +255,11 @@ const Login = () => {
                   {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p id='login-password-error' className='text-sm text-destructive'>
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <Button type='submit' className='w-full' disabled={isLoading}>

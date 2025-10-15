@@ -6,39 +6,36 @@ import { Button } from '@/components/ui/button';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { Mail } from 'lucide-react';
-import { notify } from '@/lib/toast';
 import { Link } from 'react-router-dom';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import AuthBrand from '@/components/AuthBrand';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      notify.warning({
-        key: 'auth:forgot-empty',
-        title: 'Email required',
-        description: 'Enter your email to get a reset link.',
-      });
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (!email.trim()) {
+      setFieldError('Enter your email to receive a reset link.');
       return;
     }
+    setFieldError(null);
     setLoading(true);
     try {
       const res = await client.post(endpoints.forgotPassword, { email });
       const msg = res?.data?.message || 'Check your inbox for the reset link.';
-      notify.success({
-        key: 'auth:forgot-success',
-        title: 'Reset link sent',
-        description: msg,
-      });
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'We couldn’t send that reset link.';
-      notify.error({
-        key: 'auth:forgot-error',
-        title: 'Reset link failed',
-        description: msg,
-      });
+      setFormSuccess(msg);
+    } catch (err: unknown) {
+      const message = getAuthErrorMessage(err as Error, 'We couldn’t send that reset link. Please try again later.');
+      setFormError(message);
     } finally {
       setLoading(false);
     }
@@ -47,18 +44,52 @@ const ForgotPassword: React.FC = () => {
   return (
     <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4'>
       <Card className='w-full max-w-md'>
-        <CardHeader>
+        <CardHeader className='space-y-2'>
+          <AuthBrand />
           <CardTitle className='text-2xl text-center'>Forgot Password</CardTitle>
           <CardDescription className='text-center'>Enter your email to receive a reset link</CardDescription>
         </CardHeader>
         <CardContent>
+          {formError && (
+            <Alert variant='destructive' className='mb-4'>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+          {formSuccess && (
+            <Alert className='mb-4'>
+              <AlertTitle>Reset link sent</AlertTitle>
+              <AlertDescription>{formSuccess}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={onSubmit} className='space-y-4'>
             <div className='space-y-2'>
               <Label htmlFor='email'>Email</Label>
               <div className='relative'>
                 <Mail className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input id='email' type='email' className='pl-10' value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} />
+                <Input
+                  id='email'
+                  type='email'
+                  className='pl-10'
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldError) {
+                      setFieldError(null);
+                    }
+                    if (formError) {
+                      setFormError(null);
+                    }
+                  }}
+                  disabled={loading}
+                  aria-invalid={Boolean(fieldError)}
+                  aria-describedby={fieldError ? 'forgot-email-error' : undefined}
+                />
               </div>
+              {fieldError && (
+                <p id='forgot-email-error' className='text-sm text-destructive'>
+                  {fieldError}
+                </p>
+              )}
             </div>
             <Button type='submit' className='w-full' disabled={loading}>
               {loading ? 'Sending…' : 'Send Reset Link'}
@@ -66,7 +97,9 @@ const ForgotPassword: React.FC = () => {
           </form>
 
           <div className='mt-4 text-center text-sm'>
-            <Link to='/login' className='text-primary hover:underline'>Back to login</Link>
+            <Link to='/login' className='text-primary hover:underline'>
+              Back to login
+            </Link>
           </div>
         </CardContent>
       </Card>

@@ -26,7 +26,7 @@ const axiosClient: AxiosInstance = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    Accept: 'application/json',
   },
 });
 
@@ -38,13 +38,13 @@ axiosClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Add organization context if available
     const orgId = localStorage.getItem(CACHE_KEYS.organization);
     if (orgId) {
       config.headers['X-Organization-ID'] = orgId;
     }
-    
+
     return config;
   },
   (error) => {
@@ -59,18 +59,18 @@ axiosClient.interceptors.response.use(
   },
   async (error) => {
     const { response, request } = error;
-    
+
     // Handle different error scenarios
     if (response) {
       const { status, data } = response;
-      
+
       switch (status) {
-        case STATUS_CODES.UNAUTHORIZED:
+        case STATUS_CODES.UNAUTHORIZED: {
           // Clear auth data and redirect to login
           localStorage.removeItem(CACHE_KEYS.token);
           localStorage.removeItem(CACHE_KEYS.refreshToken);
           localStorage.removeItem(CACHE_KEYS.user);
-          
+
           // Try to refresh token first
           const refreshToken = localStorage.getItem(CACHE_KEYS.refreshToken);
           if (refreshToken) {
@@ -78,12 +78,12 @@ axiosClient.interceptors.response.use(
               const refreshResponse = await axios.post(`${API_BASE}/auth/refresh`, {
                 refreshToken,
               });
-              
+
               const { token, refreshToken: newRefreshToken } = refreshResponse.data.data;
-              
+
               localStorage.setItem(CACHE_KEYS.token, token);
               localStorage.setItem(CACHE_KEYS.refreshToken, newRefreshToken);
-              
+
               // Retry the original request
               const originalRequest = error.config;
               originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -105,24 +105,27 @@ axiosClient.interceptors.response.use(
             window.location.href = '/login';
           }
           break;
-          
-        case STATUS_CODES.FORBIDDEN:
+        }
+
+        case STATUS_CODES.FORBIDDEN: {
           notify.error({
             key: 'http:403',
             title: 'Access denied',
             description: toErrorDetail(ERROR_MESSAGES.FORBIDDEN, data?.message),
           });
           break;
-          
-        case STATUS_CODES.NOT_FOUND:
+        }
+
+        case STATUS_CODES.NOT_FOUND: {
           notify.error({
             key: 'http:404',
             title: 'Not found',
             description: toErrorDetail(ERROR_MESSAGES.NOT_FOUND, data?.message),
           });
           break;
-          
-        case STATUS_CODES.UNPROCESSABLE_ENTITY:
+        }
+
+        case STATUS_CODES.UNPROCESSABLE_ENTITY: {
           if (data?.errors && Array.isArray(data.errors)) {
             const merged = data.errors
               .map((err: unknown) => asMessage(err))
@@ -141,23 +144,27 @@ axiosClient.interceptors.response.use(
             });
           }
           break;
-          
+        }
+
         case STATUS_CODES.INTERNAL_SERVER_ERROR:
         case STATUS_CODES.BAD_GATEWAY:
-        case STATUS_CODES.SERVICE_UNAVAILABLE:
+        case STATUS_CODES.SERVICE_UNAVAILABLE: {
           notify.error({
             key: 'http:5xx',
             title: 'Server issue',
             description: ERROR_MESSAGES.SERVER_ERROR,
           });
           break;
-          
-        default:
+        }
+
+        default: {
           notify.error({
             key: `http:${status ?? 'error'}`,
             title: 'Request failed',
             description: toErrorDetail('An unexpected error occurred', data?.message),
           });
+          break;
+        }
       }
     } else if (request) {
       // Network error
@@ -174,38 +181,29 @@ axiosClient.interceptors.response.use(
         description: 'We could not prepare your request. Please try again.',
       });
     }
-    
+
     return Promise.reject(error);
   }
 );
 
 // Utility functions for common request patterns
 export const apiRequest = {
-  get: <T = any>(url: string, config?: AxiosRequestConfig) => 
-    axiosClient.get<T>(url, config),
-    
-  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig) => 
-    axiosClient.post<T>(url, data, config),
-    
-  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig) => 
-    axiosClient.put<T>(url, data, config),
-    
-  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig) => 
-    axiosClient.patch<T>(url, data, config),
-    
-  delete: <T = any>(url: string, config?: AxiosRequestConfig) => 
-    axiosClient.delete<T>(url, config),
+  get: <T = unknown>(url: string, config?: AxiosRequestConfig) => axiosClient.get<T>(url, config),
+
+  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => axiosClient.post<T>(url, data, config),
+
+  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => axiosClient.put<T>(url, data, config),
+
+  patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => axiosClient.patch<T>(url, data, config),
+
+  delete: <T = unknown>(url: string, config?: AxiosRequestConfig) => axiosClient.delete<T>(url, config),
 };
 
 // File upload helper
-export const uploadFile = async (
-  url: string, 
-  file: File, 
-  onProgress?: (progress: number) => void
-) => {
+export const uploadFile = async (url: string, file: File, onProgress?: (progress: number) => void) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   return axiosClient.post(url, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',

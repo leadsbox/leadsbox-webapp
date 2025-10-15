@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { notify } from '@/lib/toast';
 import { Mail, Lock, Eye, EyeOff, User, Building } from 'lucide-react';
 import { API_BASE, endpoints } from '@/api/config';
 import client from '@/api/client';
-import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { clearPendingInvite, savePendingInvite } from '@/lib/inviteStorage';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import AuthBrand from '@/components/AuthBrand';
 
 declare global {
   interface Window {
@@ -30,7 +31,6 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [agree, setAgree] = useState(false);
@@ -38,6 +38,11 @@ const Register = () => {
   const [inviteOrgName, setInviteOrgName] = useState<string | null>(null);
   const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'username' | 'organizationName' | 'email' | 'password' | 'confirmPassword', string>>>(
+    {}
+  );
+  const [agreementError, setAgreementError] = useState<string | null>(null);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -99,6 +104,13 @@ const Register = () => {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      [e.target.name]: undefined,
+    }));
+    if (formError) {
+      setFormError(null);
+    }
     if (e.target.name === 'username') {
       setUsernameAvailable(null);
     }
@@ -126,57 +138,50 @@ const Register = () => {
     const { username, email, password, confirmPassword, organizationName } = formData;
     const requiresOrgName = !inviteToken;
 
-    if (!username || !email || !password || !confirmPassword || (requiresOrgName && !organizationName)) {
-      notify.warning({
-        key: 'auth:register-missing',
-        title: 'Complete the form',
-        description: 'Fill out every required field before continuing.',
-      });
-      return;
+    setFormError(null);
+    setFieldErrors({});
+    setAgreementError(null);
+
+    const nextFieldErrors: Partial<Record<'username' | 'organizationName' | 'email' | 'password' | 'confirmPassword', string>> = {};
+
+    if (!username.trim()) {
+      nextFieldErrors.username = 'Choose a username.';
     }
 
-    if (inviteToken && inviteError) {
-      notify.error({
-        key: 'auth:register-invite-error',
-        title: 'Invitation issue',
-        description: inviteError,
-      });
-      return;
+    if (!email.trim()) {
+      nextFieldErrors.email = 'Enter an email address.';
     }
 
-    if (!agree) {
-      notify.warning({
-        key: 'auth:register-policy',
-        title: 'Accept the terms',
-        description: 'Please agree to our Privacy Policy and Terms first.',
-      });
-      return;
+    if (!password) {
+      nextFieldErrors.password = 'Create a password.';
+    } else if (password.length < 8) {
+      nextFieldErrors.password = 'Use at least 8 characters for a stronger password.';
+    }
+
+    if (!confirmPassword) {
+      nextFieldErrors.confirmPassword = 'Confirm your password.';
+    } else if (password !== confirmPassword) {
+      nextFieldErrors.confirmPassword = 'Passwords must match.';
+    }
+
+    if (requiresOrgName && !organizationName.trim()) {
+      nextFieldErrors.organizationName = 'Enter your organization name.';
     }
 
     if (usernameAvailable === false) {
-      notify.error({
-        key: 'auth:register-username',
-        title: 'Username unavailable',
-        description: 'Choose a different username and try again.',
-      });
-      return;
+      nextFieldErrors.username = 'That username is already taken.';
     }
 
-    if (password !== confirmPassword) {
-      notify.warning({
-        key: 'auth:register-mismatch',
-        title: 'Passwords differ',
-        description: 'Make sure both password fields match exactly.',
-      });
-      return;
+    if (inviteToken && inviteError) {
+      setFormError(inviteError);
     }
 
-    if (password.length < 8) {
-      notify.warning({
-        key: 'auth:register-weak-password',
-        title: 'Password too short',
-        description: 'Use at least 8 characters for a stronger password.',
-      });
+    if (!agree) {
+      setAgreementError('You need to accept the policies before continuing.');
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0 || !agree || (inviteToken && inviteError)) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
 
@@ -191,20 +196,13 @@ const Register = () => {
         inviteToken,
       });
       clearPendingInvite();
-      notify.success({
-        key: 'auth:register-success',
-        title: 'Account created',
-        description: 'Welcome to LeadsBox. Redirecting to your dashboard.',
-      });
       navigate('/dashboard');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
-      notify.error({
-        key: 'auth:register-error',
-        title: 'Signup failed',
-        description: errorMessage,
-      });
-      setError(errorMessage);
+      const message =
+        error instanceof Error
+          ? error.message
+          : getAuthErrorMessage(error, 'We couldn’t create your account right now. Please try again shortly.');
+      setFormError(message);
     } finally {
       setIsLoading(false);
     }
@@ -213,12 +211,17 @@ const Register = () => {
   return (
     <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4'>
       <Card className='w-full max-w-md'>
-        <CardHeader className='space-y-1'>
+        <CardHeader className='space-y-2'>
+          <AuthBrand />
           <CardTitle className='text-2xl font-bold text-center'>Create account</CardTitle>
           <CardDescription className='text-center'>Sign up for your LeadsBox account</CardDescription>
         </CardHeader>
         <CardContent>
-          {error && <div className='mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-md'>{error}</div>}
+          {formError && (
+            <Alert variant='destructive' className='mb-4'>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
 
           <Button
             type='button'
@@ -271,11 +274,18 @@ const Register = () => {
                   onBlur={() => checkUsername(formData.username)}
                   className='pl-10'
                   disabled={isLoading}
+                  aria-invalid={Boolean(fieldErrors.username)}
+                  aria-describedby={fieldErrors.username ? 'register-username-error' : undefined}
                 />
                 {checkingUsername && <p className='mt-1 text-xs text-muted-foreground'>Checking availability…</p>}
                 {usernameAvailable === true && !checkingUsername && <p className='mt-1 text-xs text-green-600'>Username is available</p>}
                 {usernameAvailable === false && !checkingUsername && <p className='mt-1 text-xs text-red-600'>Username is taken</p>}
               </div>
+              {fieldErrors.username && (
+                <p id='register-username-error' className='text-sm text-destructive'>
+                  {fieldErrors.username}
+                </p>
+              )}
             </div>
             {/* First/Last name moved to profile settings after registration */}
 
@@ -307,8 +317,15 @@ const Register = () => {
                     onChange={handleInputChange}
                     className='pl-10'
                     disabled={isLoading}
+                    aria-invalid={Boolean(fieldErrors.organizationName)}
+                    aria-describedby={fieldErrors.organizationName ? 'register-organization-error' : undefined}
                   />
                 </div>
+                {fieldErrors.organizationName && (
+                  <p id='register-organization-error' className='text-sm text-destructive'>
+                    {fieldErrors.organizationName}
+                  </p>
+                )}
               </div>
             )}
 
@@ -325,8 +342,15 @@ const Register = () => {
                   onChange={handleInputChange}
                   className='pl-10'
                   disabled={isLoading}
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  aria-describedby={fieldErrors.email ? 'register-email-error' : undefined}
                 />
               </div>
+              {fieldErrors.email && (
+                <p id='register-email-error' className='text-sm text-destructive'>
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className='space-y-2'>
@@ -342,6 +366,8 @@ const Register = () => {
                   onChange={handleInputChange}
                   className='pl-10 pr-10'
                   disabled={isLoading}
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  aria-describedby={fieldErrors.password ? 'register-password-error' : undefined}
                 />
                 <button
                   type='button'
@@ -352,6 +378,11 @@ const Register = () => {
                   {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p id='register-password-error' className='text-sm text-destructive'>
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <div className='space-y-2'>
@@ -367,6 +398,8 @@ const Register = () => {
                   onChange={handleInputChange}
                   className='pl-10 pr-10'
                   disabled={isLoading}
+                  aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                  aria-describedby={fieldErrors.confirmPassword ? 'register-confirm-password-error' : undefined}
                 />
                 <button
                   type='button'
@@ -377,16 +410,31 @@ const Register = () => {
                   {showConfirmPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
                 </button>
               </div>
+              {fieldErrors.confirmPassword && (
+                <p id='register-confirm-password-error' className='text-sm text-destructive'>
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
             </div>
 
             <div className='space-y-3'>
               <div className='flex items-start gap-2'>
-                <Checkbox id='agree' checked={agree} onCheckedChange={(v) => setAgree(!!v)} />
+                <Checkbox
+                  id='agree'
+                  checked={agree}
+                  onCheckedChange={(v) => {
+                    setAgree(!!v);
+                    if (agreementError) {
+                      setAgreementError(null);
+                    }
+                  }}
+                />
                 <Label htmlFor='agree' className='text-sm text-muted-foreground'>
                   I agree to the <Link to='/privacy' className='text-primary hover:underline'>Privacy Policy</Link> and{' '}
                   <Link to='/terms' className='text-primary hover:underline'>Terms of Service</Link>
                 </Label>
               </div>
+              {agreementError && <p className='text-sm text-destructive'>{agreementError}</p>}
             </div>
 
             <Button type='submit' className='w-full mt-2' disabled={isLoading || !agree}>

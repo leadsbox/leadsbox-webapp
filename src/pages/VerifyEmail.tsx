@@ -6,6 +6,7 @@ import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import AuthBrand from '@/components/AuthBrand';
 
 const VerifyEmail: React.FC = () => {
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
@@ -67,7 +68,8 @@ const VerifyEmail: React.FC = () => {
   return (
     <div className='min-h-screen flex items-center justify-center p-4'>
       <Card className='w-full max-w-md'>
-        <CardHeader>
+        <CardHeader className='space-y-2'>
+          <AuthBrand />
           <CardTitle className='text-center'>Verify Email</CardTitle>
         </CardHeader>
         <CardContent className='space-y-4 text-center'>

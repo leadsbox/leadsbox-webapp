@@ -69,6 +69,18 @@ client.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (status === 401 && !originalRequest._retry) {
+      const requestUrl = originalRequest.url ?? '';
+      const isAuthEndpoint =
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/register') ||
+        requestUrl.includes('/auth/forgot-password') ||
+        requestUrl.includes('/auth/reset-password') ||
+        requestUrl.includes('/auth/verify-email');
+
+      if (isAuthEndpoint) {
+        return Promise.reject(error);
+      }
+      
       originalRequest._retry = true;
 
       // If refresh token process is already happening, wait for it

@@ -4,6 +4,7 @@ import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types
 import client, { setAccessToken, setOrgId, getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { clearPendingInvite, loadPendingInvite } from '@/lib/inviteStorage';
+import { createAuthError } from '@/lib/auth-errors';
 
 type AuthState = {
   user: AuthUser | null;
@@ -192,12 +193,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) setAccessToken(token);
       if (profile) {
         setUser(profile);
-        notify.success({
-          key: 'auth:login-success',
-          title: 'Welcome back',
-          description: 'Your dashboard is ready.',
-        });
-
         if (profile.orgId) {
           setOrg(profile.orgId);
         } else if (profile.currentOrgId) {
@@ -218,13 +213,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Login failed');
       }
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed. Please try again.';
-      notify.error({
-        key: 'auth:login-failed',
-        title: 'Login failed',
-        description: message,
-      });
-      throw error;
+      throw createAuthError(
+        error,
+        'We couldn’t sign you in. Check your email and password and try again.',
+        { unauthorizedMessage: 'We couldn’t verify those details. Check your email and password and try again.' }
+      );
     } finally {
       setloading(false);
     }
@@ -263,11 +256,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) setAccessToken(token);
       if (profile) {
         setUser(profile);
-        notify.success({
-          key: 'auth:register-context-success',
-          title: 'Account ready',
-          description: 'Your workspace is ready to explore.',
-        });
         if (profile.orgId) {
           setOrg(profile.orgId);
         } else if (profile.currentOrgId) {
@@ -277,13 +265,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Registration failed');
       }
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Registration failed. Please try again.';
-      notify.error({
-        key: 'auth:register-context-error',
-        title: 'Registration failed',
-        description: message,
-      });
-      throw error;
+      throw createAuthError(
+        error,
+        'We couldn’t create your account. Please try again in a few minutes.',
+        { unauthorizedMessage: 'We couldn’t verify those details. Please try again.' }
+      );
     } finally {
       setloading(false);
     }
@@ -298,11 +284,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('Failed to logout:', error);
     } finally {
       setUser(null);
-      notify.info({
-        key: 'auth:logout',
-        title: 'Signed out',
-        description: 'Come back soon.',
-      });
     }
   };
 
