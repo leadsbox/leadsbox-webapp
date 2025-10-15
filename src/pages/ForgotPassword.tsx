@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { Mail } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { Link } from 'react-router-dom';
 
 const ForgotPassword: React.FC = () => {
@@ -16,17 +16,29 @@ const ForgotPassword: React.FC = () => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      toast.error('Please enter your email');
+      notify.warning({
+        key: 'auth:forgot-empty',
+        title: 'Email required',
+        description: 'Enter your email to get a reset link.',
+      });
       return;
     }
     setLoading(true);
     try {
       const res = await client.post(endpoints.forgotPassword, { email });
-      const msg = res?.data?.message || 'Password reset link sent to your email.';
-      toast.success(msg);
+      const msg = res?.data?.message || 'Check your inbox for the reset link.';
+      notify.success({
+        key: 'auth:forgot-success',
+        title: 'Reset link sent',
+        description: msg,
+      });
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to send reset link';
-      toast.error(msg);
+      const msg = err?.response?.data?.message || 'We couldn’t send that reset link.';
+      notify.error({
+        key: 'auth:forgot-error',
+        title: 'Reset link failed',
+        description: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -63,4 +75,3 @@ const ForgotPassword: React.FC = () => {
 };
 
 export default ForgotPassword;
-

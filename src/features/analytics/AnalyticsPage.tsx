@@ -42,10 +42,10 @@ import {
 } from 'recharts';
 import type { Analytics } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/components/ui/use-toast';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { AxiosError } from 'axios';
+import { notify } from '@/lib/toast';
 
 const EMPTY_ANALYTICS: Analytics = {
   overview: {
@@ -72,7 +72,6 @@ const AnalyticsPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-const { toast } = useToast();
 
   const fetchAnalytics = React.useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -93,10 +92,10 @@ const { toast } = useToast();
           ((err as AxiosError<{ message?: string }>).response?.data?.message) ||
           'Unable to load analytics overview.';
         setError(message);
-        toast({
+        notify.error({
+          key: `analytics:load:${dateRange}`,
           title: 'Analytics unavailable',
           description: message,
-          variant: 'destructive',
         });
         setAnalytics(null);
       } finally {
@@ -106,7 +105,7 @@ const { toast } = useToast();
         setRefreshing(false);
       }
     },
-    [dateRange, toast]
+    [dateRange]
   );
 
   useEffect(() => {

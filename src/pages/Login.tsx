@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'react-toastify';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { API_BASE, endpoints } from '@/api/config';
 import client from '@/api/client';
 import { loadPendingInvite, savePendingInvite } from '@/lib/inviteStorage';
+import { notify } from '@/lib/toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -70,7 +70,11 @@ const Login = () => {
     e.preventDefault();
     
     if (!email || !password) {
-      toast.error('Please fill in all fields');
+      notify.warning({
+        key: 'auth:login-missing',
+        title: 'Complete your details',
+        description: 'Enter both your email and password to continue.',
+      });
       return;
     }
 
@@ -80,8 +84,12 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Invalid credentials';
-      toast.error(errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'We couldn’t sign you in.';
+      notify.error({
+        key: 'auth:login-error',
+        title: 'Sign-in failed',
+        description: errorMessage,
+      });
     } finally {
       setIsLoading(false);
     }

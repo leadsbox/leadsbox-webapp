@@ -3,13 +3,13 @@ import { motion } from 'framer-motion';
 import { Sparkles, ShieldCheck, Zap, Loader2, ChevronDown } from 'lucide-react';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { notify } from '@/lib/toast';
 
 type BillingPlan = {
   id: string;
@@ -49,7 +49,6 @@ const formatCurrency = (amount: number, currency: string) =>
   }).format(amount / 100);
 
 const PaymentPlansPage: React.FC = () => {
-  const { toast } = useToast();
   const [plans, setPlans] = React.useState<BillingPlan[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [initializingPlanId, setInitializingPlanId] = React.useState<string | null>(null);
@@ -84,15 +83,15 @@ const PaymentPlansPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load billing data:', error);
-      toast({
-        title: 'Unable to load billing data',
+      notify.error({
+        key: 'billing:load-failed',
+        title: 'Billing unavailable',
         description: error?.response?.data?.message || 'Please try again later.',
-        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   React.useEffect(() => {
     fetchBillingData();
@@ -105,20 +104,20 @@ const PaymentPlansPage: React.FC = () => {
       await client.post(endpoints.billing.cancelSubscription, {
         cancelImmediately,
       });
-      toast({
+      notify.success({
+        key: cancelImmediately ? 'billing:cancel-now' : 'billing:cancel-period',
         title: cancelImmediately ? 'Subscription canceled' : 'Auto-renew disabled',
         description: cancelImmediately
-          ? 'Your subscription has been canceled immediately.'
-          : 'Your subscription will end at the close of the current period.',
+          ? 'Access ends immediately.'
+          : 'Your plan will expire at the end of this period.',
       });
       await fetchBillingData();
     } catch (error: any) {
       console.error('Failed to cancel subscription:', error);
-      toast({
+      notify.error({
+        key: 'billing:cancel-error',
         title: 'Unable to update subscription',
-        description:
-          error?.response?.data?.message || 'Please try again later.',
-        variant: 'destructive',
+        description: error?.response?.data?.message || 'Please try again later.',
       });
     } finally {
       setCancelLoading(null);
@@ -136,9 +135,14 @@ const PaymentPlansPage: React.FC = () => {
       if (payload?.authorizationUrl || payload?.authorization_url) {
         const url = payload.authorizationUrl || payload.authorization_url;
         window.open(url, '_blank', 'noopener noreferrer');
-        toast({
-          title: 'Redirecting to Paystack',
-          description: `Switching to the ${plan.name} plan. Complete checkout in the new tab.`,
+        notify.info({
+          key: `billing:change:${plan.id}`,
+          title: 'Checkout ready',
+          description: `Complete Paystack checkout for the ${plan.name} plan.`,
+          action: {
+            label: 'Open Paystack',
+            onClick: () => window.open(url, '_blank', 'noopener noreferrer'),
+          },
         });
       } else {
         throw new Error('Missing authorization URL in response.');
@@ -146,10 +150,10 @@ const PaymentPlansPage: React.FC = () => {
       await fetchBillingData();
     } catch (error: any) {
       console.error('Failed to change plan:', error);
-      toast({
+      notify.error({
+        key: `billing:change-error:${plan.id}`,
         title: 'Unable to change plan',
         description: error?.response?.data?.message || error?.message || 'Please try again later.',
-        variant: 'destructive',
       });
     } finally {
       setChangingPlanId(null);
@@ -166,9 +170,14 @@ const PaymentPlansPage: React.FC = () => {
       if (payload?.authorizationUrl || payload?.authorization_url) {
         const url = payload.authorizationUrl || payload.authorization_url;
         window.open(url, '_blank', 'noopener noreferrer');
-        toast({
-          title: 'Redirecting to Paystack',
+        notify.info({
+          key: `billing:init:${plan.id}`,
+          title: 'Checkout ready',
           description: 'Complete your checkout in the new tab.',
+          action: {
+            label: 'Open Paystack',
+            onClick: () => window.open(url, '_blank', 'noopener noreferrer'),
+          },
         });
         const newTrialEndsAt = plan.trialPeriodDays
           ? new Date(Date.now() + plan.trialPeriodDays * 24 * 60 * 60 * 1000).toISOString()
@@ -196,10 +205,10 @@ const PaymentPlansPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to initialize billing:', error);
-      toast({
+      notify.error({
+        key: `billing:init-error:${plan.id}`,
         title: 'Unable to start checkout',
         description: error?.response?.data?.message || error?.message || 'Please try again later.',
-        variant: 'destructive',
       });
     } finally {
       setInitializingPlanId(null);

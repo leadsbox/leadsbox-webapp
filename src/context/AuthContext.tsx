@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
 import client, { setAccessToken, setOrgId, getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
@@ -82,17 +82,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (!options.silent) {
-        const acceptedRole =
-          acceptRes?.data?.data?.role || role
-            ? ` as ${(acceptRes?.data?.data?.role || role || '').toLowerCase()}`
-            : '';
-        toast.success(`You're now part of ${orgName || 'the organization'}${acceptedRole}.`);
+        const normalizedRole = (acceptRes?.data?.data?.role || role || 'member').toLowerCase();
+        notify.success({
+          key: `invite:accepted:${token}`,
+          title: 'Invitation accepted',
+          description: `${orgName ? `Joined ${orgName}` : 'Access granted'} as ${normalizedRole}.`,
+        });
       }
     } catch (error: any) {
       if (!options.silent) {
         const message =
-          error?.response?.data?.message || 'Failed to accept invitation. Please try again.';
-        toast.error(message);
+          error?.response?.data?.message || 'Failed to accept the invitation. Please try again.';
+        notify.error({
+          key: `invite:accept-error:${token}`,
+          title: 'Invite failed',
+          description: message,
+        });
       }
       throw error;
     }
@@ -187,7 +192,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) setAccessToken(token);
       if (profile) {
         setUser(profile);
-        toast.success(`Welcome back, ${profile.username || profile.email}!`);
+        notify.success({
+          key: 'auth:login-success',
+          title: 'Welcome back',
+          description: 'Your dashboard is ready.',
+        });
 
         if (profile.orgId) {
           setOrg(profile.orgId);
@@ -210,7 +219,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed. Please try again.';
-      toast.error(message);
+      notify.error({
+        key: 'auth:login-failed',
+        title: 'Login failed',
+        description: message,
+      });
       throw error;
     } finally {
       setloading(false);
@@ -250,8 +263,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) setAccessToken(token);
       if (profile) {
         setUser(profile);
-        toast.success(`Welcome to LeadsBox, ${profile.username || profile.email}!`);
-        // Org is created server-side during register; if backend returns orgId later we can set it here
+        notify.success({
+          key: 'auth:register-context-success',
+          title: 'Account ready',
+          description: 'Your workspace is ready to explore.',
+        });
         if (profile.orgId) {
           setOrg(profile.orgId);
         } else if (profile.currentOrgId) {
@@ -262,7 +278,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Registration failed. Please try again.';
-      toast.error(message);
+      notify.error({
+        key: 'auth:register-context-error',
+        title: 'Registration failed',
+        description: message,
+      });
       throw error;
     } finally {
       setloading(false);
@@ -278,7 +298,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('Failed to logout:', error);
     } finally {
       setUser(null);
-      toast.info('You have been logged out');
+      notify.info({
+        key: 'auth:logout',
+        title: 'Signed out',
+        description: 'Come back soon.',
+      });
     }
   };
 

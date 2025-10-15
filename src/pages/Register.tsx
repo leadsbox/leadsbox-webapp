@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { Mail, Lock, Eye, EyeOff, User, Building } from 'lucide-react';
 import { API_BASE, endpoints } from '@/api/config';
 import client from '@/api/client';
@@ -127,32 +127,56 @@ const Register = () => {
     const requiresOrgName = !inviteToken;
 
     if (!username || !email || !password || !confirmPassword || (requiresOrgName && !organizationName)) {
-      toast.error('Please fill in all required fields');
+      notify.warning({
+        key: 'auth:register-missing',
+        title: 'Complete the form',
+        description: 'Fill out every required field before continuing.',
+      });
       return;
     }
 
     if (inviteToken && inviteError) {
-      toast.error(inviteError);
+      notify.error({
+        key: 'auth:register-invite-error',
+        title: 'Invitation issue',
+        description: inviteError,
+      });
       return;
     }
 
     if (!agree) {
-      toast.error('You must agree to the Privacy Policy to continue');
+      notify.warning({
+        key: 'auth:register-policy',
+        title: 'Accept the terms',
+        description: 'Please agree to our Privacy Policy and Terms first.',
+      });
       return;
     }
 
     if (usernameAvailable === false) {
-      toast.error('Username is already taken. Please choose another.');
+      notify.error({
+        key: 'auth:register-username',
+        title: 'Username unavailable',
+        description: 'Choose a different username and try again.',
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      notify.warning({
+        key: 'auth:register-mismatch',
+        title: 'Passwords differ',
+        description: 'Make sure both password fields match exactly.',
+      });
       return;
     }
 
     if (password.length < 8) {
-      toast.error('Password must be at least 8 characters long');
+      notify.warning({
+        key: 'auth:register-weak-password',
+        title: 'Password too short',
+        description: 'Use at least 8 characters for a stronger password.',
+      });
       return;
     }
 
@@ -167,11 +191,19 @@ const Register = () => {
         inviteToken,
       });
       clearPendingInvite();
-      toast.success('Account created successfully!');
+      notify.success({
+        key: 'auth:register-success',
+        title: 'Account created',
+        description: 'Welcome to LeadsBox. Redirecting to your dashboard.',
+      });
       navigate('/dashboard');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
-      toast.error(errorMessage);
+      notify.error({
+        key: 'auth:register-error',
+        title: 'Signup failed',
+        description: errorMessage,
+      });
       setError(errorMessage);
     } finally {
       setIsLoading(false);

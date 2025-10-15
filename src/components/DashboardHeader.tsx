@@ -36,7 +36,7 @@ import { useAuth } from '../context/AuthContext';
 import type { AuthUser } from '../types';
 import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 
 interface DashboardHeaderProps {
   onSidebarToggle?: () => void;
@@ -116,10 +116,18 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     try {
       if (!user?.email) return;
       await client.post(endpoints.resendVerification, { email: user.email });
-      toast.success('Verification email sent');
+      notify.success({
+        key: 'auth:verification-sent',
+        title: 'Verification sent',
+        description: 'Check your inbox for the link.',
+      });
     } catch (e) {
       console.error('Failed to resend verification email', e);
-      toast.error('Failed to resend verification email');
+      notify.error({
+        key: 'auth:verification-error',
+        title: 'Email not sent',
+        description: 'We couldn’t resend that verification email just yet.',
+      });
     }
   };
 

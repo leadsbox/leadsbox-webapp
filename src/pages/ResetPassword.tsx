@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { Lock, Eye, EyeOff } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -22,26 +22,46 @@ const ResetPassword: React.FC = () => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
-      toast.error('Missing reset token');
+      notify.error({
+        key: 'auth:reset-missing-token',
+        title: 'Link invalid',
+        description: 'Copy the full reset link from your email and try again.',
+      });
       return;
     }
     if (!password || password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+      notify.warning({
+        key: 'auth:reset-weak-password',
+        title: 'Password too short',
+        description: 'Use at least 8 characters for a stronger password.',
+      });
       return;
     }
     if (password !== confirm) {
-      toast.error('Passwords do not match');
+      notify.warning({
+        key: 'auth:reset-mismatch',
+        title: 'Passwords differ',
+        description: 'Make sure both password fields match exactly.',
+      });
       return;
     }
     setLoading(true);
     try {
       const res = await client.post(endpoints.resetPassword, { token, newPassword: password });
-      const msg = res?.data?.message || 'Password reset successful';
-      toast.success(msg);
+      const msg = res?.data?.message || 'Sign in with your new password.';
+      notify.success({
+        key: 'auth:reset-success',
+        title: 'Password updated',
+        description: msg,
+      });
       navigate('/login');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to reset password';
-      toast.error(msg);
+      const msg = err?.response?.data?.message || 'We couldn’t update that password.';
+      notify.error({
+        key: 'auth:reset-error',
+        title: 'Reset failed',
+        description: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -87,4 +107,3 @@ const ResetPassword: React.FC = () => {
 };
 
 export default ResetPassword;
-
