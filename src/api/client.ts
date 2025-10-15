@@ -31,12 +31,12 @@ const client = axios.create({
   withCredentials: true, // This is crucial for sending cookies with cross-origin requests
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    Accept: 'application/json',
   },
 });
 
 // Ensure credentials are sent with all requests
-client.interceptors.request.use(config => {
+client.interceptors.request.use((config) => {
   config.withCredentials = true;
   return config;
 });
@@ -44,16 +44,16 @@ client.interceptors.request.use(config => {
 // Request interceptor for auth token and org ID
 client.interceptors.request.use((config) => {
   const token = getAccessToken();
-  
+
   if (token && !config.headers['Authorization']) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   const orgId = getOrgId();
   if (orgId) {
     config.headers['x-org-id'] = orgId;
   }
-  
+
   return config;
 });
 
@@ -80,7 +80,7 @@ client.interceptors.response.use(
       if (isAuthEndpoint) {
         return Promise.reject(error);
       }
-      
+
       originalRequest._retry = true;
 
       // If refresh token process is already happening, wait for it
@@ -94,17 +94,10 @@ client.interceptors.response.use(
 
       try {
         // Attempt to refresh the token
-        await axios.post(
-          `${API_BASE}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
+        await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
 
         // Get fresh user data with new token from /auth/me
-        const userResponse = await axios.get(
-          `${API_BASE}/auth/me`,
-          { withCredentials: true }
-        );
+        const userResponse = await axios.get(`${API_BASE}/auth/me`, { withCredentials: true });
 
         const newToken = userResponse?.data?.accessToken;
         if (newToken) {
@@ -123,13 +116,12 @@ client.interceptors.response.use(
         setOrgId('');
         // Only redirect if not already on public auth pages
         const currentPath = window.location.pathname || '';
-        const isPublicAuthPage = (
+        const isPublicAuthPage =
           currentPath.startsWith('/login') ||
           currentPath.startsWith('/register') ||
           currentPath.startsWith('/verify-email') ||
           currentPath.startsWith('/forgot-password') ||
-          currentPath.startsWith('/reset-password')
-        );
+          currentPath.startsWith('/reset-password');
         if (!isPublicAuthPage) {
           window.location.href = '/login';
         }
