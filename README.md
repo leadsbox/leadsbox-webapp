@@ -34,7 +34,7 @@ src/
  ├─ api/                # Axios client, endpoint helpers, interceptors
  ├─ components/         # Shared UI (shadcn wrappers, layout primitives)
  ├─ context/            # React contexts (Auth, Theme)
- ├─ data/               # Local mock/demo data (to be replaced)
+ ├─ data/               # Legacy mock fixtures (settings fallbacks only)
  ├─ features/
  │   ├─ billing/        # Subscription management UI (PaymentPlansPage)
  │   ├─ inbox/          # Inbox experience
@@ -135,7 +135,7 @@ No global Redux; rely on contexts + hooks.
 - **Deployments:** Render or any Node host. Set `VITE_API_BASE` to deployed backend URL before building.
 - **Auth cookies:** Browser must be served over HTTPS in production to respect `SameSite=None; Secure` cookies set by backend.
 - **Billing redirects:** After Paystack checkout, the backend redirects to `/dashboard/billing` using callback URL; ensure frontend route remains available.
-- **Mocks:** `src/data/` still contains placeholder tasks/integration data; replace with live API once endpoints are ready.
+- **Mocks:** Dashboard tasks now consume `/api/followups` + `/api/analytics/overview`; `src/data/` remains for settings fallbacks until those views are rewritten.
 
 ---
 

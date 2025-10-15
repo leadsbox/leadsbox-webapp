@@ -18,6 +18,7 @@ import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
 import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './builder/utils';
 import { validateFlow } from './builder/serializers';
+import { extractFollowUps } from '@/utils/apiData';
 
 const TEMPLATE_STATUS_ORDER: TemplateStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
 
@@ -65,21 +66,6 @@ const extractTemplates = (payload: unknown): Template[] => {
     if (data && typeof data === 'object') {
       const nested = data as UnknownRecord;
       if (Array.isArray(nested.templates)) return nested.templates as Template[];
-    }
-  }
-  return [];
-};
-
-const extractFollowUps = (payload: unknown): FollowUpRule[] => {
-  if (Array.isArray(payload)) return payload as FollowUpRule[];
-  if (payload && typeof payload === 'object') {
-    const record = payload as UnknownRecord;
-    if (Array.isArray(record.followUps)) return record.followUps as FollowUpRule[];
-    const data = record.data;
-    if (Array.isArray(data)) return data as FollowUpRule[];
-    if (data && typeof data === 'object') {
-      const nested = data as UnknownRecord;
-      if (Array.isArray(nested.followUps)) return nested.followUps as FollowUpRule[];
     }
   }
   return [];

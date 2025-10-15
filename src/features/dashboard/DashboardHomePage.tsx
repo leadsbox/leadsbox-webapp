@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Receipt, Users, TrendingUp, MessageSquare, CheckSquare, Calendar, DollarSign, Activity, Globe, Send } from 'lucide-react';
+import { Plus, FileText, Receipt, Users, TrendingUp, MessageSquare, CheckSquare, Calendar, DollarSign, Activity, Globe, Send, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { getTodayTasks, getOverdueTasks, mockOrganization } from '@/data/mockData';
 import { IntegrationBadge } from '@/components/ui/integrationbadge';
-import client from '@/api/client';
-import { API_BASE, endpoints } from '@/api/config';
-import type { Analytics } from '@/types';
+import client, { getOrgId } from '@/api/client';
+import { endpoints } from '@/api/config';
+import type { Analytics, Task } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/context/AuthContext';
+import { extractFollowUps } from '@/utils/apiData';
+import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
 
 // Types for backend data
 interface ChartDataPoint {
@@ -97,14 +99,25 @@ export default function DashboardHomePage() {
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [isAnalyticsPending, setIsAnalyticsPending] = useState(true);
   const [isLeadsPending, setIsLeadsPending] = useState(true);
+  const { user } = useAuth();
+  const organizationId = user?.orgId || user?.currentOrgId || getOrgId();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
 
-  const todayTasks = getTodayTasks();
-  const overdueTasks = getOverdueTasks();
+  const taskBuckets = useMemo(() => categoriseTasks(tasks), [tasks]);
+  const todayTasks = taskBuckets.today;
+  const overdueTasks = taskBuckets.overdue;
+  const upcomingTasks = taskBuckets.upcoming;
+  const renderTaskMetric = (value: number): string | number => {
+    if (tasksLoading) return '…';
+    if (tasksError) return '—';
+    return value;
+  };
 
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
-  const apiRoot = useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
   const analyticsLoading = isAnalyticsPending || isLeadsPending;
 
   // Helper function to refresh dashboard data (memoized to avoid dependency issues)
@@ -145,6 +158,25 @@ export default function DashboardHomePage() {
       setIsLeadsPending(false);
     }
   }, []);
+
+  const fetchTasks = React.useCallback(async () => {
+    setTasksLoading(true);
+    setTasksError(null);
+
+    try {
+      const response = await client.get(endpoints.followups);
+      const followUps = extractFollowUps(response?.data);
+      const mappedTasks = mapFollowUpsToTasks(followUps);
+      setTasks(mappedTasks);
+    } catch (error) {
+      console.error('Failed to fetch follow-ups for dashboard:', error);
+      const apiError = error as ApiError;
+      setTasksError(apiError.response?.data?.message || 'Unable to load follow-ups.');
+      setTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [organizationId]);
 
   const fetchAnalyticsOverview = React.useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -230,34 +262,78 @@ export default function DashboardHomePage() {
     fetchAnalyticsOverview();
   }, [fetchAnalyticsOverview]);
 
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
   // Check WhatsApp and Telegram connection status
   useEffect(() => {
-    const checkIntegrationStatus = async () => {
-      try {
-        setIntegrationLoading(true);
+    const parseIntegrationFlag = (input: unknown): boolean => {
+      if (typeof input === 'boolean') {
+        return input;
+      }
+      if (!input || typeof input !== 'object') {
+        return false;
+      }
+      const record = input as Record<string, unknown>;
+      if (typeof record.connected === 'boolean') {
+        return record.connected;
+      }
+      if (typeof record.enabled === 'boolean') {
+        return record.enabled;
+      }
+      if (Array.isArray(record.connections)) {
+        return record.connections.length > 0;
+      }
+      return false;
+    };
 
-        // Check WhatsApp status
-        try {
-          const whatsappResp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
-          const whatsappPayload = whatsappResp?.data?.data || {};
-          setWhatsappConnected(!!whatsappPayload?.connected);
-        } catch (error) {
-          console.error('Failed to check WhatsApp status:', error);
-          setWhatsappConnected(false);
+    const checkIntegrationStatus = async () => {
+      setIntegrationLoading(true);
+      let nextWhatsappConnected = false;
+      let nextTelegramConnected = false;
+
+      try {
+        const [whatsappResult, orgResult] = await Promise.allSettled([
+          client.get('/provider/whatsapp/status'),
+          organizationId ? client.get(endpoints.org(organizationId)) : Promise.resolve(null),
+        ]);
+
+        if (whatsappResult.status === 'fulfilled') {
+          const payload = whatsappResult.value?.data?.data ?? whatsappResult.value?.data;
+          nextWhatsappConnected = parseIntegrationFlag(payload);
+        } else {
+          console.error('Failed to check WhatsApp status:', whatsappResult.reason);
         }
 
-        // Check Telegram status (using mock for now since endpoint may not exist)
-        // TODO: Replace with actual Telegram status endpoint when available
-        setTelegramConnected(!!mockOrganization?.settings?.integrations?.telegram?.botToken);
+        if (orgResult.status === 'fulfilled' && orgResult.value) {
+          const orgResponse = orgResult.value;
+          const orgPayload = orgResponse.data?.data?.org ?? orgResponse.data?.org ?? orgResponse.data;
+          const integrations = orgPayload?.settings?.integrations;
+          if (integrations && typeof integrations === 'object') {
+            const whatsappSettings = (integrations as Record<string, unknown>).whatsapp;
+            const telegramSettings = (integrations as Record<string, unknown>).telegram;
+            if (whatsappSettings) {
+              nextWhatsappConnected = parseIntegrationFlag(whatsappSettings) || nextWhatsappConnected;
+            }
+            if (telegramSettings) {
+              nextTelegramConnected = parseIntegrationFlag(telegramSettings);
+            }
+          }
+        } else if (orgResult.status === 'rejected') {
+          console.error('Failed to load organization settings:', orgResult.reason);
+        }
       } catch (error) {
         console.error('Error checking integration status:', error);
       } finally {
+        setWhatsappConnected(nextWhatsappConnected);
+        setTelegramConnected(nextTelegramConnected);
         setIntegrationLoading(false);
       }
     };
 
     checkIntegrationStatus();
-  }, [apiRoot]);
+  }, [organizationId]);
 
   // Fetch actual leads and threads counts
   useEffect(() => {
@@ -593,14 +669,25 @@ export default function DashboardHomePage() {
             </Button>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {todayTasks.length === 0 ? (
+            {tasksLoading ? (
+              <div className='space-y-3'>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={`dashboard-task-skeleton-${index}`} className='flex items-center justify-between'>
+                    <Skeleton className='h-4 w-40' />
+                    <Skeleton className='h-5 w-16 rounded-full' />
+                  </div>
+                ))}
+              </div>
+            ) : tasksError ? (
+              <p className='text-sm text-destructive text-center py-4'>{tasksError}</p>
+            ) : todayTasks.length === 0 ? (
               <p className='text-sm text-muted-foreground text-center py-4'>No tasks scheduled for today</p>
             ) : (
               todayTasks.slice(0, 3).map((task) => (
                 <div key={task.id} className='flex items-center justify-between'>
                   <div className='space-y-1'>
                     <div className='font-medium'>{task.title}</div>
-                    <div className='text-sm text-muted-foreground'>{task.type}</div>
+                    <div className='text-sm text-muted-foreground capitalize'>{task.type.toLowerCase()}</div>
                   </div>
                   <Badge variant={task.priority === 'HIGH' ? 'destructive' : task.priority === 'MEDIUM' ? 'default' : 'secondary'}>
                     {task.priority}
@@ -622,7 +709,7 @@ export default function DashboardHomePage() {
                 <CheckSquare className='h-4 w-4 text-muted-foreground' />
                 <span className='text-sm'>Tasks Due Today</span>
               </div>
-              <Badge variant='outline'>{todayTasks.length}</Badge>
+              <Badge variant='outline'>{renderTaskMetric(todayTasks.length)}</Badge>
             </div>
 
             <div className='flex items-center justify-between'>
@@ -630,7 +717,15 @@ export default function DashboardHomePage() {
                 <Calendar className='h-4 w-4 text-destructive' />
                 <span className='text-sm'>Overdue Tasks</span>
               </div>
-              <Badge variant='destructive'>{overdueTasks.length}</Badge>
+              <Badge variant='destructive'>{renderTaskMetric(overdueTasks.length)}</Badge>
+            </div>
+
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <Clock className='h-4 w-4 text-muted-foreground' />
+                <span className='text-sm'>Upcoming Tasks</span>
+              </div>
+              <Badge variant='outline'>{renderTaskMetric(upcomingTasks.length)}</Badge>
             </div>
 
             <div className='flex items-center justify-between'>

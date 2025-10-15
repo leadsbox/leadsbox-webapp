@@ -35,6 +35,7 @@ export const endpoints = {
   orgInvite: (orgId: string) => `/orgs/${orgId}/invitations`,
   orgInvitePreview: (token: string) => `/orgs/invitations/${token}`,
   orgInviteAccept: (token: string) => `/orgs/invitations/${token}/accept`,
+  org: (orgId: string) => `/orgs/${orgId}`,
 
   // Leads
   leads: '/leads',
