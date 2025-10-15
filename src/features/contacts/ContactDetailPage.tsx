@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { toast } from '../../hooks/use-toast';
+import { notify } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 import { LeadLabel, leadLabelUtils } from '../../types';
 
@@ -72,19 +72,19 @@ const ContactDetailPage: React.FC = () => {
         if (contactData) {
           setContact(contactData);
         } else {
-          toast({
-            title: 'Error',
-            description: 'Contact not found',
-            variant: 'destructive',
+          notify.error({
+            key: `contact:${contactId}:missing`,
+            title: 'Contact not found',
+            description: 'We could not locate that contact record.',
           });
           navigate('/contacts');
         }
       } catch (error) {
         console.error('Error loading contact:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load contact details',
-          variant: 'destructive',
+        notify.error({
+          key: `contact:${contactId}:load-error`,
+          title: 'Unable to load contact',
+          description: 'Please refresh and try again.',
         });
       } finally {
         setIsLoading(false);
@@ -131,16 +131,17 @@ const ContactDetailPage: React.FC = () => {
       setIsEditing(false);
       setEditForm({});
 
-      toast({
-        title: 'Success',
-        description: 'Contact updated successfully',
+      notify.success({
+        key: `contact:${contact.id}:updated`,
+        title: 'Contact updated',
+        description: 'Changes saved successfully.',
       });
     } catch (error) {
       console.error('Error updating contact:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update contact',
-        variant: 'destructive',
+      notify.error({
+        key: `contact:${contact.id}:update-error`,
+        title: 'Unable to update contact',
+        description: 'Please try again shortly.',
       });
     } finally {
       setIsSaving(false);

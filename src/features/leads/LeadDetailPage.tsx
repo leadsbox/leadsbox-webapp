@@ -27,7 +27,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { toast } from '../../hooks/use-toast';
+import { notify } from '@/lib/toast';
 import { AxiosError } from 'axios';
 import { Skeleton } from '../../components/ui/skeleton';
 
@@ -405,10 +405,10 @@ const LeadDetailPage: React.FC = () => {
 
           setLead(mappedLead);
         } else {
-          toast({
-            title: 'Error',
-            description: 'Lead not found',
-            variant: 'destructive',
+          notify.error({
+            key: `lead:${leadId ?? 'unknown'}:missing`,
+            title: 'Lead not found',
+            description: 'Unable to locate that lead record.',
           });
           navigate('/leads');
         }
@@ -416,10 +416,10 @@ const LeadDetailPage: React.FC = () => {
         console.error('Error loading lead:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to load lead details';
 
-        toast({
-          title: 'Error',
+        notify.error({
+          key: `lead:${leadId ?? 'unknown'}:load-error`,
+          title: 'Unable to load lead',
           description: errorMessage,
-          variant: 'destructive',
         });
 
         // Navigate back to leads list
@@ -465,10 +465,10 @@ const LeadDetailPage: React.FC = () => {
 
         if (emailTrimmed) {
           if (!/.+@.+\..+/.test(emailTrimmed)) {
-            toast({
+            notify.warning({
+              key: 'lead:update:invalid-email',
               title: 'Invalid email',
               description: 'Please enter a valid email address.',
-              variant: 'destructive',
             });
             setIsSaving(false);
             return;
@@ -501,16 +501,17 @@ const LeadDetailPage: React.FC = () => {
       setIsEditing(false);
       setEditForm({});
 
-      toast({
-        title: 'Success',
-        description: 'Lead and contact updated successfully',
+      notify.success({
+        key: `lead:${lead.id}:updated`,
+        title: 'Lead updated',
+        description: 'Lead and contact updated successfully.',
       });
     } catch (error) {
       console.error('Error updating lead:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update lead',
-        variant: 'destructive',
+      notify.error({
+        key: `lead:${lead?.id ?? 'unknown'}:update-error`,
+        title: 'Failed to update lead',
+        description: 'Please try saving again in a moment.',
       });
     } finally {
       setIsSaving(false);
@@ -524,19 +525,20 @@ const LeadDetailPage: React.FC = () => {
       // Try to archive the lead instead of deleting
       await client.put(endpoints.archiveLead(lead.id), { archived: true });
 
-      toast({
-        title: 'Success',
-        description: 'Lead archived successfully',
+      notify.success({
+        key: `lead:${lead.id}:archived`,
+        title: 'Lead archived',
+        description: 'The lead is now hidden but its history is preserved.',
       });
 
       // Navigate back to leads list
       navigate('/dashboard/leads');
     } catch (error) {
       console.error('Error archiving lead:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to archive lead',
-        variant: 'destructive',
+      notify.error({
+        key: `lead:${lead.id}:archive-error`,
+        title: 'Failed to archive lead',
+        description: 'Please try again after refreshing.',
       });
     }
   };
@@ -546,10 +548,10 @@ const LeadDetailPage: React.FC = () => {
 
     // Check if lead ID is valid before attempting deletion
     if (!lead.id || lead.id === 'undefined') {
-      toast({
-        title: 'Error',
-        description: 'Cannot delete lead: Invalid lead ID. Please refresh the page and try again.',
-        variant: 'destructive',
+      notify.error({
+        key: 'lead:delete:invalid-id',
+        title: 'Cannot delete lead',
+        description: 'Invalid lead ID. Please refresh and try again.',
       });
       return;
     }
@@ -589,9 +591,9 @@ const LeadDetailPage: React.FC = () => {
       }
 
       if (deleteSuccess) {
-        toast({
-          title: 'Success',
-          description: 'Lead deleted successfully',
+        notify.success({
+          key: `lead:${lead.id}:deleted`,
+          title: 'Lead deleted',
         });
 
         // Navigate back to leads list
@@ -635,10 +637,10 @@ const LeadDetailPage: React.FC = () => {
         errorDescription = 'An unexpected error occurred while trying to delete the record.';
       }
 
-      toast({
+      notify.error({
+        key: `lead:${lead.id}:delete-error`,
         title: errorMessage,
-        description: errorDescription,
-        variant: 'destructive',
+        description: errorDescription || 'An unexpected error occurred while trying to delete the record.',
       });
     }
   };
@@ -648,8 +650,9 @@ const LeadDetailPage: React.FC = () => {
       const whatsappUrl = `https://web.whatsapp.com/send?phone=${lead.phone}&text=`;
       window.open(whatsappUrl, '_blank');
     } else if (lead.providerId) {
-      toast({
-        title: 'WhatsApp Chat',
+      notify.info({
+        key: `lead:${lead.id}:whatsapp-provider`,
+        title: 'WhatsApp chat',
         description: `Opening chat for provider ID: ${lead.providerId}`,
       });
     }

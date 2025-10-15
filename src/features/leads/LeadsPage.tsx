@@ -45,7 +45,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { toast } from '../../hooks/use-toast';
+import { notify } from '@/lib/toast';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 
@@ -378,10 +378,10 @@ const LeadsPage: React.FC = () => {
         // Navigate to inbox with this conversation selected
         window.location.href = `/dashboard/inbox?conversation=${conversationId}`;
       } else {
-        toast({
+        notify.warning({
+          key: `leads:whatsapp:${lead.id}:missing`,
           title: 'Conversation not found',
           description: 'Unable to locate the original WhatsApp conversation.',
-          variant: 'destructive',
         });
       }
     }

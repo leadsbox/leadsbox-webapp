@@ -16,7 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
-import { toast } from '@/hooks/use-toast';
+import { notify } from '@/lib/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const PIPELINE_COLUMNS: Array<{ key: LeadLabel; title: string; color: string }> = [
@@ -364,10 +364,10 @@ const PipelinePage: React.FC = () => {
         return 'Try refreshing the page.';
       };
 
-      toast({
+      notify.error({
+        key: 'pipeline:load:error',
         title: 'Unable to load pipeline',
         description: getErrorMessage(error),
-        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -473,7 +473,8 @@ const PipelinePage: React.FC = () => {
         note: note && note.trim().length > 0 ? note.trim() : undefined,
       });
 
-      toast({
+      notify.success({
+        key: `pipeline:lead:${draggedLead.id}:moved`,
         title: 'Lead updated',
         description: `Moved ${draggedLead.name} to ${leadLabelUtils.getDisplayName(targetColumn)}`,
       });
@@ -498,10 +499,10 @@ const PipelinePage: React.FC = () => {
         errorMessage = respMessage || topMessage || errorMessage;
       }
 
-      toast({
+      notify.error({
+        key: `pipeline:lead:${draggedLead.id}:move-error`,
         title: 'Failed to move lead',
         description: errorMessage,
-        variant: 'destructive',
       });
     }
   };
