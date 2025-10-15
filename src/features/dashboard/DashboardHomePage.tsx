@@ -443,12 +443,12 @@ export default function DashboardHomePage() {
             />
             <div className='flex items-center gap-2 px-2 py-1 rounded-full text-xs border'>
               <div
-                className={`w-2 h-2 rounded-full ${analyticsError ? 'bg-red-500' : analyticsLoading ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}
+                className={`w-2 h-2 rounded-full ${analyticsError ? 'bg-red-500' : analyticsLoading ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`}
               ></div>
               <span
                 className={analyticsError ? 'text-red-600' : analyticsLoading ? 'text-blue-600' : 'text-emerald-700'}
               >
-                {analyticsError ? 'API error' : analyticsLoading ? 'Refreshing…' : 'HTTP API'}
+                {analyticsError ? ' Not Connected' : analyticsLoading ? 'Refreshing…' : 'Connected'}
               </span>
             </div>
           </div>
