@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { ArrowUpDown, CheckCircle2, Clock, MessageSquare, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
@@ -171,7 +171,11 @@ const AutomationsPage: React.FC = () => {
       setTemplates([]);
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load templates.';
-      toast.error(message);
+      notify.error({
+        key: 'automations:templates:load',
+        title: 'Unable to load templates',
+        description: message,
+      });
     } finally {
       setTemplatesLoading(false);
     }
@@ -187,7 +191,11 @@ const AutomationsPage: React.FC = () => {
       setFollowUps([]);
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load follow-ups.';
-      toast.error(message);
+      notify.error({
+        key: 'automations:followups:load',
+        title: 'Unable to load follow-ups',
+        description: message,
+      });
     } finally {
       setFollowUpsLoading(false);
     }
@@ -205,7 +213,11 @@ const AutomationsPage: React.FC = () => {
       setConversations([]);
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load conversations.';
-      toast.error(message);
+      notify.error({
+        key: 'automations:conversations:load',
+        title: 'Unable to load conversations',
+        description: message,
+      });
     } finally {
       setConversationsLoading(false);
     }
@@ -257,12 +269,20 @@ const AutomationsPage: React.FC = () => {
     try {
       const status = resolveTemplateStatus(template.status);
       if (status === 'APPROVED' || status === 'PENDING_APPROVAL') {
-        toast.info('Template is already submitted.');
+        notify.info({
+          key: `automations:template:${template.id}:submitted`,
+          title: 'Template already submitted',
+          description: 'This template is awaiting approval or already approved.',
+        });
         return;
       }
       const res = await client.post(endpoints.submitTemplate, { templateId: template.id });
       const updated = extractTemplates(res.data).find((candidate) => candidate.id === template.id);
-      toast.success('Template submitted to WhatsApp.');
+      notify.success({
+        key: `automations:template:${template.id}:submit-success`,
+        title: 'Template submitted',
+        description: 'We sent your template to WhatsApp for review.',
+      });
       if (updated) {
         setTemplates((current) => current.map((item) => (item.id === template.id ? updated : item)));
       } else {
@@ -271,7 +291,11 @@ const AutomationsPage: React.FC = () => {
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Submission failed.';
-      toast.error(message);
+      notify.error({
+        key: `automations:template:${template.id}:submit-error`,
+        title: 'Unable to submit template',
+        description: message,
+      });
     }
   };
 
@@ -281,20 +305,31 @@ const AutomationsPage: React.FC = () => {
       const refreshed = (res.data?.data as Template) ?? (res.data as Template) ?? null;
       if (refreshed) {
         setTemplates((current) => current.map((item) => (item.id === refreshed.id ? refreshed : item)));
-        toast.success('Template status updated.');
+        notify.success({
+          key: `automations:template:${template.id}:refresh`,
+          title: 'Template status updated',
+        });
       } else {
         await loadTemplates();
       }
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to refresh status.';
-      toast.error(message);
+      notify.error({
+        key: `automations:template:${template.id}:refresh-error`,
+        title: 'Unable to refresh status',
+        description: message,
+      });
     }
   };
 
   const openFollowUpModal = (mode: 'create' | 'edit', followUp?: FollowUpRule | null) => {
     if (!hasOrgContext) {
-      toast.error('Missing user or organization context.');
+      notify.error({
+        key: 'automations:followup:context',
+        title: 'Missing organization context',
+        description: 'Select an organization before scheduling follow-ups.',
+      });
       return;
     }
     setFollowUpMode(mode);
@@ -312,14 +347,21 @@ const AutomationsPage: React.FC = () => {
 
   const cancelFollowUp = async (followUp: FollowUpRule) => {
     if (followUp.status !== 'SCHEDULED') {
-      toast.info('Only scheduled follow-ups can be cancelled.');
+      notify.info({
+        key: `automations:followup:${followUp.id}:not-cancellable`,
+        title: 'Cannot cancel follow-up',
+        description: 'Only scheduled follow-ups can be cancelled.',
+      });
       return;
     }
     if (!window.confirm('Cancel this follow-up?')) return;
     try {
       const res = await client.post(endpoints.followupCancel(followUp.id));
       const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
-      toast.success('Follow-up cancelled.');
+      notify.success({
+        key: `automations:followup:${followUp.id}:cancelled`,
+        title: 'Follow-up cancelled',
+      });
       if (payload) {
         await loadFollowUps();
       } else {
@@ -328,7 +370,11 @@ const AutomationsPage: React.FC = () => {
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to cancel follow-up.';
-      toast.error(message);
+      notify.error({
+        key: `automations:followup:${followUp.id}:cancel-error`,
+        title: 'Unable to cancel follow-up',
+        description: message,
+      });
     }
   };
 
@@ -344,13 +390,20 @@ const AutomationsPage: React.FC = () => {
       const exists = current.some((flow) => flow.id === saved.id);
       return exists ? current.map((flow) => (flow.id === saved.id ? saved : flow)) : [...current, saved];
     });
-    toast.success('Automation saved.');
+    notify.success({
+      key: `automations:flow:${saved.id}:saved`,
+      title: 'Automation saved',
+    });
   };
 
   const handleFlowToggle = (flow: AutomationFlow) => {
     const validation = validateFlow(flow);
     if (!validation.ok) {
-      toast.error(validation.issues[0] ?? 'Please fix flow validation issues before turning it on.');
+      notify.error({
+        key: `automations:flow:${flow.id}:toggle-error`,
+        title: 'Cannot activate flow',
+        description: validation.issues[0] ?? 'Please fix flow validation issues before turning it on.',
+      });
       return;
     }
     setFlows((current) =>
@@ -377,13 +430,19 @@ const AutomationsPage: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
     setFlows((current) => [...current, copy]);
-    toast.success('Automation duplicated.');
+    notify.success({
+      key: `automations:flow:${flow.id}:duplicated`,
+      title: 'Automation duplicated',
+    });
   };
 
   const handleFlowDelete = (flow: AutomationFlow) => {
     if (!window.confirm('Delete this automation? This cannot be undone.')) return;
     setFlows((current) => current.filter((candidate) => candidate.id !== flow.id));
-    toast.info('Automation deleted.');
+    notify.info({
+      key: `automations:flow:${flow.id}:deleted`,
+      title: 'Automation deleted',
+    });
   };
 
   const sortedTemplates = useMemo(() => {

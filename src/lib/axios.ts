@@ -1,8 +1,24 @@
 // Axios client setup for LeadsBox Dashboard
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { toast } from 'react-toastify';
 import { API_BASE, STATUS_CODES, ERROR_MESSAGES, CACHE_KEYS } from '../api/config';
+import { notify } from '@/lib/toast';
+
+const asMessage = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+};
+
+const toErrorDetail = (fallback: string, ...candidates: Array<unknown>): string => {
+  for (const candidate of candidates) {
+    const message = asMessage(candidate);
+    if (message) {
+      return message;
+    }
+  }
+  return fallback;
+};
 
 // Create axios instance
 const axiosClient: AxiosInstance = axios.create({
@@ -73,46 +89,90 @@ axiosClient.interceptors.response.use(
               originalRequest.headers.Authorization = `Bearer ${token}`;
               return axiosClient(originalRequest);
             } catch (refreshError) {
-              toast.error(ERROR_MESSAGES.UNAUTHORIZED);
+              notify.error({
+                key: 'http:401',
+                title: 'Session expired',
+                description: ERROR_MESSAGES.UNAUTHORIZED,
+              });
               window.location.href = '/login';
             }
           } else {
-            toast.error(ERROR_MESSAGES.UNAUTHORIZED);
+            notify.error({
+              key: 'http:401',
+              title: 'Session expired',
+              description: ERROR_MESSAGES.UNAUTHORIZED,
+            });
             window.location.href = '/login';
           }
           break;
           
         case STATUS_CODES.FORBIDDEN:
-          toast.error(data?.message || ERROR_MESSAGES.FORBIDDEN);
+          notify.error({
+            key: 'http:403',
+            title: 'Access denied',
+            description: toErrorDetail(ERROR_MESSAGES.FORBIDDEN, data?.message),
+          });
           break;
           
         case STATUS_CODES.NOT_FOUND:
-          toast.error(data?.message || ERROR_MESSAGES.NOT_FOUND);
+          notify.error({
+            key: 'http:404',
+            title: 'Not found',
+            description: toErrorDetail(ERROR_MESSAGES.NOT_FOUND, data?.message),
+          });
           break;
           
         case STATUS_CODES.UNPROCESSABLE_ENTITY:
           if (data?.errors && Array.isArray(data.errors)) {
-            data.errors.forEach((err: string) => toast.error(err));
+            const merged = data.errors
+              .map((err: unknown) => asMessage(err))
+              .filter((message): message is string => Boolean(message))
+              .join('; ');
+            notify.warning({
+              key: 'http:422',
+              title: 'Check your request',
+              description: merged || toErrorDetail(ERROR_MESSAGES.VALIDATION_ERROR, data?.message),
+            });
           } else {
-            toast.error(data?.message || ERROR_MESSAGES.VALIDATION_ERROR);
+            notify.warning({
+              key: 'http:422',
+              title: 'Check your request',
+              description: toErrorDetail(ERROR_MESSAGES.VALIDATION_ERROR, data?.message),
+            });
           }
           break;
           
         case STATUS_CODES.INTERNAL_SERVER_ERROR:
         case STATUS_CODES.BAD_GATEWAY:
         case STATUS_CODES.SERVICE_UNAVAILABLE:
-          toast.error(ERROR_MESSAGES.SERVER_ERROR);
+          notify.error({
+            key: 'http:5xx',
+            title: 'Server issue',
+            description: ERROR_MESSAGES.SERVER_ERROR,
+          });
           break;
           
         default:
-          toast.error(data?.message || 'An unexpected error occurred');
+          notify.error({
+            key: `http:${status ?? 'error'}`,
+            title: 'Request failed',
+            description: toErrorDetail('An unexpected error occurred', data?.message),
+          });
       }
     } else if (request) {
       // Network error
-      toast.error(ERROR_MESSAGES.NETWORK_ERROR);
+      notify.error({
+        key: 'http:network',
+        title: 'Network issue',
+        description: ERROR_MESSAGES.NETWORK_ERROR,
+      });
     } else {
       // Something else happened
-      toast.error('Request setup failed');
+      notify.error({
+        key: 'http:request-setup',
+        title: 'Request setup failed',
+        description: 'We could not prepare your request. Please try again.',
+      });
     }
     
     return Promise.reject(error);

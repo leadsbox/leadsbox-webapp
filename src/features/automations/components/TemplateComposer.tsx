@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { Template, TemplateCategory } from '@/types';
@@ -131,19 +131,35 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     const detected = detectVariables(form.body || '');
     setForm((prev) => ({ ...prev, variables: detected }));
     if (!detected.length) {
-      toast.info('No variables detected. Add {{name}} style placeholders to personalize messages.');
+      notify.info({
+        key: 'templates:composer:no-variables',
+        title: 'No placeholders found',
+        description: 'Add {{name}} style placeholders to personalize messages.',
+      });
     } else {
-      toast.success(`Detected ${detected.length} variable${detected.length === 1 ? '' : 's'}.`);
+      notify.success({
+        key: 'templates:composer:variables-detected',
+        title: 'Placeholders detected',
+        description: `Detected ${detected.length} variable${detected.length === 1 ? '' : 's'}.`,
+      });
     }
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast.error('Name is required.');
+      notify.warning({
+        key: 'templates:composer:name-required',
+        title: 'Name required',
+        description: 'Give your template a name.',
+      });
       return;
     }
     if (!form.body.trim()) {
-      toast.error('Template body cannot be empty.');
+      notify.warning({
+        key: 'templates:composer:body-required',
+        title: 'Message required',
+        description: 'Add the template body before saving.',
+      });
       return;
     }
 
@@ -162,11 +178,17 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
       if (isEditing && template) {
         const res = await client.put(`${endpoints.templates}/${template.id}`, payload);
         saved = (res.data?.data as Template) ?? (res.data as Template) ?? null;
-        toast.success('Template updated.');
+        notify.success({
+          key: `templates:${template.id}:updated`,
+          title: 'Template updated',
+        });
       } else {
         const res = await client.post(endpoints.templates, payload);
         saved = (res.data?.data as Template) ?? (res.data as Template) ?? null;
-        toast.success('Template created.');
+        notify.success({
+          key: 'templates:create:success',
+          title: 'Template created',
+        });
       }
 
       if (saved) {
@@ -183,7 +205,11 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
       ) {
         message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
       }
-      toast.error(message);
+      notify.error({
+        key: 'templates:composer:save-error',
+        title: 'Unable to save template',
+        description: message,
+      });
     } finally {
       setBusy(false);
     }
@@ -195,7 +221,11 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     try {
       const res = await client.post(endpoints.submitTemplate, { templateId: template.id });
       const updated = (res.data?.data as Template) ?? (res.data as Template) ?? null;
-      toast.success('Submitted to WhatsApp for approval.');
+      notify.success({
+        key: `templates:${template.id}:submitted`,
+        title: 'Submitted for approval',
+        description: 'WhatsApp will review your template shortly.',
+      });
       if (updated) {
         onSaved?.(updated, { mode: 'update' });
         onOpenChange(false);
@@ -210,7 +240,11 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
       ) {
         message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
       }
-      toast.error(message);
+      notify.error({
+        key: `templates:${template.id}:submit-error`,
+        title: 'Unable to submit template',
+        description: message,
+      });
     } finally {
       setBusy(false);
     }
@@ -223,7 +257,10 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     setBusy(true);
     try {
       await client.delete(`${endpoints.templates}/${template.id}`);
-      toast.success('Template deleted.');
+      notify.success({
+        key: `templates:${template.id}:deleted`,
+        title: 'Template deleted',
+      });
       onDeleted?.(template.id);
       onOpenChange(false);
     } catch (error: unknown) {
@@ -236,7 +273,11 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
       ) {
         message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
       }
-      toast.error(message);
+      notify.error({
+        key: `templates:${template?.id ?? 'delete'}:error`,
+        title: 'Unable to delete template',
+        description: message,
+      });
     } finally {
       setBusy(false);
     }

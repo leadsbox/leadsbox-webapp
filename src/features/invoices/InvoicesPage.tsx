@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Plus, Save } from 'lucide-react';
 import client, { getOrgId } from '@/api/client';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 
 type Item = { name: string; qty: number; unitPrice: number };
 
@@ -33,7 +33,11 @@ const InvoicesPage: React.FC = () => {
   const createInvoice = async () => {
     const cleanItems = items.filter((it) => it.name && it.qty > 0 && it.unitPrice >= 0);
     if (cleanItems.length === 0) {
-      toast.error('Add at least one valid item');
+      notify.warning({
+        key: 'invoice:create:no-items',
+        title: 'Add invoice items',
+        description: 'Include at least one line item with quantity and price before saving.',
+      });
       return;
     }
     setCreating(true);
@@ -46,10 +50,17 @@ const InvoicesPage: React.FC = () => {
       const payload = res?.data?.data || {};
       setLastInvoice(payload.invoice || null);
       setHtml(payload.html || '');
-      toast.success('Invoice created');
+      notify.success({
+        key: 'invoice:create:success',
+        title: 'Invoice created',
+      });
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
-      toast.error(e?.response?.data?.message || 'Failed to create invoice');
+      notify.error({
+        key: 'invoice:create:error',
+        title: 'Unable to create invoice',
+        description: e?.response?.data?.message || e?.message || 'Please try again in a moment.',
+      });
     } finally {
       setCreating(false);
     }
@@ -61,7 +72,11 @@ const InvoicesPage: React.FC = () => {
     try {
       const orgId = getOrgId();
       if (!orgId) {
-        toast.error('Organization ID not found');
+        notify.error({
+          key: 'invoice:verify:no-org',
+          title: 'Missing organization',
+          description: 'Select an organization before verifying payments.',
+        });
         return;
       }
       const res = await client.post(`/invoices/${lastInvoice.code}/verify-payment`, { orgId });

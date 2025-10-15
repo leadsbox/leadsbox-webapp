@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Copy, Edit, Plus, Trash2, Users } from 'lucide-react';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 
 interface Props {
   selectedOrgId: string;
@@ -83,15 +83,24 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
 
   const inviteMember = async () => {
     if (!selectedOrgId) {
-      toast.error('Select an organization first');
+      notify.warning({
+        key: 'settings:members:select-org',
+        title: 'Select an organization',
+        description: 'Choose an organization before inviting members.',
+      });
       return;
     }
-    if (!inviteEmail.trim()) {
-      toast.error('Enter member email');
+    const email = inviteEmail.trim();
+    if (!email) {
+      notify.warning({
+        key: 'settings:members:email-required',
+        title: 'Email required',
+        description: 'Enter the member’s email address to send an invite.',
+      });
       return;
     }
     try {
-      await client.post(`/orgs/${selectedOrgId}/members`, { email: inviteEmail.trim(), role: inviteRole });
+      await client.post(`/orgs/${selectedOrgId}/members`, { email, role: inviteRole });
       setInviteEmail('');
       setInviteRole('MEMBER');
       setInviteLink('');
@@ -107,15 +116,27 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
         role: m.role,
         addedAt: m.addedAt,
       })) as MemberVM[]);
-      toast.success('Member added');
+      notify.success({
+        key: 'settings:members:added',
+        title: 'Member invited',
+        description: `${email} will receive an invitation to join.`,
+      });
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to add member');
+      notify.error({
+        key: 'settings:members:add-error',
+        title: 'Unable to add member',
+        description: e?.response?.data?.message || e?.message || 'Please try again.',
+      });
     }
   };
 
   const generateInvite = async () => {
     if (!selectedOrgId) {
-      toast.error('Select an organization first');
+      notify.warning({
+        key: 'settings:members:select-org',
+        title: 'Select an organization',
+        description: 'Choose an organization before creating an invite link.',
+      });
       return;
     }
 
@@ -128,12 +149,24 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
       const link = res?.data?.data?.inviteUrl as string | undefined;
       if (link) {
         setInviteLink(link);
-        toast.success('Invite link generated');
+        notify.success({
+          key: 'settings:members:invite-link',
+          title: 'Invite link ready',
+          description: 'Share this link with teammates to let them join.',
+        });
       } else {
-        toast.error('Failed to generate invite link');
+        notify.error({
+          key: 'settings:members:invite-link-error',
+          title: 'Unable to generate invite link',
+          description: 'Please try again.',
+        });
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to generate invite link');
+      notify.error({
+        key: 'settings:members:invite-link-error',
+        title: 'Unable to generate invite link',
+        description: e?.response?.data?.message || e?.message || 'Please try again.',
+      });
     } finally {
       setGeneratingInvite(false);
     }
@@ -143,9 +176,16 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
     if (!inviteLink) return;
     try {
       await navigator.clipboard.writeText(inviteLink);
-      toast.success('Invite link copied');
+      notify.success({
+        key: 'settings:members:invite-link-copied',
+        title: 'Invite link copied',
+      });
     } catch (e) {
-      toast.error('Unable to copy invite link');
+      notify.error({
+        key: 'settings:members:invite-link-copy-error',
+        title: 'Unable to copy invite link',
+        description: 'Copy it manually if the clipboard is unavailable.',
+      });
     }
   };
 
@@ -154,9 +194,16 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
     try {
       await client.patch(`/orgs/${selectedOrgId}/members/${userId}/role`, { role });
       setMembers((prev) => prev.map((m) => (m.userId === userId ? { ...m, role } : m)));
-      toast.success('Member role updated');
+      notify.success({
+        key: `settings:members:role:${userId}`,
+        title: 'Member role updated',
+      });
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to update role');
+      notify.error({
+        key: 'settings:members:role-error',
+        title: 'Unable to update role',
+        description: e?.response?.data?.message || e?.message || 'Please try again.',
+      });
     }
   };
 
@@ -165,9 +212,16 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
     try {
       await client.delete(`/orgs/${selectedOrgId}/members/${userId}`);
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
-      toast.success('Member removed');
+      notify.success({
+        key: `settings:members:removed:${userId}`,
+        title: 'Member removed',
+      });
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to remove member');
+      notify.error({
+        key: 'settings:members:remove-error',
+        title: 'Unable to remove member',
+        description: e?.response?.data?.message || e?.message || 'Please try again.',
+      });
     }
   };
 

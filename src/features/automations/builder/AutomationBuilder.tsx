@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { DndContext, DragEndEvent, DragMoveEvent, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import Toolbar from './Toolbar';
 import Palette from './Palette';
 import Canvas from './Canvas';
@@ -213,21 +213,26 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({ initialFlow, onCl
   const handleValidate = () => {
     const result = validateFlow(flow);
     if (result.ok) {
-      toast.success('Automation looks good!');
+      notify.success({
+        key: 'automations:builder:valid',
+        title: 'Automation looks good',
+      });
     } else {
-      toast.error(
-        <div className='space-y-1'>
-          {result.issues.map((issue) => (
-            <div key={issue} className='text-sm'>• {issue}</div>
-          ))}
-        </div>
-      );
+      notify.error({
+        key: 'automations:builder:invalid',
+        title: 'Fix automation issues',
+        description: result.issues.join(' • '),
+      });
     }
     return result;
   };
 
   const handlePreview = () => {
-    toast.info('Preview coming soon — we will simulate the journey here.');
+    notify.info({
+      key: 'automations:builder:preview',
+      title: 'Preview coming soon',
+      description: 'We will simulate the journey here shortly.',
+    });
   };
 
   const persistFlow = (updated: AutomationFlow) => {
@@ -236,7 +241,11 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({ initialFlow, onCl
       : [...storedFlows, updated];
     setStoredFlows(nextCollection);
     onSave?.(updated);
-    toast.success('Automation saved locally.');
+    notify.success({
+      key: 'automations:builder:saved',
+      title: 'Automation saved',
+      description: 'Draft stored locally. Publish when you are ready.',
+    });
   };
 
   const handleSaveDraft = () => {

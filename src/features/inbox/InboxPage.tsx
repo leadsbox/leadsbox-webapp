@@ -30,7 +30,7 @@ import {
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
@@ -272,7 +272,11 @@ const InboxPage: React.FC = () => {
       if (!selectedThread && ui.length > 0) setSelectedThread(ui[0]);
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
-      toast.error(e?.response?.data?.message || 'Failed to load threads');
+      notify.error({
+        key: 'inbox:threads:load',
+        title: 'Unable to load threads',
+        description: e?.response?.data?.message || e?.message || 'Please refresh and try again.',
+      });
       console.error('Threads API Error:', error);
     } finally {
       setLoadingThreads(false);
@@ -289,7 +293,11 @@ const InboxPage: React.FC = () => {
       setTimeout(scrollToBottom, 100);
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
-      toast.error(e?.response?.data?.message || 'Failed to load messages');
+      notify.error({
+        key: 'inbox:messages:load',
+        title: 'Unable to load messages',
+        description: e?.response?.data?.message || e?.message || 'Please refresh and try again.',
+      });
     } finally {
       setLoadingMessages(false);
     }
@@ -398,9 +406,13 @@ const InboxPage: React.FC = () => {
         }
       });
 
-      // Show toast notification if not the current thread
+      // Show notification if not the current thread
       if (selectedThread?.id !== message.threadId) {
-        toast.success(`New message from ${thread.lead.name}`);
+        notify.info({
+          key: `inbox:new-message:${thread.id}`,
+          title: 'New message',
+          description: `Message from ${thread.lead.name || 'a contact'}.`,
+        });
       }
     });
 
@@ -447,7 +459,11 @@ const InboxPage: React.FC = () => {
         return [thread, ...prev];
       });
 
-      toast.success(`New conversation from ${thread.lead.name}`);
+      notify.success({
+        key: `inbox:new-thread:${thread.id}`,
+        title: 'New conversation',
+        description: `${thread.lead.name || 'A contact'} just reached out.`,
+      });
     });
 
     // Handle typing indicators
@@ -541,7 +557,11 @@ const InboxPage: React.FC = () => {
       const orgId = localStorage.getItem('lb_org_id');
 
       if (!token || !orgId) {
-        toast.error('Authentication required. Please log in again.');
+        notify.error({
+          key: 'inbox:send:auth',
+          title: 'Sign in required',
+          description: 'Please sign in again to continue this conversation.',
+        });
         setComposer(messageText);
         return;
       }
@@ -554,7 +574,7 @@ const InboxPage: React.FC = () => {
       // Check the response structure: { message: "Reply sent", data: { ok: true, externalMsgId: "..." } }
       if (response.data && response.data.data && response.data.data.ok) {
         console.log('Message sent via REST API:', response.data);
-        // Success - no toast needed as real-time updates will show the message
+        // Success - no notification needed as real-time updates will show the message
       } else {
         throw new Error(response.data?.message || 'Failed to send message');
       }
@@ -587,7 +607,11 @@ const InboxPage: React.FC = () => {
         userFriendlyMessage = error.message;
       }
 
-      toast.error(userFriendlyMessage);
+      notify.error({
+        key: 'inbox:send:error',
+        title: 'Failed to send message',
+        description: userFriendlyMessage,
+      });
       setComposer(messageText); // Restore message on error
     }
   };
@@ -794,7 +818,11 @@ const InboxPage: React.FC = () => {
       const emailTrimmed = contactForm.email.trim();
       if (emailTrimmed) {
         if (!/.+@.+\..+/.test(emailTrimmed)) {
-          toast.error('Please enter a valid email address.');
+          notify.warning({
+            key: 'inbox:contact:email-invalid',
+            title: 'Email looks invalid',
+            description: 'Enter a valid email address before saving.',
+          });
           setSavingContact(false);
           return;
         }
@@ -802,7 +830,11 @@ const InboxPage: React.FC = () => {
       }
 
       if (Object.keys(payload).length === 0) {
-        toast.info('Update at least one contact field.');
+        notify.info({
+          key: 'inbox:contact:no-update',
+          title: 'No changes detected',
+          description: 'Update at least one contact field to save.',
+        });
         setSavingContact(false);
         return;
       }
@@ -833,10 +865,17 @@ const InboxPage: React.FC = () => {
       }
 
       setEditingContact(false);
-      toast.success('Contact updated successfully');
+      notify.success({
+        key: 'inbox:contact:updated',
+        title: 'Contact updated',
+      });
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
-      toast.error(e?.response?.data?.message || 'Failed to update contact');
+      notify.error({
+        key: 'inbox:contact:update-error',
+        title: 'Unable to update contact',
+        description: e?.response?.data?.message || e?.message || 'Try saving again.',
+      });
     } finally {
       setSavingContact(false);
     }
@@ -1052,7 +1091,11 @@ const InboxPage: React.FC = () => {
                           if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
                             setWhatsappConnectionError(true);
                           }
-                          toast.error(errorMessage);
+                          notify.error({
+                            key: 'inbox:new-chat:error',
+                            title: 'Unable to start chat',
+                            description: errorMessage,
+                          });
                         } finally {
                           setSendingNew(false);
                         }
@@ -1086,7 +1129,11 @@ const InboxPage: React.FC = () => {
                       if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
                         setWhatsappConnectionError(true);
                       }
-                      toast.error(errorMessage);
+                      notify.error({
+                        key: 'inbox:new-chat:error',
+                        title: 'Unable to start chat',
+                        description: errorMessage,
+                      });
                     } finally {
                       setSendingNew(false);
                     }

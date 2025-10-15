@@ -18,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import client, { getOrgId } from '@/api/client';
 import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { FacebookIcon, InstagramIcon, TelegramIcon, WhatsAppIcon } from '@/components/brand-icons';
 import { Loader2 } from 'lucide-react';
 import { Globe } from 'lucide-react';
@@ -47,11 +47,18 @@ export const IntegrationsTab: React.FC = () => {
     const status = searchParams.get('instagram');
     if (status === 'connected') {
       setIgConnected(true);
-      toast.success('Instagram connected');
+      notify.success({
+        key: 'integrations:instagram:connected',
+        title: 'Instagram connected',
+      });
       searchParams.delete('instagram');
       setSearchParams(searchParams, { replace: true });
     } else if (status === 'error') {
-      toast.error('Instagram connection failed');
+      notify.error({
+        key: 'integrations:instagram:error',
+        title: 'Instagram connection failed',
+        description: 'Please retry the connection flow.',
+      });
       searchParams.delete('instagram');
       setSearchParams(searchParams, { replace: true });
     }
@@ -77,19 +84,34 @@ export const IntegrationsTab: React.FC = () => {
               const list = resp?.data?.data?.data || resp?.data?.data || [];
               setBusinesses(Array.isArray(list?.data) ? list.data : list);
             } catch {
-              toast.error('Failed to fetch businesses');
+              notify.error({
+                key: 'integrations:whatsapp:businesses',
+                title: 'Unable to fetch businesses',
+                description: 'Try reconnecting your WhatsApp account.',
+              });
             }
           } catch {
-            toast.error('Failed to verify organization');
+            notify.error({
+              key: 'integrations:whatsapp:verify',
+              title: 'Unable to verify organization',
+              description: 'Please try reconnecting WhatsApp.',
+            });
           }
         })();
       }
-      toast.success('WhatsApp connected');
+      notify.success({
+        key: 'integrations:whatsapp:connected',
+        title: 'WhatsApp connected',
+      });
       searchParams.delete('whatsapp');
       searchParams.delete('waToken');
       setSearchParams(searchParams, { replace: true });
     } else if (status === 'error') {
-      toast.error('WhatsApp connection failed');
+      notify.error({
+        key: 'integrations:whatsapp:error',
+        title: 'WhatsApp connection failed',
+        description: 'Please retry the connect flow.',
+      });
       searchParams.delete('whatsapp');
       setSearchParams(searchParams, { replace: true });
     }
@@ -121,7 +143,11 @@ export const IntegrationsTab: React.FC = () => {
       const list = resp?.data?.data?.wabas || [];
       setWabas(list);
     } catch {
-      toast.error('Failed to fetch WABAs');
+      notify.error({
+        key: 'integrations:whatsapp:wabas',
+        title: 'Unable to fetch WABAs',
+        description: 'Try selecting the business again.',
+      });
     } finally {
       setWaLoading(false);
     }
@@ -135,7 +161,11 @@ export const IntegrationsTab: React.FC = () => {
       const list = resp?.data?.data?.phoneNumbers || [];
       setPhones(list);
     } catch {
-      toast.error('Failed to fetch phone numbers');
+      notify.error({
+        key: 'integrations:whatsapp:phones',
+        title: 'Unable to fetch phone numbers',
+        description: 'Try selecting the WABA again.',
+      });
     } finally {
       setWaLoading(false);
     }
@@ -145,7 +175,11 @@ export const IntegrationsTab: React.FC = () => {
     if (!waToken || !selectedWaba || !selectedPhone) return;
     const organizationId = getOrgId();
     if (!organizationId) {
-      toast.error('Select an organization before linking WhatsApp');
+      notify.warning({
+        key: 'integrations:whatsapp:select-org',
+        title: 'Select an organization',
+        description: 'Choose an organization before linking WhatsApp.',
+      });
       return;
     }
     setWaLoading(true);
@@ -158,9 +192,16 @@ export const IntegrationsTab: React.FC = () => {
       });
       setWaConnected(true);
       setWaToken(null);
-      toast.success('WhatsApp account linked');
+      notify.success({
+        key: 'integrations:whatsapp:linked',
+        title: 'WhatsApp account linked',
+      });
     } catch {
-      toast.error('Failed to link WhatsApp');
+      notify.error({
+        key: 'integrations:whatsapp:link-error',
+        title: 'Unable to link WhatsApp',
+        description: 'Please try again.',
+      });
     } finally {
       setWaLoading(false);
     }
@@ -184,9 +225,16 @@ export const IntegrationsTab: React.FC = () => {
       setSelectedPhone('');
       setConnections([]);
       setDisconnectKey('');
-      toast.success('WhatsApp disconnected');
+      notify.success({
+        key: 'integrations:whatsapp:disconnected',
+        title: 'WhatsApp disconnected',
+      });
     } catch {
-      toast.error('Failed to disconnect WhatsApp');
+      notify.error({
+        key: 'integrations:whatsapp:disconnect-error',
+        title: 'Unable to disconnect WhatsApp',
+        description: 'Please try again.',
+      });
     }
   };
 
@@ -200,13 +248,21 @@ export const IntegrationsTab: React.FC = () => {
       }
       window.location.href = `${apiRoot}/api/provider/whatsapp`;
     } catch {
-      toast.error('Failed to check organizations');
+      notify.error({
+        key: 'integrations:whatsapp:org-check',
+        title: 'Unable to check organizations',
+        description: 'Please refresh and try again.',
+      });
     }
   };
 
   const createOrgAndStart = async () => {
     if (!newOrgName.trim()) {
-      toast.error('Please enter an organization name');
+      notify.warning({
+        key: 'integrations:whatsapp:org-name',
+        title: 'Organization name required',
+        description: 'Enter a name before continuing.',
+      });
       return;
     }
     try {
@@ -216,7 +272,11 @@ export const IntegrationsTab: React.FC = () => {
       setNewOrgName('');
       window.location.href = `${apiRoot}/api/provider/whatsapp`;
     } catch {
-      toast.error('Failed to create organization');
+      notify.error({
+        key: 'integrations:whatsapp:org-create',
+        title: 'Unable to create organization',
+        description: 'Please try again.',
+      });
     }
   };
 
@@ -447,7 +507,17 @@ export const IntegrationsTab: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className='space-y-3'>
-                <Button className='w-full' onClick={() => toast.info('Facebook integration coming soon')} disabled={waLoading}>
+                <Button
+                  className='w-full'
+                  onClick={() =>
+                    notify.info({
+                      key: 'integrations:facebook:coming-soon',
+                      title: 'Coming soon',
+                      description: 'Facebook integration is almost ready.',
+                    })
+                  }
+                  disabled={waLoading}
+                >
                   {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   Connect Facebook
                 </Button>

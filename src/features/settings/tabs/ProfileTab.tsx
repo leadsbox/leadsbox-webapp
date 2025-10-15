@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Save, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import client from '@/api/client';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 
 export const ProfileTab: React.FC = () => {
   const { user, refreshAuth } = useAuth();
@@ -35,14 +35,25 @@ export const ProfileTab: React.FC = () => {
       if (lastName) payload.lastName = lastName;
       if (avatar?.trim()) payload.profileImage = avatar.trim();
       if (Object.keys(payload).length === 0) {
-        toast.info('Nothing to update');
+        notify.info({
+          key: 'settings:profile:no-change',
+          title: 'No changes detected',
+          description: 'Update your name or avatar before saving.',
+        });
         return;
       }
       await client.patch('/user/profile', payload);
-      toast.success('Profile updated');
+      notify.success({
+        key: 'settings:profile:updated',
+        title: 'Profile updated',
+      });
       await refreshAuth();
     } catch (e) {
-      toast.error('Failed to update profile');
+      notify.error({
+        key: 'settings:profile:error',
+        title: 'Unable to update profile',
+        description: 'Please try again shortly.',
+      });
     }
   };
 

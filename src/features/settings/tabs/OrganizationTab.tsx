@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building, Plus, Save } from 'lucide-react';
 import { mockOrganization } from '@/data/mockData';
 import client from '@/api/client';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import { useAuth } from '@/context/AuthContext';
 import type { Org, Organization, OrgSettings } from '@/features/settings/types';
 
@@ -70,10 +70,17 @@ export const OrganizationTab: React.FC<Props> = ({
     setBankLoading(true);
     try {
       await client.post('/settings/bank', bankForm);
-      toast.success('Bank details saved');
+      notify.success({
+        key: 'settings:bank:saved',
+        title: 'Bank details saved',
+      });
     } catch (error) {
       const e = error as AxiosError<{ message?: string }>;
-      toast.error(e.response?.data?.message || 'Failed to save bank details');
+      notify.error({
+        key: 'settings:bank:error',
+        title: 'Unable to save bank details',
+        description: e.response?.data?.message || e?.message || 'Please try again.',
+      });
     } finally {
       setBankLoading(false);
     }
@@ -82,7 +89,11 @@ export const OrganizationTab: React.FC<Props> = ({
   const handleCreateOrganizationWithDetails = async () => {
     const name = createForm.name.trim();
     if (!name) {
-      toast.error('Organization name is required');
+      notify.warning({
+        key: 'settings:organization:create:name-required',
+        title: 'Organization name required',
+        description: 'Enter a name before creating a new organization.',
+      });
       return;
     }
     try {
@@ -98,7 +109,11 @@ export const OrganizationTab: React.FC<Props> = ({
       try {
         if (Object.keys(nextSettings).length > 0) await client.put(`/orgs/${org.id}`, { settings: nextSettings });
       } catch {
-        toast.error('Organization created, but failed to save settings');
+        notify.warning({
+          key: 'settings:organization:create:settings-missed',
+          title: 'Partial setup complete',
+          description: 'Organization created, but we could not save the settings.',
+        });
       }
 
       // update parent state
@@ -118,16 +133,26 @@ export const OrganizationTab: React.FC<Props> = ({
         window.dispatchEvent(new CustomEvent('lb:org-changed'));
       } catch (error) {
         console.error('Error changing organization:', error);
-        // Optionally show a toast message to the user
-        toast.error('Failed to switch organization');
+        notify.error({
+          key: 'settings:organization:switch-error',
+          title: 'Unable to switch organization',
+          description: 'Please refresh and try again.',
+        });
       }
       setOrganization(normalized);
 
       setCreateForm({ name: '', description: '', currency: 'NGN', timezone: 'UTC' });
       setCreateOrgOpen(false);
-      toast.success('Organization created');
+      notify.success({
+        key: 'settings:organization:create:success',
+        title: 'Organization created',
+      });
     } catch (e) {
-      toast.error('Failed to create organization');
+      notify.error({
+        key: 'settings:organization:create:error',
+        title: 'Unable to create organization',
+        description: 'Please try again.',
+      });
     }
   };
 
@@ -155,7 +180,11 @@ export const OrganizationTab: React.FC<Props> = ({
                   setOrg(v);
                   window.dispatchEvent(new CustomEvent('lb:org-changed'));
                 } catch (e) {
-                  toast.error('Failed to switch organization');
+                  notify.error({
+                    key: 'settings:organization:switch-error',
+                    title: 'Unable to switch organization',
+                    description: 'Please refresh and try again.',
+                  });
                 }
                 const sel = orgs.find((o) => String(o.id) === v);
                 if (sel) {

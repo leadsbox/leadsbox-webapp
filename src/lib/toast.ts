@@ -127,7 +127,7 @@ const show = (severity: Severity, options: ToastOptions) => {
     id: key,
     description,
     duration: options.duration ?? DEFAULT_DURATIONS[severity],
-    dismissible: severity !== 'error' || Boolean(action),
+    dismissible: true,
     action: action
       ? {
           label: action.label,

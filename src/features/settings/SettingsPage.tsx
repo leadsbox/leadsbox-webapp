@@ -13,7 +13,7 @@ import NotificationsTab from './tabs/NotificationsTab';
 import IntegrationsTab from './tabs/IntegrationsTab';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 // brand icons imported in child tabs as needed
 
 const SettingsPage: React.FC = () => {
@@ -107,12 +107,19 @@ const SettingsPage: React.FC = () => {
           timezone: organization.settings.timezone,
         },
       });
-      toast.success('Organization updated');
+      notify.success({
+        key: 'settings:organization:save',
+        title: 'Organization updated',
+      });
       // refresh list names
       const next = orgs.map((o) => (o.id === selectedOrgId ? { ...o, name: organization.name } : o));
       setOrgs(next);
     } catch (e) {
-      toast.error('Failed to update organization');
+      notify.error({
+        key: 'settings:organization:error',
+        title: 'Unable to update organization',
+        description: 'Please try again shortly.',
+      });
     }
   };
 

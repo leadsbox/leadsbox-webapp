@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { FollowUpRule, FollowUpStatus, Template } from '@/types';
@@ -185,27 +185,47 @@ const ScheduleFollowUpModal = ({
 
   const handleSubmit = async () => {
     if (!form.conversationId) {
-      toast.error('Choose the conversation to follow up on.');
+      notify.warning({
+        key: 'followups:schedule:conversation',
+        title: 'Choose a conversation',
+        description: 'Select the conversation you want to follow up on.',
+      });
       return;
     }
 
     const scheduleDate = parseDateTimeLocal(form.scheduledTime);
     if (!scheduleDate) {
-      toast.error('Pick a valid date and time.');
+      notify.warning({
+        key: 'followups:schedule:datetime',
+        title: 'Invalid schedule',
+        description: 'Pick a valid date and time.',
+      });
       return;
     }
     if (scheduleDate.getTime() <= Date.now()) {
-      toast.error('Schedule must be in the future.');
+      notify.warning({
+        key: 'followups:schedule:future',
+        title: 'Schedule in the future',
+        description: 'Pick a time later than now.',
+      });
       return;
     }
 
     if (!form.templateId && !form.message.trim()) {
-      toast.error('Add a message or select a template.');
+      notify.warning({
+        key: 'followups:schedule:content',
+        title: 'Add a message',
+        description: 'Type a message or choose a template before scheduling.',
+      });
       return;
     }
 
     if (requiresTemplate && !form.templateId) {
-      toast.warn('WhatsApp will block this message because it falls outside the 24-hour window. Choose an approved template.');
+      notify.warning({
+        key: 'followups:schedule:needs-template',
+        title: 'Template required',
+        description: 'WhatsApp needs an approved template after the 24-hour window.',
+      });
       return;
     }
 
@@ -223,7 +243,10 @@ const ScheduleFollowUpModal = ({
 
         const res = await client.put(endpoints.followup(followUp.id), payload);
         saved = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
-        toast.success('Follow-up updated.');
+        notify.success({
+          key: `followups:${followUp.id}:updated`,
+          title: 'Follow-up updated',
+        });
         if (saved) {
           onCompleted?.(saved, { mode: 'update' });
         }
@@ -240,7 +263,10 @@ const ScheduleFollowUpModal = ({
         };
         const res = await client.post(endpoints.followups, payload);
         saved = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
-        toast.success('Follow-up scheduled.');
+        notify.success({
+          key: 'followups:create:scheduled',
+          title: 'Follow-up scheduled',
+        });
         if (saved) {
           onCompleted?.(saved, { mode: 'create' });
         }
@@ -259,7 +285,11 @@ const ScheduleFollowUpModal = ({
       ) {
         message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
       }
-      toast.error(message);
+      notify.error({
+        key: 'followups:schedule:error',
+        title: 'Unable to schedule follow-up',
+        description: message,
+      });
     } finally {
       setBusy(false);
     }
@@ -272,7 +302,10 @@ const ScheduleFollowUpModal = ({
     try {
       const res = await client.post(endpoints.followupCancel(followUp.id));
       const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
-      toast.success('Follow-up cancelled.');
+      notify.success({
+        key: `followups:${followUp.id}:cancelled`,
+        title: 'Follow-up cancelled',
+      });
       if (payload) {
         onCancelled?.(payload.id);
         onCompleted?.(payload, { mode: 'update' });
@@ -290,7 +323,11 @@ const ScheduleFollowUpModal = ({
       ) {
         message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
       }
-      toast.error(message);
+      notify.error({
+        key: `followups:${followUp?.id ?? 'cancel'}:error`,
+        title: 'Unable to cancel follow-up',
+        description: message,
+      });
     } finally {
       setBusy(false);
     }

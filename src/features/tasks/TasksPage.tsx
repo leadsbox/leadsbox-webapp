@@ -42,7 +42,7 @@ import { extractFollowUps } from '@/utils/apiData';
 import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
 import type { Task } from '@/types';
 import { formatDistanceToNow, format, isPast, isToday } from 'date-fns';
-import { toast } from 'react-toastify';
+import { notify } from '@/lib/toast';
 
 type TabValue = 'overdue' | 'today' | 'upcoming' | 'all';
 
@@ -291,10 +291,17 @@ const TasksPage: React.FC = () => {
       try {
         await client.put(endpoints.followup(task.id), { status: nextStatus });
         await loadTasks();
-        toast.success(isCompleted ? 'Task reopened' : 'Task marked as completed');
+        notify.success({
+          key: `tasks:toggle:${task.id}`,
+          title: isCompleted ? 'Task reopened' : 'Task completed',
+        });
       } catch (error) {
         console.error('Failed to update follow-up status:', error);
-        toast.error('Failed to update task status');
+        notify.error({
+          key: 'tasks:update:error',
+          title: 'Unable to update task',
+          description: 'Please try again in a moment.',
+        });
       }
     },
     [loadTasks]
