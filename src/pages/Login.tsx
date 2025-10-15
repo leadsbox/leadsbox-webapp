@@ -163,7 +163,7 @@ const Login = () => {
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   placeholder="Enter your email or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

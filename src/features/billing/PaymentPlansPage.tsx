@@ -11,6 +11,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/toast';
 
+type ApiError = {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+};
+
 type BillingPlan = {
   id: string;
   name: string;
@@ -81,12 +90,13 @@ const PaymentPlansPage: React.FC = () => {
       } else {
         setSubscription(null);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load billing data:', error);
+      const message = (error as ApiError)?.response?.data?.message || 'Please try again later.';
       notify.error({
         key: 'billing:load-failed',
         title: 'Billing unavailable',
-        description: error?.response?.data?.message || 'Please try again later.',
+        description: message,
       });
     } finally {
       setLoading(false);
@@ -112,12 +122,12 @@ const PaymentPlansPage: React.FC = () => {
           : 'Your plan will expire at the end of this period.',
       });
       await fetchBillingData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to cancel subscription:', error);
       notify.error({
         key: 'billing:cancel-error',
         title: 'Unable to update subscription',
-        description: error?.response?.data?.message || 'Please try again later.',
+        description: (error as ApiError)?.response?.data?.message || 'Please try again later.',
       });
     } finally {
       setCancelLoading(null);
@@ -148,12 +158,13 @@ const PaymentPlansPage: React.FC = () => {
         throw new Error('Missing authorization URL in response.');
       }
       await fetchBillingData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to change plan:', error);
+      const apiError = error as ApiError;
       notify.error({
         key: `billing:change-error:${plan.id}`,
         title: 'Unable to change plan',
-        description: error?.response?.data?.message || error?.message || 'Please try again later.',
+        description: apiError?.response?.data?.message || apiError?.message || 'Please try again later.',
       });
     } finally {
       setChangingPlanId(null);
@@ -203,12 +214,13 @@ const PaymentPlansPage: React.FC = () => {
       } else {
         throw new Error('Missing authorization URL in response.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to initialize billing:', error);
+      const apiError = error as ApiError;
       notify.error({
         key: `billing:init-error:${plan.id}`,
         title: 'Unable to start checkout',
-        description: error?.response?.data?.message || error?.message || 'Please try again later.',
+        description: apiError?.response?.data?.message || apiError?.message || 'Please try again later.',
       });
     } finally {
       setInitializingPlanId(null);
