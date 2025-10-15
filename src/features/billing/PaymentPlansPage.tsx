@@ -6,7 +6,14 @@ import { endpoints } from '@/api/config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/toast';
@@ -107,7 +114,6 @@ const PaymentPlansPage: React.FC = () => {
     fetchBillingData();
   }, [fetchBillingData]);
 
-
   const handleCancelSubscription = async (cancelImmediately: boolean) => {
     try {
       setCancelLoading(cancelImmediately ? 'immediate' : 'period');
@@ -117,9 +123,7 @@ const PaymentPlansPage: React.FC = () => {
       notify.success({
         key: cancelImmediately ? 'billing:cancel-now' : 'billing:cancel-period',
         title: cancelImmediately ? 'Subscription canceled' : 'Auto-renew disabled',
-        description: cancelImmediately
-          ? 'Access ends immediately.'
-          : 'Your plan will expire at the end of this period.',
+        description: cancelImmediately ? 'Access ends immediately.' : 'Your plan will expire at the end of this period.',
       });
       await fetchBillingData();
     } catch (error: unknown) {
@@ -190,9 +194,7 @@ const PaymentPlansPage: React.FC = () => {
             onClick: () => window.open(url, '_blank', 'noopener noreferrer'),
           },
         });
-        const newTrialEndsAt = plan.trialPeriodDays
-          ? new Date(Date.now() + plan.trialPeriodDays * 24 * 60 * 60 * 1000).toISOString()
-          : trialEndsAt;
+        const newTrialEndsAt = plan.trialPeriodDays ? new Date(Date.now() + plan.trialPeriodDays * 24 * 60 * 60 * 1000).toISOString() : trialEndsAt;
         if (typeof plan.trialPeriodDays === 'number') {
           setTrialDaysRemaining(plan.trialPeriodDays);
         }
@@ -252,9 +254,7 @@ const PaymentPlansPage: React.FC = () => {
 
   const activePlanId = subscription?.plan?.id;
   const activeStatus = subscription?.status;
-  const hasActiveSubscription = Boolean(
-    subscription && !['CANCELED', 'EXPIRED'].includes((subscription.status || '').toUpperCase())
-  );
+  const hasActiveSubscription = Boolean(subscription && !['CANCELED', 'EXPIRED'].includes((subscription.status || '').toUpperCase()));
   const formattedTrialEnds = trialEndsAt
     ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
@@ -351,12 +351,8 @@ const PaymentPlansPage: React.FC = () => {
             const isPendingPlan = activePlanId === plan.id && activeStatus === 'PENDING';
             const isPastDuePlan = activePlanId === plan.id && activeStatus === 'PAST_DUE';
             const isPlanLoading = initializingPlanId === plan.id || changingPlanId === plan.id;
-            const disableBecausePending =
-              subscription?.status === 'PENDING' && !isCurrentPlan;
-            const canSwitch =
-              hasActiveSubscription &&
-              !isCurrentPlan &&
-              subscription?.status !== 'PENDING';
+            const disableBecausePending = subscription?.status === 'PENDING' && !isCurrentPlan;
+            const canSwitch = hasActiveSubscription && !isCurrentPlan && subscription?.status !== 'PENDING';
             const buttonDisabled = isPlanLoading || isPendingPlan || disableBecausePending;
 
             let actionLabel = 'Choose plan';
@@ -372,12 +368,8 @@ const PaymentPlansPage: React.FC = () => {
               actionLabel = 'Activation pending';
             }
 
-            const planRenewalDate =
-              isCurrentPlan && formattedCurrentPeriodEnd
-                ? formattedCurrentPeriodEnd
-                : null;
-            const isCancellationScheduledForPlan =
-              isCurrentPlan && isCancellationScheduled;
+            const planRenewalDate = isCurrentPlan && formattedCurrentPeriodEnd ? formattedCurrentPeriodEnd : null;
+            const isCancellationScheduledForPlan = isCurrentPlan && isCancellationScheduled;
 
             return (
               <motion.div
@@ -426,9 +418,7 @@ const PaymentPlansPage: React.FC = () => {
                         ) : null}
                       </div>
                     </div>
-                    {plan.description ? (
-                      <p className='text-sm text-muted-foreground'>{plan.description}</p>
-                    ) : null}
+                    {plan.description ? <p className='text-sm text-muted-foreground'>{plan.description}</p> : null}
                   </CardHeader>
                   <CardContent className='flex-1 flex flex-col space-y-5'>
                     <div>
@@ -452,34 +442,22 @@ const PaymentPlansPage: React.FC = () => {
                           </li>
                         ))
                       ) : (
-                        <li className='text-xs italic text-muted-foreground/80'>
-                          Feature breakdown coming soon.
-                        </li>
+                        <li className='text-xs italic text-muted-foreground/80'>Feature breakdown coming soon.</li>
                       )}
                     </ul>
 
                     {isCurrentPlan ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant='outline'
-                            className='w-full justify-between'
-                            disabled={cancelLoading !== null}
-                          >
+                          <Button variant='outline' className='w-full justify-between' disabled={cancelLoading !== null}>
                             <span>Manage plan</span>
-                            {cancelLoading ? (
-                              <Loader2 className='h-4 w-4 animate-spin' />
-                            ) : (
-                              <ChevronDown className='h-4 w-4 opacity-60' />
-                            )}
+                            {cancelLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : <ChevronDown className='h-4 w-4 opacity-60' />}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className='w-64'>
                           <DropdownMenuLabel>{plan.name}</DropdownMenuLabel>
                           {isCancellationScheduledForPlan ? (
-                            <DropdownMenuItem disabled>
-                              Auto-renew already disabled
-                            </DropdownMenuItem>
+                            <DropdownMenuItem disabled>Auto-renew already disabled</DropdownMenuItem>
                           ) : (
                             <>
                               <DropdownMenuItem
@@ -504,9 +482,7 @@ const PaymentPlansPage: React.FC = () => {
                             </>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem disabled>
-                            Need help? Contact support
-                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled>Need help? Contact support</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
@@ -523,7 +499,9 @@ const PaymentPlansPage: React.FC = () => {
                         }}
                       >
                         {isPlanLoading ? (
-                          <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> {actionLabel}</>
+                          <>
+                            <Loader2 className='mr-2 h-4 w-4 animate-spin' /> {actionLabel}
+                          </>
                         ) : (
                           actionLabel
                         )}
@@ -531,9 +509,7 @@ const PaymentPlansPage: React.FC = () => {
                     )}
 
                     {isCurrentPlan && planRenewalDate && !isCancellationScheduledForPlan ? (
-                      <p className='text-xs text-muted-foreground text-center mt-2'>
-                        Next renewal {planRenewalDate}
-                      </p>
+                      <p className='text-xs text-muted-foreground text-center mt-2'>Next renewal {planRenewalDate}</p>
                     ) : null}
                     {isCancellationScheduledForPlan ? (
                       <p className='text-xs text-amber-600 text-center mt-2'>
@@ -541,19 +517,14 @@ const PaymentPlansPage: React.FC = () => {
                       </p>
                     ) : null}
                     {isPastDuePlan ? (
-                      <p className='text-xs text-destructive text-center mt-2'>
-                        Payment overdue — update billing details to avoid disruption.
-                      </p>
+                      <p className='text-xs text-destructive text-center mt-2'>Payment overdue — update billing details to avoid disruption.</p>
                     ) : null}
                     {disableBecausePending && !isPendingPlan ? (
-                      <p className='text-xs text-muted-foreground text-center mt-2'>
-                        Finish the pending checkout to make more changes.
-                      </p>
+                      <p className='text-xs text-muted-foreground text-center mt-2'>Finish the pending checkout to make more changes.</p>
                     ) : null}
                   </CardContent>
                 </Card>
-
-      </motion.div>
+              </motion.div>
             );
           })}
         </motion.div>
