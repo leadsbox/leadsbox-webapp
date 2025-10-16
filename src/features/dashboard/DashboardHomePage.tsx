@@ -176,7 +176,7 @@ export default function DashboardHomePage() {
     } finally {
       setTasksLoading(false);
     }
-  }, [organizationId]);
+  }, []);
 
   const fetchAnalyticsOverview = React.useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
