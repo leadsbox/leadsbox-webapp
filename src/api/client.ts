@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE } from './config';
-import { publishNetworkBanner } from '@/ui/ux/utils';
+import { publishNetworkBanner } from '@/ui/ux/network-events';
 
 // Extend the axios request config to include our custom _retry property
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {

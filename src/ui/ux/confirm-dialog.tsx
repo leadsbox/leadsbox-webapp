@@ -12,7 +12,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ConfirmOptions, setConfirmImpl } from './utils';
+
+export type ConfirmOptions = {
+  title: string;
+  description?: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'default' | 'destructive';
+};
 
 type ConfirmVariant = 'default' | 'destructive';
 
@@ -28,6 +35,18 @@ const ConfirmContext = React.createContext<ConfirmContextValue | undefined>(unde
 
 type ProviderProps = {
   children: React.ReactNode;
+};
+
+let confirmImpl: ((options: ConfirmOptions) => Promise<boolean>) | null = null;
+
+export const confirm = (options: ConfirmOptions): Promise<boolean> => {
+  if (!confirmImpl) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('confirm called without provider');
+    }
+    return Promise.resolve(false);
+  }
+  return confirmImpl(options);
 };
 
 export const ConfirmProvider = ({ children }: ProviderProps) => {
@@ -73,9 +92,9 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
   }, [state]);
 
   React.useEffect(() => {
-    setConfirmImpl(openConfirm);
+    confirmImpl = openConfirm;
     return () => {
-      setConfirmImpl(() => Promise.resolve(false));
+      confirmImpl = null;
     };
   }, [openConfirm]);
 
@@ -135,4 +154,12 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
       </AlertDialog>
     </ConfirmContext.Provider>
   );
+};
+
+export const useConfirm = () => {
+  const context = React.useContext(ConfirmContext);
+  if (!context) {
+    throw new Error('useConfirm must be used within ConfirmProvider');
+  }
+  return context.openConfirm;
 };

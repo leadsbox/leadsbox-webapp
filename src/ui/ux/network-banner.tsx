@@ -4,7 +4,12 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import { NetworkBannerPayload, NetworkBannerVariant, publishNetworkBanner, subscribeToNetworkBanner } from './utils';
+import {
+  NetworkBannerPayload,
+  NetworkBannerVariant,
+  publishNetworkBanner,
+  subscribeToNetworkBanner,
+} from './network-events';
 
 type NetworkStatusContextValue = {
   activeBanner: NetworkBannerPayload | null;
@@ -167,13 +172,36 @@ export const NetworkBannerProvider = ({ children }: { children: React.ReactNode 
   return <NetworkStatusContext.Provider value={value}>{children}</NetworkStatusContext.Provider>;
 };
 
-const useNetworkStatus = () => {
+export const useNetworkStatus = () => {
   const context = React.useContext(NetworkStatusContext);
   if (!context) {
     throw new Error('useNetworkStatus must be used within NetworkBannerProvider');
   }
   return context;
 };
+
+export const OfflineIndicator = ({ className }: { className?: string }) => {
+  const { isOnline } = useNetworkStatus();
+
+  if (isOnline) {
+    return null;
+  }
+
+  return (
+    <div
+      role="status"
+      aria-live="assertive"
+      className={cn('pointer-events-none flex w-full justify-center', className)}
+    >
+      <div className="pointer-events-auto mt-2 inline-flex items-center gap-2 rounded-full border border-dashed border-amber-400 bg-amber-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-amber-800 shadow-sm">
+        <span className="inline-flex h-2 w-2 rounded-full bg-amber-500" aria-hidden />
+        Offline • Read-only
+      </div>
+    </div>
+  );
+};
+
+export const emitNetworkBanner = publishNetworkBanner;
 
 const getLiveRegionMode = (variant: NetworkBannerVariant) => {
   if (variant === 'error') return 'assertive';

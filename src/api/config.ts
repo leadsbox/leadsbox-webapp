@@ -108,6 +108,18 @@ export const endpoints = {
     cancelSubscription: '/billing/subscription/cancel',
     changePlan: '/billing/subscription/change-plan',
   },
+  invoices: {
+    list: '/invoices',
+    create: '/invoices',
+    detail: (code: string) => `/invoices/${code}`,
+    verifyPayment: (code: string) => `/invoices/${code}/verify-payment`,
+    confirmPayment: (code: string) => `/invoices/${code}/confirm-payment`,
+    claim: (code: string) => `/invoices/${code}/claim`,
+    receipt: (receiptId: string) => `/invoices/receipts/${receiptId}`,
+    verifyQueue: '/invoices/verify/queue/list',
+    approveClaim: (claimId: string) => `/invoices/claims/${claimId}/approve`,
+    rejectClaim: (claimId: string) => `/invoices/claims/${claimId}/reject`,
+  },
 } as const;
 
 // HTTP Methods
