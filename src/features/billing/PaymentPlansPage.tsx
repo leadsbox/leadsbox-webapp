@@ -267,7 +267,7 @@ const PaymentPlansPage: React.FC = () => {
     if (subscription?.status === 'ACTIVE' && subscription.plan) {
       if (isCancellationScheduled) {
         const cancelLabel = formattedCurrentPeriodEnd || 'at the end of this period';
-        return `You're on the ${subscription.plan.name} plan • Cancels ${cancelLabel}`;
+        return [`You're on the ${subscription.plan.name} plan`, `Cancels ${cancelLabel}`];
       }
       if (formattedCurrentPeriodEnd) {
         return `You're on the ${subscription.plan.name} plan • Next renewal ${formattedCurrentPeriodEnd}`;
@@ -309,7 +309,16 @@ const PaymentPlansPage: React.FC = () => {
           </div>
           <div>
             <h1 className='text-2xl sm:text-3xl font-bold'>Choose the perfect plan</h1>
+          {Array.isArray(heroSubtitle) ? (
+            <div className='text-muted-foreground mt-1 space-y-1 text-sm'>
+              <p>{heroSubtitle[0]}</p>
+              <p className='inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700'>
+                {heroSubtitle[1]}
+              </p>
+            </div>
+          ) : (
             <p className='text-muted-foreground mt-1'>{heroSubtitle}</p>
+          )}
           </div>
         </div>
         <div className='flex items-center gap-3 text-sm text-muted-foreground'>
@@ -390,7 +399,7 @@ const PaymentPlansPage: React.FC = () => {
                   <CardHeader className='space-y-2'>
                     <div className='flex items-center justify-between flex-wrap gap-2'>
                       <CardTitle className='text-xl font-semibold'>{plan.name}</CardTitle>
-                      <div className='flex items-center gap-2'>
+                      <div className='flex items-center gap-2 flex-wrap'>
                         {plan.trialPeriodDays ? (
                           <Badge variant='outline' className='border-primary/40 text-primary'>
                             {plan.trialPeriodDays}-day trial
@@ -411,12 +420,14 @@ const PaymentPlansPage: React.FC = () => {
                             Payment overdue
                           </Badge>
                         ) : null}
-                        {isCancellationScheduledForPlan ? (
-                          <Badge variant='outline' className='border-amber-400 text-amber-600 bg-amber-50'>
+                      </div>
+                      {isCancellationScheduledForPlan ? (
+                        <div className='w-full'>
+                          <Badge variant='outline' className='border-amber-400 text-amber-600 bg-amber-50 inline-flex'>
                             Cancels {planRenewalDate || 'this period'}
                           </Badge>
-                        ) : null}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                     {plan.description ? <p className='text-sm text-muted-foreground'>{plan.description}</p> : null}
                   </CardHeader>
