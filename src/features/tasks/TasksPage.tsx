@@ -37,7 +37,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { extractFollowUps } from '@/utils/apiData';
 import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
 import type { Task } from '@/types';
@@ -120,8 +120,7 @@ const getStatusIcon = (status: Task['status']) => {
   }
 };
 
-const isTaskOverdue = (task: Task) =>
-  task.status !== 'COMPLETED' && task.status !== 'CANCELLED' && isPast(new Date(task.dueDate));
+const isTaskOverdue = (task: Task) => task.status !== 'COMPLETED' && task.status !== 'CANCELLED' && isPast(new Date(task.dueDate));
 
 const normaliseMember = (candidate: unknown): OrgMember | null => {
   if (!candidate || typeof candidate !== 'object') return null;
@@ -139,12 +138,7 @@ const normaliseMember = (candidate: unknown): OrgMember | null => {
   if (!id) return null;
 
   const userIdRaw = record.userId;
-  const userId =
-    typeof userIdRaw === 'string'
-      ? userIdRaw
-      : typeof userIdRaw === 'number'
-      ? String(userIdRaw)
-      : '';
+  const userId = typeof userIdRaw === 'string' ? userIdRaw : typeof userIdRaw === 'number' ? String(userIdRaw) : '';
   if (!userId) return null;
 
   const role = typeof record.role === 'string' ? record.role : 'MEMBER';
@@ -154,12 +148,7 @@ const normaliseMember = (candidate: unknown): OrgMember | null => {
   if (rawUser && typeof rawUser === 'object') {
     const userRecord = rawUser as Record<string, unknown>;
     const userIdValue = userRecord.id;
-    const resolvedId =
-      typeof userIdValue === 'string'
-        ? userIdValue
-        : typeof userIdValue === 'number'
-        ? String(userIdValue)
-        : '';
+    const resolvedId = typeof userIdValue === 'string' ? userIdValue : typeof userIdValue === 'number' ? String(userIdValue) : '';
     if (resolvedId) {
       user = {
         id: resolvedId,
@@ -168,8 +157,7 @@ const normaliseMember = (candidate: unknown): OrgMember | null => {
         lastName: typeof userRecord.lastName === 'string' ? userRecord.lastName : undefined,
         username: typeof userRecord.username === 'string' ? userRecord.username : undefined,
         email: typeof userRecord.email === 'string' ? userRecord.email : undefined,
-        profileImage:
-          typeof userRecord.profileImage === 'string' ? userRecord.profileImage : undefined,
+        profileImage: typeof userRecord.profileImage === 'string' ? userRecord.profileImage : undefined,
         avatarUrl: typeof userRecord.avatarUrl === 'string' ? userRecord.avatarUrl : undefined,
       };
     }
@@ -221,8 +209,7 @@ const getMemberInitials = (member?: OrgMember): string => {
   return '??';
 };
 
-const getMemberAvatar = (member?: OrgMember): string | undefined =>
-  member?.user?.profileImage || member?.user?.avatarUrl || undefined;
+const getMemberAvatar = (member?: OrgMember): string | undefined => member?.user?.profileImage || member?.user?.avatarUrl || undefined;
 
 const TasksPage: React.FC = () => {
   const { user } = useAuth();
@@ -335,13 +322,7 @@ const TasksPage: React.FC = () => {
 
   const filteredTasks = useMemo(() => {
     const baseTasks: Task[] =
-      activeTab === 'overdue'
-        ? overdueTasks
-        : activeTab === 'today'
-        ? todayTasks
-        : activeTab === 'upcoming'
-        ? upcomingTasks
-        : tasks;
+      activeTab === 'overdue' ? overdueTasks : activeTab === 'today' ? todayTasks : activeTab === 'upcoming' ? upcomingTasks : tasks;
 
     const query = searchQuery.trim().toLowerCase();
     if (!query) return baseTasks;
@@ -433,12 +414,7 @@ const TasksPage: React.FC = () => {
       <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4'>
         <div className='relative flex-1'>
           <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-          <Input
-            placeholder='Search tasks...'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className='pl-10'
-          />
+          <Input placeholder='Search tasks...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
         </div>
 
         <Button variant='outline' className='w-full sm:w-auto'>
@@ -447,7 +423,7 @@ const TasksPage: React.FC = () => {
         </Button>
       </div>
 
-  {/* Task Tabs */}
+      {/* Task Tabs */}
       <Tabs value={activeTab} onValueChange={(value: TabValue) => setActiveTab(value)}>
         <TabsList className='flex gap-2 overflow-x-auto whitespace-nowrap'>
           <TabsTrigger value='overdue' className='flex items-center space-x-2 shrink-0'>
@@ -521,9 +497,7 @@ const TasksPage: React.FC = () => {
                       <div
                         key={task.id}
                         className={`p-4 rounded-lg border transition-colors hover:bg-muted/50 ${
-                          taskIsOverdue
-                            ? 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20'
-                            : 'border-border'
+                          taskIsOverdue ? 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20' : 'border-border'
                         }`}
                       >
                         <div className='flex items-start space-x-4'>
@@ -544,9 +518,7 @@ const TasksPage: React.FC = () => {
                                 <div className='flex items-center space-x-2 mb-1 min-w-0'>
                                   <h3
                                     className={`font-medium truncate ${
-                                      task.status === 'COMPLETED'
-                                        ? 'line-through text-muted-foreground'
-                                        : 'text-foreground'
+                                      task.status === 'COMPLETED' ? 'line-through text-muted-foreground' : 'text-foreground'
                                     }`}
                                   >
                                     {task.title}
@@ -554,9 +526,7 @@ const TasksPage: React.FC = () => {
                                   {getStatusIcon(task.status)}
                                 </div>
 
-                                {task.description && (
-                                  <p className='text-sm text-muted-foreground mb-2'>{task.description}</p>
-                                )}
+                                {task.description && <p className='text-sm text-muted-foreground mb-2'>{task.description}</p>}
 
                                 <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground'>
                                   <div className='flex items-center space-x-1'>
@@ -567,9 +537,7 @@ const TasksPage: React.FC = () => {
                                   <div className='flex items-center space-x-1'>
                                     <Calendar className='h-3 w-3' />
                                     <span className={taskIsOverdue ? 'text-red-500 font-medium' : ''}>
-                                      {isToday(new Date(task.dueDate))
-                                        ? 'Today'
-                                        : format(new Date(task.dueDate), 'MMM d, yyyy')}
+                                      {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d, yyyy')}
                                       {' · '}
                                       {format(new Date(task.dueDate), 'h:mm a')}
                                       {' · '}
@@ -608,9 +576,7 @@ const TasksPage: React.FC = () => {
                                     <DropdownMenuItem>Duplicate</DropdownMenuItem>
                                     <DropdownMenuItem>View Lead</DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem className='text-destructive'>
-                                      Delete Task
-                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className='text-destructive'>Delete Task</DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

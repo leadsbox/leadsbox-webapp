@@ -11,7 +11,8 @@ import { ArrowUpDown, CheckCircle2, Clock, MessageSquare, Plus, RefreshCw, Spark
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { FollowUpRule, FollowUpStatus, Template, TemplateStatus } from '@/types';
-import { useAuth } from '@/context/AuthContext';
+import templateApi from '@/api/templates';
+import { useAuth } from '@/context/useAuth';
 import TemplateComposer from './components/TemplateComposer';
 import ScheduleFollowUpModal, { ConversationOption } from './components/ScheduleFollowUpModal';
 import NewAutomationModal from './modals/NewAutomationModal';
@@ -20,13 +21,14 @@ import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './buil
 import { validateFlow } from './builder/serializers';
 import { extractFollowUps } from '@/utils/apiData';
 
-const TEMPLATE_STATUS_ORDER: TemplateStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
+const TEMPLATE_STATUS_ORDER: TemplateStatus[] = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'DEPRECATED'];
 
 const TEMPLATE_STATUS_LABELS: Record<TemplateStatus, string> = {
   DRAFT: 'Draft',
-  PENDING_APPROVAL: 'Pending approval',
+  SUBMITTED: 'Submitted',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
+  DEPRECATED: 'Deprecated',
 };
 
 const FOLLOWUP_STATUS_LABELS: Record<FollowUpStatus, string> = {
@@ -36,9 +38,11 @@ const FOLLOWUP_STATUS_LABELS: Record<FollowUpStatus, string> = {
   FAILED: 'Failed',
 };
 
-const resolveTemplateStatus = (status?: TemplateStatus | null): TemplateStatus => {
+const resolveTemplateStatus = (status?: TemplateStatus | string | null): TemplateStatus => {
   if (!status) return 'DRAFT';
-  return TEMPLATE_STATUS_ORDER.includes(status) ? status : 'DRAFT';
+  const normalized = typeof status === 'string' ? status.toUpperCase() : status;
+  if (normalized === 'PENDING_APPROVAL') return 'SUBMITTED';
+  return TEMPLATE_STATUS_ORDER.includes(normalized as TemplateStatus) ? (normalized as TemplateStatus) : 'DRAFT';
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -53,23 +57,7 @@ const formatDateTime = (value?: string | null) => {
 
 type UnknownRecord = Record<string, unknown>;
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim().length > 0;
-
-const extractTemplates = (payload: unknown): Template[] => {
-  if (Array.isArray(payload)) return payload as Template[];
-  if (payload && typeof payload === 'object') {
-    const record = payload as UnknownRecord;
-    if (Array.isArray(record.templates)) return record.templates as Template[];
-    const data = record.data;
-    if (Array.isArray(data)) return data as Template[];
-    if (data && typeof data === 'object') {
-      const nested = data as UnknownRecord;
-      if (Array.isArray(nested.templates)) return nested.templates as Template[];
-    }
-  }
-  return [];
-};
+const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 const extractThreads = (payload: unknown): ConversationOption[] => {
   const resolveCandidates = (input: unknown): unknown[] => {
@@ -99,8 +87,7 @@ const extractThreads = (payload: unknown): ConversationOption[] => {
       const contact = (record.contact ?? {}) as UnknownRecord;
       const channel = (record.channel ?? {}) as UnknownRecord;
 
-      const label =
-        [contact.displayName, contact.phone, contact.waId, contact.email].find(isNonEmptyString) || 'Conversation';
+      const label = [contact.displayName, contact.phone, contact.waId, contact.email].find(isNonEmptyString) || 'Conversation';
 
       const channelLabel = [channel.displayName, channel.type].find(isNonEmptyString) ?? null;
 
@@ -127,7 +114,10 @@ const WhatsAppPrinciples = () => (
       <p>✅ Keep one clear purpose per template—mixing marketing and transactional content causes rejections.</p>
       <p>
         ✅ Personalize with{' '}
-        <code className='rounded bg-muted px-1 py-0.5 font-mono text-xs'>{'{'}{'{name}}'}</code>{' '}
+        <code className='rounded bg-muted px-1 py-0.5 font-mono text-xs'>
+          {'{'}
+          {'{name}}'}
+        </code>{' '}
         style placeholders but avoid dynamic URLs or phone numbers in the copy.
       </p>
       <p>✅ Schedule reminders during reasonable hours to minimise spam complaints.</p>
@@ -164,13 +154,11 @@ const AutomationsPage: React.FC = () => {
   const loadTemplates = useCallback(async () => {
     setTemplatesLoading(true);
     try {
-      const res = await client.get(endpoints.templates);
-      const list = extractTemplates(res.data);
-      setTemplates(list);
+      const list = await templateApi.list();
+      setTemplates(list ?? []);
     } catch (error: unknown) {
       setTemplates([]);
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load templates.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load templates.';
       notify.error({
         key: 'automations:templates:load',
         title: 'Unable to load templates',
@@ -189,8 +177,7 @@ const AutomationsPage: React.FC = () => {
       setFollowUps(list);
     } catch (error: unknown) {
       setFollowUps([]);
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load follow-ups.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load follow-ups.';
       notify.error({
         key: 'automations:followups:load',
         title: 'Unable to load follow-ups',
@@ -211,8 +198,7 @@ const AutomationsPage: React.FC = () => {
       setConversations(list);
     } catch (error: unknown) {
       setConversations([]);
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load conversations.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load conversations.';
       notify.error({
         key: 'automations:conversations:load',
         title: 'Unable to load conversations',
@@ -239,10 +225,7 @@ const AutomationsPage: React.FC = () => {
     return map;
   }, [conversations]);
 
-  const approvedTemplates = useMemo(
-    () => templates.filter((template) => resolveTemplateStatus(template.status) === 'APPROVED'),
-    [templates],
-  );
+  const approvedTemplates = useMemo(() => templates.filter((template) => resolveTemplateStatus(template.status) === 'APPROVED'), [templates]);
 
   const hasOrgContext = Boolean(userId && organizationId);
 
@@ -268,7 +251,7 @@ const AutomationsPage: React.FC = () => {
   const handleSubmitTemplate = async (template: Template) => {
     try {
       const status = resolveTemplateStatus(template.status);
-      if (status === 'APPROVED' || status === 'PENDING_APPROVAL') {
+      if (status === 'APPROVED' || status === 'SUBMITTED') {
         notify.info({
           key: `automations:template:${template.id}:submitted`,
           title: 'Template already submitted',
@@ -276,8 +259,7 @@ const AutomationsPage: React.FC = () => {
         });
         return;
       }
-      const res = await client.post(endpoints.submitTemplate, { templateId: template.id });
-      const updated = extractTemplates(res.data).find((candidate) => candidate.id === template.id);
+      const updated = await templateApi.submit(template.id);
       notify.success({
         key: `automations:template:${template.id}:submit-success`,
         title: 'Template submitted',
@@ -289,8 +271,7 @@ const AutomationsPage: React.FC = () => {
         await loadTemplates();
       }
     } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Submission failed.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Submission failed.';
       notify.error({
         key: `automations:template:${template.id}:submit-error`,
         title: 'Unable to submit template',
@@ -301,8 +282,7 @@ const AutomationsPage: React.FC = () => {
 
   const handleRefreshTemplate = async (template: Template) => {
     try {
-      const res = await client.get(endpoints.templateStatus(template.id));
-      const refreshed = (res.data?.data as Template) ?? (res.data as Template) ?? null;
+      const refreshed = await templateApi.refresh(template.id);
       if (refreshed) {
         setTemplates((current) => current.map((item) => (item.id === refreshed.id ? refreshed : item)));
         notify.success({
@@ -313,8 +293,7 @@ const AutomationsPage: React.FC = () => {
         await loadTemplates();
       }
     } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to refresh status.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to refresh status.';
       notify.error({
         key: `automations:template:${template.id}:refresh-error`,
         title: 'Unable to refresh status',
@@ -368,8 +347,7 @@ const AutomationsPage: React.FC = () => {
         handleFollowUpCancelled(followUp.id);
       }
     } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to cancel follow-up.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to cancel follow-up.';
       notify.error({
         key: `automations:followup:${followUp.id}:cancel-error`,
         title: 'Unable to cancel follow-up',
@@ -414,8 +392,8 @@ const AutomationsPage: React.FC = () => {
               status: flow.status === 'ON' ? 'OFF' : 'ON',
               updatedAt: new Date().toISOString(),
             }
-          : candidate,
-      ),
+          : candidate
+      )
     );
   };
 
@@ -524,41 +502,26 @@ const AutomationsPage: React.FC = () => {
                     const status = resolveTemplateStatus(template.status);
                     const approved = status === 'APPROVED';
                     return (
-                      <div
-                        key={template.id}
-                        className='rounded-lg border border-border/70 bg-card p-4 shadow-sm transition hover:border-primary/50'
-                      >
+                      <div key={template.id} className='rounded-lg border border-border/70 bg-card p-4 shadow-sm transition hover:border-primary/50'>
                         <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
                           <div className='space-y-2'>
                             <div className='flex flex-wrap items-center gap-2'>
                               <h3 className='text-base font-semibold'>{template.name}</h3>
-                              <Badge variant={approved ? 'default' : 'secondary'}>
-                                {TEMPLATE_STATUS_LABELS[status]}
-                              </Badge>
+                              <Badge variant={approved ? 'default' : 'secondary'}>{TEMPLATE_STATUS_LABELS[status]}</Badge>
                               <Badge variant='outline'>{template.category.toLowerCase()}</Badge>
                             </div>
-                            <p className='text-sm text-muted-foreground line-clamp-3 whitespace-pre-line'>
-                              {template.body}
-                            </p>
+                            <p className='text-sm text-muted-foreground line-clamp-3 whitespace-pre-line'>{template.body}</p>
                           </div>
                           <div className='flex flex-wrap gap-2'>
                             <Button size='sm' variant='outline' onClick={() => openTemplateComposer(template)}>
                               <MessageSquare className='mr-2 h-3.5 w-3.5' />
                               Edit
                             </Button>
-                            <Button
-                              size='sm'
-                              variant='outline'
-                              onClick={() => handleRefreshTemplate(template)}
-                            >
+                            <Button size='sm' variant='outline' onClick={() => handleRefreshTemplate(template)}>
                               <RefreshCw className='mr-2 h-3.5 w-3.5' />
                               Refresh
                             </Button>
-                            <Button
-                              size='sm'
-                              disabled={approved}
-                              onClick={() => handleSubmitTemplate(template)}
-                            >
+                            <Button size='sm' disabled={approved} onClick={() => handleSubmitTemplate(template)}>
                               <CheckCircle2 className='mr-2 h-3.5 w-3.5' />
                               Submit
                             </Button>
@@ -663,9 +626,7 @@ const AutomationsPage: React.FC = () => {
                           <TableCell>
                             <div className='flex flex-col'>
                               <span className='font-medium'>{conversation?.label ?? followUp.conversationId}</span>
-                              {conversation?.channel && (
-                                <span className='text-xs text-muted-foreground'>{conversation.channel}</span>
-                              )}
+                              {conversation?.channel && <span className='text-xs text-muted-foreground'>{conversation.channel}</span>}
                             </div>
                           </TableCell>
                           <TableCell>{formatDateTime(followUp.scheduledTime)}</TableCell>
@@ -673,13 +634,7 @@ const AutomationsPage: React.FC = () => {
                           <TableCell>
                             <Badge
                               variant={
-                                status === 'SENT'
-                                  ? 'default'
-                                  : status === 'FAILED'
-                                  ? 'destructive'
-                                  : status === 'CANCELLED'
-                                  ? 'outline'
-                                  : 'secondary'
+                                status === 'SENT' ? 'default' : status === 'FAILED' ? 'destructive' : status === 'CANCELLED' ? 'outline' : 'secondary'
                               }
                             >
                               {FOLLOWUP_STATUS_LABELS[status]}
@@ -787,13 +742,7 @@ const AutomationsPage: React.FC = () => {
       </Tabs>
 
       {builderFlow && (
-        <NewAutomationModal
-          key={builderKey}
-          open={builderOpen}
-          onOpenChange={setBuilderOpen}
-          initialFlow={builderFlow}
-          onSave={handleFlowSaved}
-        />
+        <NewAutomationModal key={builderKey} open={builderOpen} onOpenChange={setBuilderOpen} initialFlow={builderFlow} onSave={handleFlowSaved} />
       )}
     </div>
   );

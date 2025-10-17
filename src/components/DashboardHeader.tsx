@@ -32,8 +32,7 @@ import {
 } from './ui/dropdown-menu';
 import { CustomAvatar } from './ui/custom-avatar';
 import { Badge } from './ui/badge';
-import { useAuth } from '../context/AuthContext';
-import type { AuthUser } from '../types';
+import { useAuth } from '@/context/useAuth';
 import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { notify } from '@/lib/toast';

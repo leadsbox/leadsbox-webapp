@@ -12,7 +12,7 @@ import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { Analytics, Task } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { extractFollowUps } from '@/utils/apiData';
 import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
 

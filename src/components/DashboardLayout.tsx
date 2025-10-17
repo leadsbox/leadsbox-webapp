@@ -74,6 +74,12 @@ const sidebarItems: SidebarItem[] = [
     description: 'Sales pipeline stages',
   },
   {
+    title: 'Templates',
+    href: '/dashboard/templates',
+    icon: MessageSquare,
+    description: 'WhatsApp message templates',
+  },
+  {
     title: 'Tasks',
     href: '/dashboard/tasks',
     icon: CheckSquare,
@@ -90,7 +96,7 @@ const sidebarItems: SidebarItem[] = [
     title: 'Automations',
     href: '/dashboard/automations',
     icon: Sparkles,
-    description: 'Templates & follow-ups',
+    description: 'Follow-ups & workflow builder',
   },
   {
     title: 'Invoices',

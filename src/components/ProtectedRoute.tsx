@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {

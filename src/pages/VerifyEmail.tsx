@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import AuthBrand from '@/components/AuthBrand';
 
 const VerifyEmail: React.FC = () => {

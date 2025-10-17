@@ -39,6 +39,11 @@ import DashboardHomePage from './features/dashboard/DashboardHomePage';
 import InvoicesPage from './features/invoices/InvoicesPage';
 import ReceiptPage from './features/receipts/ReceiptPage';
 import AutomationsPage from './features/automations/AutomationsPage';
+import {
+  TemplatesHomePage,
+  CreateTemplateWizardPage,
+  TemplateDetailPage,
+} from './features/templates';
 import PaymentPlansPage from './features/billing/PaymentPlansPage';
 
 const queryClient = new QueryClient();
@@ -85,6 +90,9 @@ const App = () => {
                     <Route path='pipeline' element={<PipelinePage />} />
                     <Route path='tasks' element={<TasksPage />} />
                     <Route path='analytics' element={<AnalyticsPage />} />
+                    <Route path='templates' element={<TemplatesHomePage />} />
+                    <Route path='templates/new' element={<CreateTemplateWizardPage />} />
+                    <Route path='templates/:id' element={<TemplateDetailPage />} />
                     <Route path='automations' element={<AutomationsPage />} />
                     <Route path='billing' element={<PaymentPlansPage />} />
                     <Route

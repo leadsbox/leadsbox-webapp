@@ -12,7 +12,7 @@ import MembersTab from './tabs/MembersTab';
 import NotificationsTab from './tabs/NotificationsTab';
 import IntegrationsTab from './tabs/IntegrationsTab';
 import client from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { notify } from '@/lib/toast';
 // brand icons imported in child tabs as needed
 

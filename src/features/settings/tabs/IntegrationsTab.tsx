@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import client, { getOrgId } from '@/api/client';
 import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';

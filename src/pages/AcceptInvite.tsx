@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { clearPendingInvite, savePendingInvite } from '@/lib/inviteStorage';
 import { Loader2, ShieldCheck, LogIn, UserPlus } from 'lucide-react';
 

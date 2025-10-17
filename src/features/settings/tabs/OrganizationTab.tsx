@@ -10,7 +10,7 @@ import { Building, Plus, Save } from 'lucide-react';
 import { mockOrganization } from '@/data/mockData';
 import client from '@/api/client';
 import { notify } from '@/lib/toast';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import type { Org, Organization, OrgSettings } from '@/features/settings/types';
 
 interface Props {

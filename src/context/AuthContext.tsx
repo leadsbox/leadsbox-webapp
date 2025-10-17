@@ -1,12 +1,13 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { useEffect, useState, ReactNode, useCallback } from 'react';
 import { notify } from '@/lib/toast';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
 import client, { setAccessToken, setOrgId, getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { clearPendingInvite, loadPendingInvite } from '@/lib/inviteStorage';
 import { createAuthError } from '@/lib/auth-errors';
+import { AuthContext } from './useAuth';
 
-type AuthState = {
+export type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -23,7 +24,7 @@ type AuthState = {
   acceptInvite: (token: string) => Promise<void>;
 };
 
-const Ctx = createContext<AuthState | undefined>(undefined);
+
 
 const USER_STORAGE_KEY = 'lb_user';
 
@@ -56,12 +57,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUserState] = useState<AuthUser | null>(cachedUser);
   const [loading, setloading] = useState(() => (cachedUser ? false : true));
 
-  const setUser = (value: AuthUser | null) => {
+  const setUser = useCallback((value: AuthUser | null) => {
     setUserState(value);
     persistUser(value);
-  };
+  }, []);
 
-  const acceptInvite = async (token: string, options: { silent?: boolean } = {}) => {
+  const acceptInvite = useCallback(async (token: string, options: { silent?: boolean } = {}) => {
     if (!token) return;
     try {
       const previewRes = await client.get(endpoints.orgInvitePreview(token));
@@ -90,10 +91,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           description: `${orgName ? `Joined ${orgName}` : 'Access granted'} as ${normalizedRole}.`,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!options.silent) {
         const message =
-          error?.response?.data?.message || 'Failed to accept the invitation. Please try again.';
+          (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 
+          'Failed to accept the invitation. Please try again.';
         notify.error({
           key: `invite:accept-error:${token}`,
           title: 'Invite failed',
@@ -102,9 +104,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       throw error;
     }
-  };
+  }, [setUser]);
 
-  const acceptPendingInviteIfNeeded = async () => {
+  const acceptPendingInviteIfNeeded = useCallback(async () => {
     const pendingToken = loadPendingInvite();
     if (!pendingToken) return;
     try {
@@ -112,7 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Pending invite acceptance failed:', error);
     }
-  };
+  }, [acceptInvite]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -176,7 +178,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     checkAuth();
-  }, []);
+  }, [cachedUser, acceptPendingInviteIfNeeded, setUser]);
 
   const login = async (email: string, password: string): Promise<void> => {
     setloading(true);
@@ -310,14 +312,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <Ctx.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth, acceptInvite }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth, acceptInvite }}>
       {children}
-    </Ctx.Provider>
+    </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 };

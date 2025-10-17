@@ -8,9 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { notify } from '@/lib/toast';
-import client from '@/api/client';
-import { endpoints } from '@/api/config';
+import templateApi from '@/api/templates';
 import type { Template, TemplateCategory } from '@/types';
+import TemplatePreview from '@/features/templates/components/TemplatePreview';
 
 interface TemplateComposerProps {
   open: boolean;
@@ -22,7 +22,9 @@ interface TemplateComposerProps {
 
 interface TemplateFormState {
   name: string;
+  header: string;
   body: string;
+  footer: string;
   variables: string[];
   category: TemplateCategory;
   language: string;
@@ -53,7 +55,9 @@ const WHATSAPP_TIPS = [
 
 const DEFAULT_FORM: TemplateFormState = {
   name: '',
+  header: '',
   body: '',
+  footer: '',
   variables: [],
   category: 'UTILITY',
   language: 'en',
@@ -80,9 +84,6 @@ const suggestValueFor = (key: string): string => {
   return 'Value';
 };
 
-const renderPreview = (body: string, values: Record<string, string>) =>
-  body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, token: string) => values[token] ?? `{{${token}}}`);
-
 const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: TemplateComposerProps) => {
   const isEditing = Boolean(template);
   const [form, setForm] = useState<TemplateFormState>(DEFAULT_FORM);
@@ -94,7 +95,9 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     if (template) {
       setForm({
         name: template.name ?? '',
+        header: (template as any).header ?? '',
         body: template.body ?? '',
+        footer: (template as any).footer ?? '',
         variables: Array.isArray(template.variables) ? template.variables : [],
         category: template.category ?? 'UTILITY',
         language: template.language ?? 'en',
@@ -122,9 +125,14 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
 
   if (!open) return null;
 
-  const previewText = useMemo(
-    () => renderPreview(form.body || '', previewValues),
-    [form.body, previewValues],
+  const placeholders = useMemo(
+    () =>
+      form.variables.map((key) => ({
+        key,
+        label: key.replace(/_/g, ' '),
+        example: previewValues[key] ?? suggestValueFor(key),
+      })),
+    [form.variables, previewValues],
   );
 
   const handleAutoDetect = () => {
@@ -167,24 +175,36 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     try {
       const payload = {
         name: form.name.trim(),
-        body: form.body.trim(),
-        variables: form.variables,
         category: form.category,
         language: form.language,
+        header: form.header.trim() || undefined,
+        body: form.body.trim(),
+        footer: form.footer.trim() || undefined,
+        buttons: null,
+        placeholders,
+        sampleValues: previewValues,
       };
 
       let saved: Template | null = null;
 
       if (isEditing && template) {
-        const res = await client.put(`${endpoints.templates}/${template.id}`, payload);
-        saved = (res.data?.data as Template) ?? (res.data as Template) ?? null;
+        const res = await templateApi.update(template.id, {
+          header: payload.header,
+          body: payload.body,
+          footer: payload.footer,
+          buttons: payload.buttons,
+          language: payload.language,
+          placeholders: payload.placeholders,
+          sampleValues: payload.sampleValues,
+        });
+        saved = (res as Template) ?? null;
         notify.success({
           key: `templates:${template.id}:updated`,
           title: 'Template updated',
         });
       } else {
-        const res = await client.post(endpoints.templates, payload);
-        saved = (res.data?.data as Template) ?? (res.data as Template) ?? null;
+        const res = await templateApi.create(payload);
+        saved = (res as Template) ?? null;
         notify.success({
           key: 'templates:create:success',
           title: 'Template created',
@@ -219,8 +239,7 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     if (!template) return;
     setBusy(true);
     try {
-      const res = await client.post(endpoints.submitTemplate, { templateId: template.id });
-      const updated = (res.data?.data as Template) ?? (res.data as Template) ?? null;
+      const updated = await templateApi.submit(template.id);
       notify.success({
         key: `templates:${template.id}:submitted`,
         title: 'Submitted for approval',
@@ -256,7 +275,7 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
 
     setBusy(true);
     try {
-      await client.delete(`${endpoints.templates}/${template.id}`);
+      await templateApi.remove(template.id);
       notify.success({
         key: `templates:${template.id}:deleted`,
         title: 'Template deleted',
@@ -325,6 +344,16 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
               </Select>
             </div>
 
+            <div className='space-y-1.5'>
+              <Label htmlFor='template-header'>Header (optional)</Label>
+              <Input
+                id='template-header'
+                value={form.header}
+                onChange={(event) => setForm((prev) => ({ ...prev, header: event.target.value }))}
+                disabled={busy}
+              />
+            </div>
+
             <div className='space-y-2'>
               <Label htmlFor='template-body'>Message body</Label>
               <Textarea
@@ -388,6 +417,16 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
             </div>
 
             <div className='space-y-1.5'>
+              <Label htmlFor='template-footer'>Footer (optional)</Label>
+              <Input
+                id='template-footer'
+                value={form.footer}
+                onChange={(event) => setForm((prev) => ({ ...prev, footer: event.target.value }))}
+                disabled={busy}
+              />
+            </div>
+
+            <div className='space-y-1.5'>
               <Label htmlFor='template-category'>Category</Label>
               <Select
                 value={form.category}
@@ -420,16 +459,20 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
           </div>
 
           <div className='flex flex-col gap-4 rounded-lg border border-border/60 bg-muted/40 p-4'>
-            <div>
-              <h3 className='text-sm font-semibold'>Mobile preview</h3>
-              <div className='mt-2 rounded-lg border border-border bg-background p-3 text-sm text-foreground shadow-sm'>
-                {previewText ? (
-                  <p className='whitespace-pre-wrap leading-relaxed'>{previewText}</p>
-                ) : (
-                  <p className='text-muted-foreground'>Start typing to see how the template will look inside WhatsApp.</p>
-                )}
-              </div>
-            </div>
+            <TemplatePreview
+              name={form.name}
+              header={form.header}
+              body={form.body}
+              footer={form.footer}
+              sampleValues={previewValues}
+              showSampleEditor
+              onSampleChange={(key, value) =>
+                setPreviewValues((prev) => ({
+                  ...prev,
+                  [key]: value,
+                }))
+              }
+            />
 
             <Separator />
 

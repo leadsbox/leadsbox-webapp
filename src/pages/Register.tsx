@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -199,9 +199,7 @@ const Register = () => {
       navigate('/dashboard');
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : getAuthErrorMessage(error, 'We couldn’t create your account right now. Please try again shortly.');
+        error instanceof Error ? error.message : getAuthErrorMessage(error, 'We couldn’t create your account right now. Please try again shortly.');
       setFormError(message);
     } finally {
       setIsLoading(false);
@@ -296,9 +294,8 @@ const Register = () => {
                     <span className='text-destructive'>{inviteError}</span>
                   ) : (
                     <>
-                      You&apos;re joining{' '}
-                      <span className='font-medium'>{inviteOrgName || 'this organization'}</span>{' '}
-                      as a <span className='font-medium lowercase'>{inviteRole.toLowerCase()}</span>.
+                      You&apos;re joining <span className='font-medium'>{inviteOrgName || 'this organization'}</span> as a{' '}
+                      <span className='font-medium lowercase'>{inviteRole.toLowerCase()}</span>.
                     </>
                   )}
                 </p>
@@ -430,8 +427,14 @@ const Register = () => {
                   }}
                 />
                 <Label htmlFor='agree' className='text-sm text-muted-foreground'>
-                  I agree to the <Link to='/privacy' className='text-primary hover:underline'>Privacy Policy</Link> and{' '}
-                  <Link to='/terms' className='text-primary hover:underline'>Terms of Service</Link>
+                  I agree to the{' '}
+                  <Link to='/privacy' className='text-primary hover:underline'>
+                    Privacy Policy
+                  </Link>{' '}
+                  and{' '}
+                  <Link to='/terms' className='text-primary hover:underline'>
+                    Terms of Service
+                  </Link>
                 </Label>
               </div>
               {agreementError && <p className='text-sm text-destructive'>{agreementError}</p>}

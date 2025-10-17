@@ -1,6 +1,67 @@
 // Message Template and Follow-up Rule types for automations
 export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
-export type TemplateStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+export type TemplateStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'DEPRECATED';
+
+export type TemplatePlaceholder = {
+  key: string;
+  label?: string | null;
+  example?: string | null;
+  index?: number | null;
+};
+
+export type TemplateVersion = {
+  id: string;
+  templateId: string;
+  version: number;
+  header?: string | null;
+  body: string;
+  footer?: string | null;
+  buttons?: unknown;
+  placeholders?: TemplatePlaceholder[];
+  sampleValues?: Record<string, string> | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TemplateAuditAction =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'SUBMIT'
+  | 'RESUBMIT'
+  | 'WITHDRAW'
+  | 'APPROVE'
+  | 'REJECT'
+  | 'SEND_TEST'
+  | 'DEPRECATE'
+  | 'DELETE'
+  | 'DUPLICATE';
+
+export type TemplateAudit = {
+  id: string;
+  templateId: string;
+  versionId?: string | null;
+  actorId?: string | null;
+  action: TemplateAuditAction;
+  metadata?: unknown;
+  createdAt: string;
+  actor?: Pick<User, 'id' | 'email' | 'firstName' | 'lastName'> | null;
+  version?: TemplateVersion | null;
+};
+
+export type TemplateReviewStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export type TemplateReview = {
+  id: string;
+  templateId: string;
+  versionId: string;
+  status: TemplateReviewStatus;
+  reason?: string | null;
+  providerStatus?: string | null;
+  submittedAt: string;
+  decidedAt?: string | null;
+  metadata?: unknown;
+};
 
 export interface Template {
   id: string;
@@ -11,10 +72,21 @@ export interface Template {
   status: TemplateStatus;
   language?: string;
   providerTemplateId?: string | null;
+  header?: string | null;
+  footer?: string | null;
+  buttons?: unknown;
+  sampleValues?: Record<string, string> | null;
   submittedAt?: string | null;
   approvedAt?: string | null;
+  rejectedAt?: string | null;
+  deprecatedAt?: string | null;
   rejectionReason?: string | null;
   updatedAt?: string;
+  currentVersionId?: string | null;
+  currentVersion?: TemplateVersion | null;
+  versions?: TemplateVersion[];
+  reviews?: TemplateReview[];
+  audits?: TemplateAudit[];
 }
 
 export type FollowUpStatus = 'SCHEDULED' | 'SENT' | 'CANCELLED' | 'FAILED';

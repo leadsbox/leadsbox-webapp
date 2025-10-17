@@ -80,11 +80,20 @@ export const endpoints = {
     status: '/integrations/telegram/status',
   },
 
-  // Tags & Templates
+  // Tags
   tags: '/tags',
-  templates: '/templates',
-  templateStatus: (id: string) => `/templates/status/${id}`,
-  submitTemplate: '/templates/submit-for-approval',
+  templates: {
+    list: '/templates',
+    create: '/templates',
+    detail: (id: string) => `/templates/${id}`,
+    update: (id: string) => `/templates/${id}`,
+    submit: (id: string) => `/templates/${id}/submit`,
+    resubmit: (id: string) => `/templates/${id}/resubmit`,
+    deprecate: (id: string) => `/templates/${id}/deprecate`,
+    remove: (id: string) => `/templates/${id}`,
+    sendTest: (id: string) => `/templates/${id}/send-test`,
+    refresh: (id: string) => `/templates/${id}/refresh`,
+  },
   followups: '/followups',
   followupConversation: (conversationId: string) => `/followups/conversation/${conversationId}`,
   followup: (id: string) => `/followups/${id}`,
