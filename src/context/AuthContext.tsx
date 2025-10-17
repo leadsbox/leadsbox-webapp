@@ -11,20 +11,12 @@ export type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (params: {
-    email: string;
-    password: string;
-    username: string;
-    organizationName?: string;
-    inviteToken?: string | null;
-  }) => Promise<void>;
+  register: (params: { email: string; password: string; username: string; organizationName?: string; inviteToken?: string | null }) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   setOrg: (id: string) => void;
   acceptInvite: (token: string) => Promise<void>;
 };
-
-
 
 const USER_STORAGE_KEY = 'lb_user';
 
@@ -62,49 +54,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     persistUser(value);
   }, []);
 
-  const acceptInvite = useCallback(async (token: string, options: { silent?: boolean } = {}) => {
-    if (!token) return;
-    try {
-      const previewRes = await client.get(endpoints.orgInvitePreview(token));
-      const preview = previewRes?.data?.data;
-      const orgName = preview?.organization?.name;
-      const role = (preview?.role as string | undefined) || undefined;
+  const acceptInvite = useCallback(
+    async (token: string, options: { silent?: boolean } = {}) => {
+      if (!token) return;
+      try {
+        const previewRes = await client.get(endpoints.orgInvitePreview(token));
+        const preview = previewRes?.data?.data;
+        const orgName = preview?.organization?.name;
+        const role = (preview?.role as string | undefined) || undefined;
 
-      const acceptRes = await client.post(endpoints.orgInviteAccept(token));
-      clearPendingInvite();
+        const acceptRes = await client.post(endpoints.orgInviteAccept(token));
+        clearPendingInvite();
 
-      const profileRes = await client.get(endpoints.me);
-      const nextUser = profileRes?.data?.user as AuthUser | undefined;
-      if (nextUser) {
-        setUser(nextUser);
-        const defaultOrg = nextUser.currentOrgId || nextUser.orgId;
-        if (defaultOrg) {
-          setOrgId(defaultOrg);
+        const profileRes = await client.get(endpoints.me);
+        const nextUser = profileRes?.data?.user as AuthUser | undefined;
+        if (nextUser) {
+          setUser(nextUser);
+          const defaultOrg = nextUser.currentOrgId || nextUser.orgId;
+          if (defaultOrg) {
+            setOrgId(defaultOrg);
+          }
         }
-      }
 
-      if (!options.silent) {
-        const normalizedRole = (acceptRes?.data?.data?.role || role || 'member').toLowerCase();
-        notify.success({
-          key: `invite:accepted:${token}`,
-          title: 'Invitation accepted',
-          description: `${orgName ? `Joined ${orgName}` : 'Access granted'} as ${normalizedRole}.`,
-        });
+        if (!options.silent) {
+          const normalizedRole = (acceptRes?.data?.data?.role || role || 'member').toLowerCase();
+          notify.success({
+            key: `invite:accepted:${token}`,
+            title: 'Invitation accepted',
+            description: `${orgName ? `Joined ${orgName}` : 'Access granted'} as ${normalizedRole}.`,
+          });
+        }
+      } catch (error: unknown) {
+        if (!options.silent) {
+          const message =
+            (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Failed to accept the invitation. Please try again.';
+          notify.error({
+            key: `invite:accept-error:${token}`,
+            title: 'Invite failed',
+            description: message,
+          });
+        }
+        throw error;
       }
-    } catch (error: unknown) {
-      if (!options.silent) {
-        const message =
-          (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 
-          'Failed to accept the invitation. Please try again.';
-        notify.error({
-          key: `invite:accept-error:${token}`,
-          title: 'Invite failed',
-          description: message,
-        });
-      }
-      throw error;
-    }
-  }, [setUser]);
+    },
+    [setUser]
+  );
 
   const acceptPendingInviteIfNeeded = useCallback(async () => {
     const pendingToken = loadPendingInvite();
@@ -215,11 +210,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Login failed');
       }
     } catch (error: unknown) {
-      throw createAuthError(
-        error,
-        'We couldn’t sign you in. Check your email and password and try again.',
-        { unauthorizedMessage: 'We couldn’t verify those details. Check your email and password and try again.' }
-      );
+      throw createAuthError(error, 'We couldn’t sign you in. Check your email and password and try again.', {
+        unauthorizedMessage: 'We couldn’t verify those details. Check your email and password and try again.',
+      });
     } finally {
       setloading(false);
     }
@@ -267,11 +260,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Registration failed');
       }
     } catch (error: unknown) {
-      throw createAuthError(
-        error,
-        'We couldn’t create your account. Please try again in a few minutes.',
-        { unauthorizedMessage: 'We couldn’t verify those details. Please try again.' }
-      );
+      throw createAuthError(error, 'We couldn’t create your account. Please try again in a few minutes.', {
+        unauthorizedMessage: 'We couldn’t verify those details. Please try again.',
+      });
     } finally {
       setloading(false);
     }
@@ -312,8 +303,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth, acceptInvite }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth, acceptInvite }}>{children}</AuthContext.Provider>
   );
 };
