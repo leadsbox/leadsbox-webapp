@@ -1,6 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Receipt, Users, TrendingUp, MessageSquare, CheckSquare, Calendar, DollarSign, Activity, Globe, Send, Clock } from 'lucide-react';
+import {
+  Plus,
+  FileText,
+  Receipt,
+  Users,
+  TrendingUp,
+  MessageSquare,
+  CheckSquare,
+  Calendar,
+  DollarSign,
+  Activity,
+  Globe,
+  Send,
+  Clock,
+  Briefcase,
+  MailCheck,
+  UploadCloud,
+  PenSquare,
+  Zap,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/useAuth';
 import { extractFollowUps } from '@/utils/apiData';
 import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
+import OnboardingChecklist, { OnboardingStep } from './components/OnboardingChecklist';
 
 // Types for backend data
 interface ChartDataPoint {
@@ -33,6 +53,22 @@ interface BackendLead {
   updatedAt: string;
   lastMessageAt?: string;
 }
+
+type OrganizationDetails = {
+  id?: string;
+  name?: string | null;
+  settings?: {
+    timezone?: string | null;
+    currency?: string | null;
+    profile?: {
+      senderName?: string | null;
+      senderEmail?: string | null;
+    } | null;
+    integrations?: Record<string, unknown>;
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
 
 const DEFAULT_ANALYTICS_OVERVIEW = {
   totalLeads: 0,
@@ -104,6 +140,9 @@ export default function DashboardHomePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksError, setTasksError] = useState<string | null>(null);
+  const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails | null>(null);
+  const [templatesCount, setTemplatesCount] = useState<number | null>(null);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const taskBuckets = useMemo(() => categoriseTasks(tasks), [tasks]);
   const todayTasks = taskBuckets.today;
@@ -115,10 +154,117 @@ export default function DashboardHomePage() {
     return value;
   };
 
+  const analyticsLoading = isAnalyticsPending || isLeadsPending;
+
+  const organizationProfileComplete = useMemo(() => {
+    const isFilled = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
+    const settings = organizationDetails?.settings as Record<string, unknown> | undefined;
+    const timezone = settings?.timezone;
+    const currency = settings?.currency;
+    return [organizationDetails?.name, timezone, currency].every(isFilled);
+  }, [organizationDetails]);
+
+  const missingProfileFields = useMemo(() => {
+    const isFilled = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
+    const missing: string[] = [];
+    if (!isFilled(organizationDetails?.name)) {
+      missing.push('organization name');
+    }
+    const settings = organizationDetails?.settings as Record<string, unknown> | undefined;
+    const timezone = settings?.timezone;
+    const currency = settings?.currency;
+    if (!isFilled(timezone)) {
+      missing.push('timezone');
+    }
+    if (!isFilled(currency)) {
+      missing.push('currency');
+    }
+    return missing;
+  }, [organizationDetails]);
+
+  const hasMessagingIntegration = whatsappConnected || telegramConnected;
+  const hasLeads = actualLeadsCount > 0;
+  const hasTemplates = (templatesCount ?? 0) > 0;
+  const hasAutomations = tasks.length > 0;
+
+  const onboardingSteps = useMemo<OnboardingStep[]>(() => {
+    const profileHelper =
+      !organizationProfileComplete && missingProfileFields.length
+        ? `Missing: ${missingProfileFields.join(', ')}.`
+        : undefined;
+
+    return [
+      {
+        id: 'profile',
+        title: 'Complete your organization profile',
+        description: 'Set your brand name, timezone, and currency so everything stays consistent.',
+        href: '/dashboard/settings?tab=organization',
+        ctaLabel: 'Open settings',
+        icon: Briefcase,
+        completed: organizationProfileComplete,
+        helperText: profileHelper,
+      },
+      {
+        id: 'integrations',
+        title: 'Connect your first messaging channel',
+        description: 'Sync WhatsApp or Telegram so conversations flow straight into LeadsBox.',
+        href: '/dashboard/settings?tab=integrations',
+        ctaLabel: 'Connect now',
+        icon: MailCheck,
+        completed: hasMessagingIntegration,
+        helperText: hasMessagingIntegration ? undefined : 'Start with the channel your customers use most.',
+      },
+      {
+        id: 'leads',
+        title: 'Bring in your first leads',
+        description: 'Import a CSV or add one manually to start filling your pipeline.',
+        href: '/dashboard/leads',
+        ctaLabel: 'Add lead',
+        icon: UploadCloud,
+        completed: hasLeads,
+        helperText: hasLeads ? undefined : 'Even a single sample lead unlocks pipeline insights.',
+      },
+      {
+        id: 'templates',
+        title: 'Craft your first template',
+        description: 'Personalize a WhatsApp template so responses feel on-brand.',
+        href: '/dashboard/templates/new',
+        ctaLabel: 'Create template',
+        icon: PenSquare,
+        completed: hasTemplates,
+        helperText: hasTemplates ? undefined : 'Templates help you reply faster once new leads arrive.',
+      },
+      {
+        id: 'automations',
+        title: 'Schedule an automatic follow-up',
+        description: 'Keep new leads warm with a simple automation or reminder.',
+        href: '/dashboard/automations',
+        ctaLabel: 'Build automation',
+        icon: Zap,
+        completed: hasAutomations,
+        helperText: hasAutomations ? undefined : 'Automations work in the background when you are busy.',
+      },
+    ];
+  }, [
+    organizationProfileComplete,
+    missingProfileFields,
+    hasMessagingIntegration,
+    hasLeads,
+    hasTemplates,
+    hasAutomations,
+  ]);
+
+  const coreDataReady =
+    !countsLoading &&
+    !analyticsLoading &&
+    !templatesLoading &&
+    !integrationLoading &&
+    !tasksLoading;
+  const hasIncompleteSteps = onboardingSteps.some((step) => !step.completed);
+  const showOnboardingChecklist = coreDataReady && hasIncompleteSteps;
+
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
-
-  const analyticsLoading = isAnalyticsPending || isLeadsPending;
 
   // Helper function to refresh dashboard data (memoized to avoid dependency issues)
   const fetchDashboardData = React.useCallback(async () => {
@@ -266,6 +412,45 @@ export default function DashboardHomePage() {
     fetchTasks();
   }, [fetchTasks]);
 
+  useEffect(() => {
+    const fetchTemplatesCount = async () => {
+      try {
+        setTemplatesLoading(true);
+        const response = await client.get(endpoints.templates.list);
+        const rawData = (response?.data?.data ?? response?.data) as unknown;
+        let nextCount = 0;
+
+        if (Array.isArray(rawData)) {
+          nextCount = rawData.length;
+        } else if (rawData && typeof rawData === 'object') {
+          const record = rawData as Record<string, unknown>;
+          const templatesNode = record.templates;
+          if (Array.isArray(templatesNode)) {
+            nextCount = templatesNode.length;
+          } else {
+            const paginationNode = record.pagination as Record<string, unknown> | undefined;
+            const paginationTotal = paginationNode?.total;
+            const totalNode = record.total;
+            if (typeof paginationTotal === 'number') {
+              nextCount = paginationTotal;
+            } else if (typeof totalNode === 'number') {
+              nextCount = totalNode;
+            }
+          }
+        }
+
+        setTemplatesCount(nextCount);
+      } catch (error) {
+        console.error('Failed to load templates for onboarding:', error);
+        setTemplatesCount(0);
+      } finally {
+        setTemplatesLoading(false);
+      }
+    };
+
+    fetchTemplatesCount();
+  }, []);
+
   // Check WhatsApp and Telegram connection status
   useEffect(() => {
     const parseIntegrationFlag = (input: unknown): boolean => {
@@ -309,6 +494,7 @@ export default function DashboardHomePage() {
         if (orgResult.status === 'fulfilled' && orgResult.value) {
           const orgResponse = orgResult.value;
           const orgPayload = orgResponse.data?.data?.org ?? orgResponse.data?.org ?? orgResponse.data;
+          setOrganizationDetails(orgPayload || null);
           const integrations = orgPayload?.settings?.integrations;
           if (integrations && typeof integrations === 'object') {
             const whatsappSettings = (integrations as Record<string, unknown>).whatsapp;
@@ -322,6 +508,7 @@ export default function DashboardHomePage() {
           }
         } else if (orgResult.status === 'rejected') {
           console.error('Failed to load organization settings:', orgResult.reason);
+          setOrganizationDetails(null);
         }
       } catch (error) {
         console.error('Error checking integration status:', error);
@@ -471,6 +658,13 @@ export default function DashboardHomePage() {
           ))}
         </div>
       </div>
+
+      {showOnboardingChecklist ? (
+        <OnboardingChecklist
+          steps={onboardingSteps}
+          className='transition-all duration-200 hover:shadow-md border-primary/20'
+        />
+      ) : null}
 
       {/* Overview Cards */}
       {countsLoading && analyticsLoading ? (
