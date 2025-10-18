@@ -906,7 +906,9 @@ const InvoicesPage: React.FC = () => {
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div>
           <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Invoices & Receipts</h1>
-          <p className='text-sm sm:text-base text-muted-foreground'>Create professional invoices, track payments, and issue receipts in 3 simple steps.</p>
+          <p className='text-sm sm:text-base text-muted-foreground'>
+            Create professional invoices, track payments, and issue receipts in 3 simple steps.
+          </p>
         </div>
         {!hasInvoices && (
           <Button
