@@ -21,11 +21,7 @@ export type ConfirmOptions = {
   variant?: 'default' | 'destructive';
 };
 
-type ConfirmVariant = 'default' | 'destructive';
-
-type ConfirmState = ConfirmOptions & {
-  resolve: (value: boolean) => void;
-};
+type ConfirmState = ConfirmOptions | null;
 
 type ConfirmContextValue = {
   openConfirm: (options: ConfirmOptions) => Promise<boolean>;
@@ -50,10 +46,12 @@ export const confirm = (options: ConfirmOptions): Promise<boolean> => {
 };
 
 export const ConfirmProvider = ({ children }: ProviderProps) => {
-  const [state, setState] = React.useState<ConfirmState | null>(null);
+  const [state, setState] = React.useState<ConfirmState>(null);
   const lastFocusedRef = React.useRef<HTMLElement | null>(null);
   const cancelRef = React.useRef<HTMLButtonElement | null>(null);
   const confirmRef = React.useRef<HTMLButtonElement | null>(null);
+  const resolverRef = React.useRef<((value: boolean) => void) | null>(null);
+  const skipNextCloseRef = React.useRef(false);
 
   const restoreFocus = React.useCallback(() => {
     const target = lastFocusedRef.current;
@@ -65,23 +63,33 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
 
   const closeDialog = React.useCallback(
     (confirmed: boolean) => {
-      if (!state) {
-        return;
+      const resolver = resolverRef.current;
+      if (resolver) {
+        resolver(confirmed);
+        resolverRef.current = null;
       }
-      state.resolve(confirmed);
       setState(null);
       restoreFocus();
     },
-    [state, restoreFocus]
+    [restoreFocus]
   );
+
+  const closeDialogConfirmed = React.useCallback(() => {
+    skipNextCloseRef.current = true;
+    closeDialog(true);
+  }, [closeDialog]);
 
   const openConfirm = React.useCallback((options: ConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
-      lastFocusedRef.current = document.activeElement as HTMLElement | null;
-      setState({
-        ...options,
-        resolve,
-      });
+      if (typeof document !== 'undefined') {
+        const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        lastFocusedRef.current = activeElement;
+        activeElement?.blur();
+      } else {
+        lastFocusedRef.current = null;
+      }
+      resolverRef.current = resolve;
+      setState(options);
     });
   }, []);
 
@@ -100,6 +108,10 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
+      if (skipNextCloseRef.current) {
+        skipNextCloseRef.current = false;
+        return;
+      }
       closeDialog(false);
     }
   };
@@ -118,38 +130,40 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !('isComposing' in event && event.isComposing)) {
               event.preventDefault();
-              closeDialog(true);
+              closeDialogConfirmed();
             }
           }}
         >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              closeDialog(true);
-            }}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle>{state?.title}</AlertDialogTitle>
-              {state?.description ? <AlertDialogDescription>{state.description}</AlertDialogDescription> : null}
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel asChild>
-                <Button ref={cancelRef} type='button' variant='outline' onClick={() => closeDialog(false)}>
-                  {cancelText}
-                </Button>
-              </AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <Button
-                  ref={confirmRef}
-                  type='submit'
-                  variant={variant === 'destructive' ? 'destructive' : 'default'}
-                  className={cn(variant === 'destructive' ? 'focus:ring-destructive' : undefined)}
-                >
-                  {confirmText}
-                </Button>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </form>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{state?.title}</AlertDialogTitle>
+            {state?.description ? <AlertDialogDescription>{state.description}</AlertDialogDescription> : null}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button
+                ref={cancelRef}
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  skipNextCloseRef.current = false;
+                  closeDialog(false);
+                }}
+              >
+                {cancelText}
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                ref={confirmRef}
+                type='button'
+                variant={variant === 'destructive' ? 'destructive' : 'default'}
+                className={cn(variant === 'destructive' ? 'focus:ring-destructive' : undefined)}
+                onClick={closeDialogConfirmed}
+              >
+                {confirmText}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </ConfirmContext.Provider>

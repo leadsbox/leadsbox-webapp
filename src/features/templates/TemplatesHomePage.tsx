@@ -145,12 +145,15 @@ const TemplatesHomePage: React.FC = () => {
   });
 
   const queryClient = useQueryClient();
-  const confirmDialog = useConfirm();
+  const openConfirm = useConfirm();
   const deleteMutation = useMutation<void, unknown, { id: string; name: string }>({
     mutationFn: async ({ id }) => {
+      console.log('Delete mutation called for ID:', id);
       await templateApi.remove(id);
+      console.log('Delete API completed');
     },
     onSuccess: (_, variables) => {
+      console.log('Delete successful for:', variables.id);
       notify.success({
         key: `templates:${variables.id}:deleted`,
         title: 'Template deleted',
@@ -159,6 +162,7 @@ const TemplatesHomePage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
     },
     onError: (error, variables) => {
+      console.error('Delete failed:', error, variables);
       let message = 'Failed to delete template.';
       if (
         typeof error === 'object' &&
@@ -185,19 +189,23 @@ const TemplatesHomePage: React.FC = () => {
 
   const onCreate = () => navigate('/dashboard/templates/new');
   const handleDeleteTemplate = async (template: Template) => {
-    const confirmed = await confirmDialog({
-      title: 'Delete this template?',
-      description: `This will permanently delete "${template.name}". You won't be able to use it in broadcasts or automations.`,
-      confirmText: 'Delete template',
-      cancelText: 'Cancel',
-      variant: 'destructive',
-    });
+    try {
+      const confirmed = await openConfirm({
+        title: 'Delete this template?',
+        description: `This will permanently delete "${template.name}". You won't be able to use it in broadcasts or automations.`,
+        confirmText: 'Delete template',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
 
-    if (!confirmed) {
-      return;
+      if (!confirmed) {
+        return;
+      }
+
+      deleteMutation.mutate({ id: template.id, name: template.name });
+    } catch (error) {
+      console.error('Error in delete confirmation:', error);
     }
-
-    await deleteMutation.mutateAsync({ id: template.id, name: template.name });
   };
   return (
     <div className='p-4 sm:p-6 space-y-8'>
@@ -330,58 +338,60 @@ const TemplatesHomePage: React.FC = () => {
                       const isDeleting = deleteMutation.isPending && deleteMutation.variables?.id === template.id;
                       return (
                         <TableRow key={template.id} className='hover:bg-muted/50'>
-                        <TableCell className='font-medium'>
-                          <div>
-                            <p className='font-medium'>{template.name}</p>
-                            <p className='text-xs text-muted-foreground'>{template.variables?.length ?? 0} variables</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant='secondary'>{CATEGORY_LABELS[template.category]}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <TemplateStatusBadge status={template.status as TemplateStatus} />
-                        </TableCell>
-                        <TableCell className='hidden text-sm text-muted-foreground md:table-cell'>
-                          {new Date(template.updatedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className='text-right'>
-                          <div className='flex items-center justify-end gap-2'>
-                            <Button
-                              variant='destructive'
-                              size='sm'
-                              disabled={isDeleting}
-                              onClick={async (event) => {
-                                event.stopPropagation();
-                                await handleDeleteTemplate(template);
-                              }}
-                            >
-                              <Trash2 className='mr-2 h-4 w-4' />
-                              Delete
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant='ghost' size='sm'>
-                                  <ArrowRight className='h-4 w-4' />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align='end'>
-                                <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    navigate('/dashboard/templates/new', {
-                                      state: { duplicateOf: template.id, prefills: template },
-                                    })
-                                  }
-                                >
-                                  Duplicate
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
+                          <TableCell className='font-medium'>
+                            <div>
+                              <p className='font-medium'>{template.name}</p>
+                              <p className='text-xs text-muted-foreground'>{template.variables?.length ?? 0} variables</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant='secondary'>{CATEGORY_LABELS[template.category]}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <TemplateStatusBadge status={template.status as TemplateStatus} />
+                          </TableCell>
+                          <TableCell className='hidden text-sm text-muted-foreground md:table-cell'>
+                            {new Date(template.updatedAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className='text-right'>
+                            <div className='flex items-center justify-end gap-2'>
+                              <Button
+                                variant='destructive'
+                                size='sm'
+                                disabled={isDeleting}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleDeleteTemplate(template);
+                                }}
+                                type='button'
+                              >
+                                <Trash2 className='mr-2 h-4 w-4' />
+                                Delete
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant='ghost' size='sm'>
+                                    <ArrowRight className='h-4 w-4' />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align='end'>
+                                  <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate('/dashboard/templates/new', {
+                                        state: { duplicateOf: template.id, prefills: template },
+                                      })
+                                    }
+                                  >
+                                    Duplicate
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
                     })
                   ) : (
                     <TableRow>
