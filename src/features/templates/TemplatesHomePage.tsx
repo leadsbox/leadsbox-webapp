@@ -1,14 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowRight,
-  BookOpen,
-  Filter,
-  Library,
-  Plus,
-  RefreshCcw,
-} from 'lucide-react';
+import { ArrowRight, BookOpen, Filter, Library, Plus, RefreshCcw, CheckCircle, MessageSquare, Clock, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +13,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { notify } from '@/lib/toast';
 import templateApi from '@/api/templates';
 import TemplateStatusBadge from './components/TemplateStatusBadge';
-import type { Template, TemplateCategory, TemplateStatus, TemplateListFilters } from '@/types';
+import type { Template, TemplateCategory, TemplateStatus } from '@/types';
 import { TEMPLATE_SAMPLES_BY_CATEGORY, TemplateSample } from './data/templateSamples';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+type TemplateListFilters = {
+  search?: string;
+  category?: TemplateCategory;
+  status?: TemplateStatus;
+  language?: string;
+};
 
 const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   MARKETING: 'Marketing',
@@ -47,6 +47,32 @@ const CATEGORY_FILTERS: Array<{ value: 'ALL' | TemplateCategory; label: string }
   { value: 'UTILITY', label: 'Utility' },
   { value: 'AUTHENTICATION', label: 'Authentication' },
 ];
+
+// Simple step component for better UX
+const Step = ({
+  icon: Icon,
+  title,
+  description,
+  number,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  number: number;
+}) => (
+  <div className='flex gap-3 items-start'>
+    <div className='flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
+      <span className='text-sm font-semibold text-primary'>{number}</span>
+    </div>
+    <div className='space-y-1'>
+      <div className='flex items-center gap-2'>
+        <Icon className='h-4 w-4 text-primary' />
+        <h3 className='font-medium text-sm'>{title}</h3>
+      </div>
+      <p className='text-sm text-muted-foreground'>{description}</p>
+    </div>
+  </div>
+);
 
 const LANGUAGE_FILTERS = [
   { value: 'ALL', label: 'All languages' },
@@ -114,38 +140,59 @@ const TemplateSamplesSection = ({
   category: TemplateCategory;
   samples: TemplateSample[];
   onUseSample: (sample: TemplateSample) => void;
-}) => (
-  <Card className="h-full">
-    <CardHeader>
-      <CardTitle className="text-sm">{CATEGORY_LABELS[category]}</CardTitle>
-      <CardDescription>
-        {category === 'MARKETING'
-          ? 'Promote responsibly with clear value, opt-out instructions, and opt-in proof.'
-          : category === 'UTILITY'
-          ? 'Order updates, reminders, and account notifications—no promotional hooks.'
-          : 'One-time passwords and login alerts that keep accounts secure.'}
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-3">
-      {samples.map((sample) => (
-        <div key={sample.id} className="rounded-lg border bg-muted/40 p-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">{sample.name}</p>
-              <p className="text-xs text-muted-foreground">{sample.whyItWorks}</p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => onUseSample(sample)}>
-              Use example
-            </Button>
-          </div>
-          <ScrollArea className="mt-3 max-h-32 rounded-md bg-background/80 p-3 text-xs text-muted-foreground">
-            <pre className="whitespace-pre-wrap">{sample.body}</pre>
-          </ScrollArea>
+}) => {
+  const getCategoryIcon = (cat: TemplateCategory) => {
+    switch (cat) {
+      case 'MARKETING':
+        return <Zap className='h-4 w-4' />;
+      case 'UTILITY':
+        return <Clock className='h-4 w-4' />;
+      case 'AUTHENTICATION':
+        return <CheckCircle className='h-4 w-4' />;
+      default:
+        return <MessageSquare className='h-4 w-4' />;
+    }
+  };
+
+  const getCategoryDescription = (cat: TemplateCategory) => {
+    switch (cat) {
+      case 'MARKETING':
+        return 'Promotional offers and marketing campaigns';
+      case 'UTILITY':
+        return 'Order updates and account notifications';
+      case 'AUTHENTICATION':
+        return 'Login codes and security alerts';
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <Card className='h-full hover:shadow-md transition-shadow'>
+      <CardHeader className='pb-3'>
+        <div className='flex items-center gap-2'>
+          {getCategoryIcon(category)}
+          <CardTitle className='text-base'>{CATEGORY_LABELS[category]}</CardTitle>
         </div>
-      ))}
-    </CardContent>
-  </Card>
-);
+        <CardDescription className='text-sm'>{getCategoryDescription(category)}</CardDescription>
+      </CardHeader>
+      <CardContent className='space-y-3'>
+        {samples.slice(0, 2).map((sample) => (
+          <div key={sample.id} className='rounded-lg border bg-muted/20 p-3 hover:bg-muted/40 transition-colors'>
+            <div className='flex items-center justify-between gap-3 mb-2'>
+              <p className='text-sm font-medium'>{sample.name}</p>
+              <Button size='sm' variant='outline' onClick={() => onUseSample(sample)}>
+                Use
+              </Button>
+            </div>
+            <p className='text-xs text-muted-foreground line-clamp-2'>{sample.whyItWorks}</p>
+          </div>
+        ))}
+        {samples.length > 2 && <p className='text-xs text-muted-foreground text-center pt-2'>+{samples.length - 2} more examples available</p>}
+      </CardContent>
+    </Card>
+  );
+};
 
 const TemplatesHomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -164,93 +211,104 @@ const TemplatesHomePage: React.FC = () => {
   const isTestMode = Boolean(import.meta.env.VITE_APP_ENV?.toLowerCase() === 'test');
 
   const onCreate = () => navigate('/dashboard/templates/new');
-  const onUseSample = (sample: TemplateSample) =>
-    navigate('/dashboard/templates/new', { state: { sampleId: sample.id, prefills: sample } });
+  const onUseSample = (sample: TemplateSample) => navigate('/dashboard/templates/new', { state: { sampleId: sample.id, prefills: sample } });
 
   const filteredSamples = useMemo(() => TEMPLATE_SAMPLES_BY_CATEGORY, []);
 
   return (
-    <div className="p-4 sm:p-6 space-y-8">
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <Card className="relative overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-xl">Send approved WhatsApp messages with confidence</CardTitle>
-            <CardDescription>
-              Templates let you message customers after the 24-hour window closes. Choose a type, personalize with placeholders, and submit for Meta review in minutes.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between gap-6">
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>• Marketing templates drive opt-in offers and winbacks.</p>
-              <p>• Utility templates keep orders and appointments on track.</p>
-              <p>• Authentication templates handle OTPs and login alerts.</p>
-            </div>
-            <Button size="lg" onClick={onCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Create template
-            </Button>
-          </CardContent>
-          <Library className="absolute -right-6 -top-6 h-24 w-24 text-muted opacity-20" />
-        </Card>
+    <div className='p-4 sm:p-6 space-y-8'>
+      {/* Hero Section - Simplified */}
+      <section className='text-center space-y-4'>
+        <div className='space-y-2'>
+          <h1 className='text-2xl font-bold'>WhatsApp Message Templates</h1>
+          <p className='text-muted-foreground max-w-2xl mx-auto'>
+            Send approved messages to customers anytime. Create your template in 3 simple steps.
+          </p>
+        </div>
+        <Button size='lg' onClick={onCreate} className='gap-2'>
+          <Plus className='h-4 w-4' />
+          Create Your First Template
+        </Button>
+      </section>
+
+      {/* How it Works - Step by Step */}
+      <section>
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle className="text-base">How templates work</CardTitle>
-              <CardDescription>Quick refresher on Meta rules and best practices.</CardDescription>
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <BookOpen className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 space-y-4 text-sm" align="end">
-                {GLOSSARY_ITEMS.map((item) => (
-                  <div key={item.term}>
-                    <p className="font-medium text-foreground">{item.term}</p>
-                    <p className="text-muted-foreground">{item.description}</p>
-                  </div>
-                ))}
-              </PopoverContent>
-            </Popover>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Zap className='h-5 w-5 text-primary' />
+              How it works
+            </CardTitle>
+            <CardDescription>Get your WhatsApp templates approved and ready to use</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>
-                1. Draft your copy with <code>{'{{placeholder}}'}</code> tokens labelled in the Variables panel.
-              </li>
-              <li>2. Submit for approval — Meta typically responds within a few minutes.</li>
-              <li>3. Use approved templates in broadcasts, automations, or manual follow-ups.</li>
-            </ul>
+            <div className='grid gap-6 md:grid-cols-3'>
+              <Step number={1} icon={MessageSquare} title='Write your message' description='Add placeholders like {{name}} for personalization' />
+              <Step number={2} icon={Clock} title='Submit for approval' description='Meta reviews and approves within minutes' />
+              <Step number={3} icon={CheckCircle} title='Start messaging' description='Use in broadcasts, automations, or manual messages' />
+            </div>
           </CardContent>
         </Card>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {(Object.keys(filteredSamples) as TemplateCategory[]).map((category) => (
-          <TemplateSamplesSection
-            key={category}
-            category={category}
-            samples={filteredSamples[category]}
-            onUseSample={onUseSample}
-          />
-        ))}
+      {/* Template Categories - Simplified */}
+      <section>
+        <div className='space-y-4'>
+          <h2 className='text-lg font-semibold'>Choose a template type</h2>
+          <div className='grid gap-4 md:grid-cols-3'>
+            {(Object.keys(filteredSamples) as TemplateCategory[]).map((category) => (
+              <TemplateSamplesSection key={category} category={category} samples={filteredSamples[category]} onUseSample={onUseSample} />
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
+      {/* Existing Templates - Only show if user has templates */}
+      {templates.length > 0 && (
+        <section className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <h2 className='text-lg font-semibold'>Your Templates ({templates.length})</h2>
+            <div className='flex items-center gap-2'>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' size='sm' className='gap-2'>
+                    <BookOpen className='h-4 w-4' />
+                    Help
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-80 space-y-4 text-sm' align='end'>
+                  <div className='space-y-3'>
+                    <h4 className='font-medium'>Template Guidelines</h4>
+                    {GLOSSARY_ITEMS.map((item) => (
+                      <div key={item.term} className='space-y-1'>
+                        <p className='font-medium text-foreground'>{item.term}</p>
+                        <p className='text-muted-foreground text-xs'>{item.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button variant='outline' size='sm' onClick={() => templatesQuery.refetch()} disabled={isLoading} className='gap-2'>
+                <RefreshCcw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className='flex flex-wrap items-center gap-3'>
+            <div className='relative'>
               <Input
                 value={ui.search}
                 onChange={(event) => ui.setSearch(event.target.value)}
-                placeholder="Search templates"
-                className="pr-10"
+                placeholder='Search templates...'
+                className='pr-10 w-64'
               />
-              <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Filter className='absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
             </div>
             <Select value={ui.category} onValueChange={(value) => ui.setCategory(value as 'ALL' | TemplateCategory)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Type" />
+              <SelectTrigger className='w-[140px]'>
+                <SelectValue placeholder='Type' />
               </SelectTrigger>
               <SelectContent>
                 {CATEGORY_FILTERS.map((option) => (
@@ -261,8 +319,8 @@ const TemplatesHomePage: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={ui.status} onValueChange={(value) => ui.setStatus(value as 'ALL' | TemplateStatus)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className='w-[140px]'>
+                <SelectValue placeholder='Status' />
               </SelectTrigger>
               <SelectContent>
                 {STATUS_FILTERS.map((option) => (
@@ -272,132 +330,83 @@ const TemplatesHomePage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={ui.language} onValueChange={(value) => ui.setLanguage(value)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGE_FILTERS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-          <div className="flex items-center gap-2">
-            {isTestMode ? (
-              <Badge variant="outline" className="border-dashed text-muted-foreground">
-                Test account — send tests to whitelisted numbers only
-              </Badge>
-            ) : null}
-            <Button variant="outline" size="sm" onClick={() => templatesQuery.refetch()} disabled={templatesQuery.isFetching}>
-              <RefreshCcw
-                className={cn('mr-2 h-4 w-4', templatesQuery.isFetching && 'animate-spin')}
-                aria-hidden
-              />
-              Refresh
-            </Button>
-          </div>
-        </div>
 
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Language</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={index}>
-                      <TableCell colSpan={6}>
-                        <Skeleton className="h-10 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : templates.length ? (
-                  templates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium text-foreground">
-                        {template.name}
-                        <div className="text-xs text-muted-foreground">{template.variables?.length ?? 0} variables</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{CATEGORY_LABELS[template.category]}</Badge>
-                      </TableCell>
-                      <TableCell className="uppercase text-muted-foreground">{template.language}</TableCell>
-                      <TableCell>
-                        <TemplateStatusBadge status={template.status as TemplateStatus} />
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                        {new Date(template.updatedAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>
-                              View details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate('/dashboard/templates/new', {
-                                  state: { duplicateOf: template.id, prefills: template },
-                                })
-                              }
-                            >
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                notify.info({
-                                  key: `templates:${template.id}:send-test`,
-                                  title: 'Open template details to send a test',
-                                });
-                              }}
-                            >
-                              Send test
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                notify.warning({
-                                  key: `templates:${template.id}:archive`,
-                                  title: 'Archive coming soon',
-                                  description: 'Use Deprecate in the detail view to retire a template.',
-                                });
-                              }}
-                            >
-                              Archive
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
+          <Card>
+            <CardContent className='p-0'>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                      No templates yet. Start with a sample above or build one from scratch.
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className='hidden md:table-cell'>Updated</TableHead>
+                    <TableHead className='text-right'>Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </section>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell colSpan={5}>
+                          <Skeleton className='h-10 w-full' />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : templates.length ? (
+                    templates.map((template) => (
+                      <TableRow key={template.id} className='hover:bg-muted/50'>
+                        <TableCell className='font-medium'>
+                          <div>
+                            <p className='font-medium'>{template.name}</p>
+                            <p className='text-xs text-muted-foreground'>{template.variables?.length ?? 0} variables</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant='secondary'>{CATEGORY_LABELS[template.category]}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <TemplateStatusBadge status={template.status as TemplateStatus} />
+                        </TableCell>
+                        <TableCell className='hidden text-sm text-muted-foreground md:table-cell'>
+                          {new Date(template.updatedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className='text-right'>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant='ghost' size='sm'>
+                                <ArrowRight className='h-4 w-4' />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align='end'>
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate('/dashboard/templates/new', {
+                                    state: { duplicateOf: template.id, prefills: template },
+                                  })
+                                }
+                              >
+                                Duplicate
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className='py-8 text-center text-sm text-muted-foreground'>
+                        No templates found. Try adjusting your filters.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </section>
+      )}
     </div>
   );
 };

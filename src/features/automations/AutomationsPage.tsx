@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { notify } from '@/lib/toast';
-import { ArrowUpDown, CheckCircle2, Clock, MessageSquare, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowUpDown, CheckCircle2, Clock, MessageSquare, Plus, RefreshCw, Sparkles, Trash2, Zap, Bot, Settings } from 'lucide-react';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { FollowUpRule, FollowUpStatus, Template, TemplateStatus } from '@/types';
@@ -20,6 +20,32 @@ import { AutomationFlow } from './builder/types';
 import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './builder/utils';
 import { validateFlow } from './builder/serializers';
 import { extractFollowUps } from '@/utils/apiData';
+
+// Step component for the how-it-works section
+const Step = ({
+  number,
+  icon: Icon,
+  title,
+  description,
+}: {
+  number: number;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}) => (
+  <div className='text-center space-y-3'>
+    <div className='mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center relative'>
+      <Icon className='h-5 w-5 text-primary' />
+      <span className='absolute -top-2 -right-2 w-6 h-6 bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center justify-center'>
+        {number}
+      </span>
+    </div>
+    <div className='space-y-1'>
+      <h3 className='font-medium'>{title}</h3>
+      <p className='text-sm text-muted-foreground'>{description}</p>
+    </div>
+  </div>
+);
 
 const TEMPLATE_STATUS_ORDER: TemplateStatus[] = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'DEPRECATED'];
 
@@ -442,19 +468,62 @@ const AutomationsPage: React.FC = () => {
   }, [followUps]);
 
   return (
-    <div className='space-y-6 p-4 sm:p-6'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-        <div>
-          <h1 className='text-2xl sm:text-3xl font-bold'>Automations</h1>
-          <p className='text-sm text-muted-foreground'>{flowsSummary}</p>
+    <div className='space-y-8 p-4 sm:p-6'>
+      {/* Hero Section - Simplified */}
+      <section className='text-center space-y-4'>
+        <div className='space-y-2'>
+          <h1 className='text-2xl font-bold'>Automations</h1>
+          <p className='text-muted-foreground max-w-2xl mx-auto'>
+            Automate your customer conversations with templates, follow-ups, and custom flows.
+          </p>
         </div>
-        <div className='flex gap-2'>
-          <Button variant='outline' onClick={() => openBuilder()}>
-            <Sparkles className='mr-2 h-4 w-4' />
-            Build automation
+        {!templates.length && !followUps.length && !flows.length && (
+          <Button size='lg' onClick={() => openBuilder()} className='gap-2'>
+            <Sparkles className='h-4 w-4' />
+            Build Your First Automation
           </Button>
-        </div>
-      </div>
+        )}
+      </section>
+
+      {/* How it Works - Step by Step */}
+      {!templates.length && !followUps.length && !flows.length && (
+        <section>
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <Zap className='h-5 w-5 text-primary' />
+                How it works
+              </CardTitle>
+              <CardDescription>Create automated workflows to engage customers at the right time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='grid gap-6 md:grid-cols-3'>
+                <Step number={1} icon={MessageSquare} title='Create Templates' description='Build approved message templates for WhatsApp' />
+                <Step number={2} icon={Clock} title='Schedule Follow-ups' description='Set automatic follow-ups for your conversations' />
+                <Step number={3} icon={Bot} title='Build Flows' description='Create complex automation workflows with conditions' />
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* Quick Actions for Existing Users */}
+      {(templates.length > 0 || followUps.length > 0 || flows.length > 0) && (
+        <section>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+            <div>
+              <h2 className='text-lg font-semibold'>Automation Overview</h2>
+              <p className='text-sm text-muted-foreground'>{flowsSummary}</p>
+            </div>
+            <div className='flex gap-2'>
+              <Button variant='outline' onClick={() => openBuilder()}>
+                <Sparkles className='mr-2 h-4 w-4' />
+                Build automation
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       <Tabs defaultValue='templates' className='w-full'>
         <TabsList className='grid w-full grid-cols-3 sm:w-auto'>
@@ -481,8 +550,8 @@ const AutomationsPage: React.FC = () => {
           <Card>
             <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
               <div>
-                <CardTitle>Template library</CardTitle>
-                <CardDescription>Save canned replies and request WhatsApp approval in one place.</CardDescription>
+                <CardTitle>WhatsApp Templates</CardTitle>
+                <CardDescription>Create and manage approved message templates.</CardDescription>
               </div>
               <Button onClick={() => openTemplateComposer()}>
                 <Plus className='mr-2 h-4 w-4' />
@@ -533,7 +602,7 @@ const AutomationsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
-                  No templates yet. Draft your first template to keep conversations alive after 24 hours.
+                  No templates yet. Create your first WhatsApp template to get started.
                 </div>
               )}
             </CardContent>
@@ -565,8 +634,8 @@ const AutomationsPage: React.FC = () => {
           <Card>
             <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
               <div>
-                <CardTitle>Scheduled follow-ups</CardTitle>
-                <CardDescription>Line up nudges before the chat goes cold. WhatsApp templates keep you compliant.</CardDescription>
+                <CardTitle>Follow-up Messages</CardTitle>
+                <CardDescription>Schedule automatic messages to continue conversations.</CardDescription>
               </div>
               <Button onClick={() => openFollowUpModal('create')}>
                 <Plus className='mr-2 h-4 w-4' />
@@ -672,7 +741,7 @@ const AutomationsPage: React.FC = () => {
                 </Table>
               ) : (
                 <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
-                  No follow-ups scheduled. Your next follow-up can be ready in under a minute.
+                  No follow-ups scheduled yet. Set up your first automated follow-up message.
                 </div>
               )}
             </CardContent>
@@ -687,8 +756,8 @@ const AutomationsPage: React.FC = () => {
           <Card>
             <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
               <div>
-                <CardTitle>Flow builder</CardTitle>
-                <CardDescription>Automate multi-step journeys across triggers, conditions, and actions.</CardDescription>
+                <CardTitle>Automation Flows</CardTitle>
+                <CardDescription>Build custom workflows with triggers, conditions, and actions.</CardDescription>
               </div>
               <Button variant='outline' onClick={() => openBuilder()}>
                 <Sparkles className='mr-2 h-4 w-4' />
