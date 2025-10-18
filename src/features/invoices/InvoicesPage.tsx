@@ -1,5 +1,6 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowRight,
@@ -9,12 +10,11 @@ import {
   Plus,
   Receipt,
   RefreshCw,
-  Save,
   ShieldCheck,
   FileText,
-  CreditCard,
-  Clock,
   Zap,
+  MessageSquare,
+  CreditCard,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -22,37 +22,35 @@ import { endpoints } from '@/api/config';
 import client from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { notify } from '@/lib/toast';
 import { cn } from '@/lib/utils';
-import { confirm, useConfirm } from '@/ui/ux/confirm-dialog';
+import { confirm } from '@/ui/ux/confirm-dialog';
 
-// Step component for the how-it-works section
+// Simple step component for better UX
 const Step = ({
-  number,
   icon: Icon,
   title,
   description,
+  number,
 }: {
-  number: number;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
+  number: number;
 }) => (
-  <div className='text-center space-y-3'>
-    <div className='mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center relative'>
-      <Icon className='h-5 w-5 text-primary' />
-      <span className='absolute -top-2 -right-2 w-6 h-6 bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center justify-center'>
-        {number}
-      </span>
+  <div className='flex gap-3 items-start'>
+    <div className='flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
+      <span className='text-sm font-semibold text-primary'>{number}</span>
     </div>
     <div className='space-y-1'>
-      <h3 className='font-medium'>{title}</h3>
+      <div className='flex items-center gap-2'>
+        <Icon className='h-4 w-4 text-primary' />
+        <h3 className='font-medium text-sm'>{title}</h3>
+      </div>
       <p className='text-sm text-muted-foreground'>{description}</p>
     </div>
   </div>
@@ -118,7 +116,7 @@ type ReceiptInfo = {
   apiUrl?: string;
 };
 
-type ItemError = Partial<Record<keyof InvoiceItem, string>>;
+
 
 const statusTone: Record<string, { label: string; badgeClass: string }> = {
   PAID: {
@@ -498,235 +496,7 @@ const InvoiceDetail = ({ code }: { code: string | null }) => {
   );
 };
 
-const InvoiceForm = ({ onSubmitted }: { onSubmitted: (invoiceCode: string) => void }) => {
-  const confirmDialog = useConfirm();
-  const queryClient = useQueryClient();
-  const [contactPhone, setContactPhone] = React.useState('');
-  const [currency, setCurrency] = React.useState('NGN');
-  const [items, setItems] = React.useState<InvoiceItem[]>([{ name: '', qty: 1, unitPrice: 0 }]);
-  const [itemErrors, setItemErrors] = React.useState<ItemError[]>([{}]);
-  const [formError, setFormError] = React.useState<string>('');
 
-  const createMutation = useMutation({
-    mutationKey: ['create-invoice'],
-    mutationFn: async (payload: { contactPhone?: string; currency: string; items: InvoiceItem[]; autoSendTo?: string; sendText?: boolean }) => {
-      const response = await client.post(endpoints.invoices.create, payload);
-      return response?.data?.data as { invoice: InvoiceSummary; html?: string } | undefined;
-    },
-    onSuccess: (payload) => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      if (payload?.invoice?.code) {
-        notify.success({
-          key: `invoice:${payload.invoice.code}`,
-          title: 'Invoice created',
-          description: `Invoice ${payload.invoice.code} is ready.`,
-        });
-        onSubmitted(payload.invoice.code);
-      }
-      setItems([{ name: '', qty: 1, unitPrice: 0 }]);
-      setItemErrors([{}]);
-      setContactPhone('');
-    },
-    onError: (error: unknown) => {
-      const errorMessage =
-        error && typeof error === 'object' && 'response' in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : error && typeof error === 'object' && 'message' in error
-          ? (error as { message?: string }).message
-          : 'Please try again shortly.';
-
-      notify.error({
-        key: 'invoice:create:error',
-        title: 'Unable to create invoice',
-        description: errorMessage,
-      });
-    },
-  });
-
-  const updateItems = React.useCallback((index: number, patch: Partial<InvoiceItem>) => {
-    setItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, ...patch } : item)));
-  }, []);
-
-  const addLineItem = () => {
-    setItems((prev) => [...prev, { name: '', qty: 1, unitPrice: 0 }]);
-    setItemErrors((prev) => [...prev, {}]);
-  };
-
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, idx) => idx !== index));
-    setItemErrors((prev) => prev.filter((_, idx) => idx !== index));
-  };
-
-  const validateItems = (): InvoiceItem[] => {
-    const newErrors: ItemError[] = [];
-    const normalized = items.map((item, index) => {
-      const errors: ItemError = {};
-      if (!item.name.trim()) {
-        errors.name = 'Provide a description';
-      }
-      if (!item.qty || item.qty <= 0) {
-        errors.qty = 'Quantity must be greater than 0';
-      }
-      if (Number.isNaN(item.unitPrice) || item.unitPrice < 0) {
-        errors.unitPrice = 'Enter a valid price';
-      }
-      newErrors[index] = errors;
-      return {
-        name: item.name.trim(),
-        qty: Number(item.qty) || 0,
-        unitPrice: Number(item.unitPrice) || 0,
-      };
-    });
-    setItemErrors(newErrors);
-    const validItems = normalized.filter((_, index) => Object.keys(newErrors[index] || {}).length === 0);
-    return validItems;
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFormError('');
-
-    const validItems = validateItems();
-
-    if (validItems.length === 0) {
-      setFormError('Add at least one invoice line with quantity and price.');
-      return;
-    }
-
-    const shouldAutoSend =
-      contactPhone.trim().length > 0 &&
-      (await confirmDialog({
-        title: 'Send invoice via WhatsApp?',
-        description: 'We can text a payment request to this contact with the invoice link. Send it now?',
-        confirmText: 'Send invoice',
-        cancelText: 'Skip',
-      }));
-
-    createMutation.mutate({
-      contactPhone: contactPhone.trim() || undefined,
-      currency: currency.trim() || 'NGN',
-      items: validItems,
-      autoSendTo: shouldAutoSend ? contactPhone.trim() : undefined,
-      sendText: shouldAutoSend,
-    });
-
-    if (!shouldAutoSend) {
-      notify.info({
-        key: 'invoice:auto-send:skip',
-        title: 'Invoice ready',
-        description: 'Share the invoice code with your customer or generate a receipt once paid.',
-      });
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader className='space-y-1'>
-        <CardTitle className='text-lg font-semibold'>Create Invoice</CardTitle>
-        <p className='text-sm text-muted-foreground'>Capture payment line items and optionally send the invoice via WhatsApp.</p>
-      </CardHeader>
-      <CardContent>
-        <form className='space-y-6' onSubmit={handleSubmit}>
-          {formError ? (
-            <Alert variant='destructive'>
-              <AlertCircle className='h-4 w-4' />
-              <AlertTitle>Check the form</AlertTitle>
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          ) : null}
-          <div className='grid gap-4 sm:grid-cols-2'>
-            <div className='space-y-2'>
-              <Label htmlFor='contactPhone'>Customer phone (WhatsApp)</Label>
-              <Input id='contactPhone' placeholder='+2348012345678' value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='currency'>Currency</Label>
-              <Input id='currency' value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} placeholder='NGN' />
-            </div>
-          </div>
-
-          <div className='space-y-3'>
-            <div className='flex items-center justify-between'>
-              <p className='text-sm font-medium text-muted-foreground'>Line items</p>
-              <Button type='button' size='sm' onClick={addLineItem}>
-                <Plus className='mr-2 h-4 w-4' />
-                Add item
-              </Button>
-            </div>
-            <div className='space-y-4'>
-              {items.map((item, index) => {
-                const errors = itemErrors[index] || {};
-                return (
-                  <div key={index} className='rounded-lg border bg-muted/30 p-3'>
-                    <div className='grid gap-3 sm:grid-cols-12'>
-                      <div className='sm:col-span-6 space-y-1.5'>
-                        <Label htmlFor={`item-name-${index}`} className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-                          Description
-                        </Label>
-                        <Input
-                          id={`item-name-${index}`}
-                          value={item.name}
-                          onChange={(event) => updateItems(index, { name: event.target.value })}
-                          placeholder='Consultation, Product X...'
-                        />
-                        {errors.name ? <p className='text-xs text-destructive'>{errors.name}</p> : null}
-                      </div>
-                      <div className='sm:col-span-3 space-y-1.5'>
-                        <Label htmlFor={`item-qty-${index}`} className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-                          Quantity
-                        </Label>
-                        <Input
-                          id={`item-qty-${index}`}
-                          type='number'
-                          min={1}
-                          value={item.qty}
-                          onChange={(event) => updateItems(index, { qty: Number(event.target.value) })}
-                        />
-                        {errors.qty ? <p className='text-xs text-destructive'>{errors.qty}</p> : null}
-                      </div>
-                      <div className='sm:col-span-3 space-y-1.5'>
-                        <Label htmlFor={`item-price-${index}`} className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
-                          Unit price
-                        </Label>
-                        <Input
-                          id={`item-price-${index}`}
-                          type='number'
-                          min={0}
-                          value={item.unitPrice}
-                          onChange={(event) =>
-                            updateItems(index, {
-                              unitPrice: Number(event.target.value),
-                            })
-                          }
-                        />
-                        {errors.unitPrice ? <p className='text-xs text-destructive'>{errors.unitPrice}</p> : null}
-                      </div>
-                    </div>
-                    {items.length > 1 ? (
-                      <div className='mt-2 flex justify-end'>
-                        <Button type='button' variant='ghost' size='sm' onClick={() => removeItem(index)}>
-                          Remove
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className='flex items-center justify-between border-t pt-4'>
-            <div className='text-xs text-muted-foreground'>Totals calculated automatically • Invoices are sent with your default bank account</div>
-            <Button type='submit' disabled={createMutation.isPending}>
-              {createMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Save className='mr-2 h-4 w-4' />}
-              Create invoice
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
-};
 
 const InvoicesTable = ({
   items,
@@ -861,6 +631,7 @@ const VerifyInvoiceButton = ({
 };
 
 const InvoicesPage: React.FC = () => {
+  const navigate = useNavigate();
   const invoicesQuery = useInvoices();
   const [selectedInvoice, setSelectedInvoice] = React.useState<InvoiceSummary | null>(null);
   const [latestReceipt, setLatestReceipt] = React.useState<ReceiptInfo | null>(null);
@@ -873,12 +644,7 @@ const InvoicesPage: React.FC = () => {
     setLatestReceipt(null);
   };
 
-  const handleCreated = (code: string) => {
-    const createdInvoice = invoicesQuery.data?.items.find((invoice) => invoice.code === code);
-    if (createdInvoice) {
-      setSelectedInvoice(createdInvoice);
-    }
-  };
+
 
   const handleReceiptCopied = () => {
     if (!latestReceipt) return;
@@ -910,21 +676,13 @@ const InvoicesPage: React.FC = () => {
             Create professional invoices, track payments, and issue receipts in 3 simple steps.
           </p>
         </div>
-        {!hasInvoices && (
-          <Button
-            className='w-full sm:w-auto'
-            onClick={() => {
-              confirm({
-                title: 'Create your first invoice',
-                description: 'Use the form to add customer details and line items.',
-                confirmText: 'Got it',
-              });
-            }}
-          >
-            <Plus className='h-4 w-4 mr-2' />
-            Create Invoice
-          </Button>
-        )}
+        <Button
+          className='w-full sm:w-auto'
+          onClick={() => navigate('/dashboard/invoices/new')}
+        >
+          <Plus className='h-4 w-4 mr-2' />
+          Create Invoice
+        </Button>
       </div>
 
       {isLoading ? (
@@ -944,7 +702,6 @@ const InvoicesPage: React.FC = () => {
                 isRefreshing={invoicesQuery.isRefetching}
                 onRefresh={() => invoicesQuery.refetch()}
               />
-              <InvoiceDetail code={selectedInvoice?.code ?? null} />
               {selectedInvoice ? (
                 <div className='flex flex-wrap gap-3'>
                   <VerifyInvoiceButton
@@ -969,61 +726,48 @@ const InvoicesPage: React.FC = () => {
                 </div>
               ) : null}
             </div>
-            <InvoiceForm onSubmitted={handleCreated} />
+            <InvoiceDetail code={selectedInvoice?.code ?? null} />
           </div>
         </>
       ) : (
-        <>
+        <div className='space-y-6'>
           {/* How it Works - Step by Step */}
-          <section>
-            <Card>
-              <CardHeader>
-                <CardTitle className='flex items-center gap-2'>
-                  <Zap className='h-5 w-5 text-primary' />
-                  How it works
-                </CardTitle>
-                <div className='text-sm text-muted-foreground'>Generate professional invoices and track payments seamlessly</div>
-              </CardHeader>
-              <CardContent>
-                <div className='grid gap-6 md:grid-cols-3'>
-                  <Step number={1} icon={FileText} title='Create Invoice' description='Add customer details and line items with prices' />
-                  <Step number={2} icon={CreditCard} title='Send & Track' description='Send to customers and monitor payment status' />
-                  <Step number={3} icon={Receipt} title='Issue Receipt' description='Generate receipts once payments are verified' />
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <Zap className='h-5 w-5 text-primary' />
+                How it works
+              </CardTitle>
+              <CardDescription>Professional invoice creation and payment tracking in 3 simple steps</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='grid gap-6 md:grid-cols-3'>
+                <Step number={1} icon={FileText} title='Create invoice' description='Add line items, set prices, and include customer details' />
+                <Step number={2} icon={MessageSquare} title='Send via WhatsApp' description='Share payment link directly with your customers' />
+                <Step number={3} icon={CreditCard} title='Track & get paid' description='Monitor payments and issue receipts automatically' />
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className='grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'>
-            <Card>
-              <CardHeader>
-                <CardTitle>Invoices</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='text-center py-8'>
-                  <FileText className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
-                  <h3 className='text-lg font-medium text-foreground mb-2'>No invoices found</h3>
-                  <p className='text-muted-foreground mb-4'>
-                    Create your first invoice to start tracking payments and issuing receipts to your customers.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      confirm({
-                        title: 'Create your first invoice',
-                        description: 'Use the panel on the right to add a customer and line items.',
-                        confirmText: 'Got it',
-                      });
-                    }}
-                  >
-                    <Plus className='h-4 w-4 mr-2' />
-                    Create Your First Invoice
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            <InvoiceForm onSubmitted={handleCreated} />
-          </div>
-        </>
+          <Card>
+            <CardHeader>
+              <CardTitle>Invoices</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='text-center py-8'>
+                <FileText className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+                <h3 className='text-lg font-medium text-foreground mb-2'>No invoices found</h3>
+                <p className='text-muted-foreground mb-4'>
+                  Create your first invoice to start tracking payments and issuing receipts to your customers.
+                </p>
+                <Button onClick={() => navigate('/dashboard/invoices/new')}>
+                  <Plus className='h-4 w-4 mr-2' />
+                  Create Your First Invoice
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

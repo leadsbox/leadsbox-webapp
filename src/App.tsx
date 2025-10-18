@@ -37,6 +37,7 @@ import AnalyticsPage from './features/analytics/AnalyticsPage';
 import SettingsPage from './features/settings/SettingsPage';
 import DashboardHomePage from './features/dashboard/DashboardHomePage';
 import InvoicesPage from './features/invoices/InvoicesPage';
+import CreateInvoicePage from './features/invoices/CreateInvoicePage';
 import ReceiptPage from './features/receipts/ReceiptPage';
 import AutomationsPage from './features/automations/AutomationsPage';
 import {
@@ -83,6 +84,7 @@ const App = () => {
                     <Route index element={<Navigate to='home' replace />} />
                     <Route path='home' element={<DashboardHomePage />} />
                     <Route path='invoices' element={<InvoicesPage />} />
+                    <Route path='invoices/new' element={<CreateInvoicePage />} />
                     <Route path='receipts/:receiptId' element={<ReceiptPage />} />
                     <Route path='inbox' element={<InboxPage />} />
                     <Route path='leads' element={<LeadsPage />} />
