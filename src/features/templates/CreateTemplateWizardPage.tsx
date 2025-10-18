@@ -69,57 +69,57 @@ const detectPlaceholders = (content: string): string[] => {
 // Convert user-friendly placeholders to WhatsApp indexed format
 const convertToWhatsAppFormat = (content: string, placeholders: TemplatePlaceholder[]): string => {
   if (!content) return content;
-  
+
   let convertedContent = content;
-  
+
   // Sort placeholders by index to ensure consistent mapping
   const sortedPlaceholders = [...placeholders].sort((a, b) => a.index - b.index);
-  
+
   sortedPlaceholders.forEach((placeholder) => {
     const userFormat = `{{${placeholder.key}}}`;
     const whatsappFormat = `{{${placeholder.index}}}`;
     // Replace all occurrences of the user-friendly format with WhatsApp format
     convertedContent = convertedContent.replace(new RegExp(userFormat.replace(/[{}]/g, '\\$&'), 'g'), whatsappFormat);
   });
-  
+
   return convertedContent;
 };
 
 // Convert WhatsApp indexed format back to user-friendly placeholders
 const convertFromWhatsAppFormat = (content: string, placeholders: TemplatePlaceholder[]): string => {
   if (!content) return content;
-  
+
   let convertedContent = content;
-  
+
   placeholders.forEach((placeholder) => {
     const whatsappFormat = `{{${placeholder.index}}}`;
     const userFormat = `{{${placeholder.key}}}`;
     // Replace WhatsApp format with user-friendly format
     convertedContent = convertedContent.replace(new RegExp(whatsappFormat.replace(/[{}]/g, '\\$&'), 'g'), userFormat);
   });
-  
+
   return convertedContent;
 };
 
 // Validate that placeholders follow WhatsApp requirements
 const validatePlaceholders = (placeholders: TemplatePlaceholder[]): { valid: boolean; error?: string } => {
   if (placeholders.length === 0) return { valid: true };
-  
+
   // Sort by index to check sequential order
   const sortedPlaceholders = [...placeholders].sort((a, b) => a.index - b.index);
-  
+
   // Check if starts from 1
   if (sortedPlaceholders[0].index !== 1) {
     return { valid: false, error: 'Variables must start from index 1' };
   }
-  
+
   // Check if sequential (no gaps)
   for (let i = 0; i < sortedPlaceholders.length; i++) {
     if (sortedPlaceholders[i].index !== i + 1) {
       return { valid: false, error: `Variables must be sequential. Missing index ${i + 1}` };
     }
   }
-  
+
   return { valid: true };
 };
 
@@ -520,8 +520,8 @@ const CreateTemplateWizardPage: React.FC = () => {
                 <div>
                   <p className='text-sm font-medium text-foreground'>Variables</p>
                   <p className='text-xs text-muted-foreground'>
-                    Detected placeholders must have labels and example values before submission. 
-                    WhatsApp will convert these to indexed format ({`{{1}}, {{2}}, etc.`}) automatically.
+                    Detected placeholders must have labels and example values before submission. WhatsApp will convert these to indexed format (
+                    {`{{1}}, {{2}}, etc.`}) automatically.
                   </p>
                 </div>
                 <div className='space-y-3'>
@@ -532,7 +532,7 @@ const CreateTemplateWizardPage: React.FC = () => {
                         <div key={placeholder.key} className='grid gap-2 rounded-lg border p-3 md:grid-cols-[1fr_1fr]'>
                           <div className='space-y-1'>
                             <Label className='text-xs text-muted-foreground'>
-                              Placeholder <Badge variant="outline" className="ml-1">{`{{${placeholder.index}}}`}</Badge>
+                              Placeholder <Badge variant='outline' className='ml-1'>{`{{${placeholder.index}}}`}</Badge>
                             </Label>
                             <Input value={placeholder.key} disabled className='bg-muted' />
                           </div>
