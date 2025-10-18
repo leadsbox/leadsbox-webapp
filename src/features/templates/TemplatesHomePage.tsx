@@ -148,21 +148,17 @@ const TemplatesHomePage: React.FC = () => {
   const openConfirm = useConfirm();
   const deleteMutation = useMutation<void, unknown, { id: string; name: string }>({
     mutationFn: async ({ id }) => {
-      console.log('Delete mutation called for ID:', id);
       await templateApi.remove(id);
-      console.log('Delete API completed');
     },
     onSuccess: (_, variables) => {
-      console.log('Delete successful for:', variables.id);
       notify.success({
         key: `templates:${variables.id}:deleted`,
-        title: 'Template deleted',
-        description: `"${variables.name}" has been removed.`,
+        title: 'Template deleted successfully',
+        description: `"${variables.name}" has been permanently removed from your templates.`,
       });
       queryClient.invalidateQueries({ queryKey: ['templates'] });
     },
     onError: (error, variables) => {
-      console.error('Delete failed:', error, variables);
       let message = 'Failed to delete template.';
       if (
         typeof error === 'object' &&
@@ -208,20 +204,20 @@ const TemplatesHomePage: React.FC = () => {
     }
   };
   return (
-    <div className='p-4 sm:p-6 space-y-8'>
-      {/* Hero Section - Simplified */}
-      <section className='text-center space-y-4'>
-        <div className='space-y-2'>
-          <h1 className='text-2xl font-bold'>WhatsApp Message Templates</h1>
-          <p className='text-muted-foreground max-w-2xl mx-auto'>
+    <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div>
+          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>WhatsApp Message Templates</h1>
+          <p className='text-sm sm:text-base text-muted-foreground'>
             Send approved messages to customers anytime. Create your template in 3 simple steps.
           </p>
         </div>
-        <Button size='lg' onClick={onCreate} className='gap-2'>
-          <Plus className='h-4 w-4' />
-          Create Your First Template
+        <Button className='w-full sm:w-auto' onClick={onCreate}>
+          <Plus className='h-4 w-4 mr-2' />
+          Create Template
         </Button>
-      </section>
+      </div>
 
       {/* How it Works - Step by Step */}
       <section>
@@ -243,8 +239,8 @@ const TemplatesHomePage: React.FC = () => {
         </Card>
       </section>
 
-      {/* Existing Templates - Only show if user has templates */}
-      {templates.length > 0 && (
+      {/* Templates Section */}
+      {templates.length > 0 ? (
         <section className='space-y-4'>
           <div className='flex items-center justify-between'>
             <h2 className='text-lg font-semibold'>Your Templates ({templates.length})</h2>
@@ -405,6 +401,25 @@ const TemplatesHomePage: React.FC = () => {
             </CardContent>
           </Card>
         </section>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Templates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='text-center py-8'>
+              <MessageSquare className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+              <h3 className='text-lg font-medium text-foreground mb-2'>No templates found</h3>
+              <p className='text-muted-foreground mb-4'>
+                Create your first WhatsApp template to start sending approved messages to customers anytime.
+              </p>
+              <Button onClick={onCreate}>
+                <Plus className='h-4 w-4 mr-2' />
+                Create Your First Template
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

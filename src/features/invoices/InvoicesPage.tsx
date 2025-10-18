@@ -901,18 +901,16 @@ const InvoicesPage: React.FC = () => {
   };
 
   return (
-    <div className='space-y-8 p-4 sm:p-6'>
-      {/* Hero Section - Simplified */}
-      <section className='text-center space-y-4'>
-        <div className='space-y-2'>
-          <h1 className='text-2xl font-bold'>Invoices & Receipts</h1>
-          <p className='text-muted-foreground max-w-2xl mx-auto'>
-            Create professional invoices, track payments, and issue receipts in 3 simple steps.
-          </p>
+    <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div>
+          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Invoices & Receipts</h1>
+          <p className='text-sm sm:text-base text-muted-foreground'>Create professional invoices, track payments, and issue receipts in 3 simple steps.</p>
         </div>
         {!hasInvoices && (
           <Button
-            size='lg'
+            className='w-full sm:w-auto'
             onClick={() => {
               confirm({
                 title: 'Create your first invoice',
@@ -920,35 +918,12 @@ const InvoicesPage: React.FC = () => {
                 confirmText: 'Got it',
               });
             }}
-            className='gap-2'
           >
-            <Plus className='h-4 w-4' />
-            Create Your First Invoice
+            <Plus className='h-4 w-4 mr-2' />
+            Create Invoice
           </Button>
         )}
-      </section>
-
-      {/* How it Works - Step by Step */}
-      {!hasInvoices && (
-        <section>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Zap className='h-5 w-5 text-primary' />
-                How it works
-              </CardTitle>
-              <div className='text-sm text-muted-foreground'>Generate professional invoices and track payments seamlessly</div>
-            </CardHeader>
-            <CardContent>
-              <div className='grid gap-6 md:grid-cols-3'>
-                <Step number={1} icon={FileText} title='Create Invoice' description='Add customer details and line items with prices' />
-                <Step number={2} icon={CreditCard} title='Send & Track' description='Send to customers and monitor payment status' />
-                <Step number={3} icon={Receipt} title='Issue Receipt' description='Generate receipts once payments are verified' />
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      </div>
 
       {isLoading ? (
         <>
@@ -996,18 +971,57 @@ const InvoicesPage: React.FC = () => {
           </div>
         </>
       ) : (
-        <div className='grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'>
-          <EmptyState
-            onCreate={() => {
-              confirm({
-                title: 'Create your first invoice',
-                description: 'Use the panel on the right to add a customer and line items.',
-                confirmText: 'Got it',
-              });
-            }}
-          />
-          <InvoiceForm onSubmitted={handleCreated} />
-        </div>
+        <>
+          {/* How it Works - Step by Step */}
+          <section>
+            <Card>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2'>
+                  <Zap className='h-5 w-5 text-primary' />
+                  How it works
+                </CardTitle>
+                <div className='text-sm text-muted-foreground'>Generate professional invoices and track payments seamlessly</div>
+              </CardHeader>
+              <CardContent>
+                <div className='grid gap-6 md:grid-cols-3'>
+                  <Step number={1} icon={FileText} title='Create Invoice' description='Add customer details and line items with prices' />
+                  <Step number={2} icon={CreditCard} title='Send & Track' description='Send to customers and monitor payment status' />
+                  <Step number={3} icon={Receipt} title='Issue Receipt' description='Generate receipts once payments are verified' />
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <div className='grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'>
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoices</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='text-center py-8'>
+                  <FileText className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+                  <h3 className='text-lg font-medium text-foreground mb-2'>No invoices found</h3>
+                  <p className='text-muted-foreground mb-4'>
+                    Create your first invoice to start tracking payments and issuing receipts to your customers.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      confirm({
+                        title: 'Create your first invoice',
+                        description: 'Use the panel on the right to add a customer and line items.',
+                        confirmText: 'Got it',
+                      });
+                    }}
+                  >
+                    <Plus className='h-4 w-4 mr-2' />
+                    Create Your First Invoice
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            <InvoiceForm onSubmitted={handleCreated} />
+          </div>
+        </>
       )}
     </div>
   );

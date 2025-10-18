@@ -469,21 +469,21 @@ const AutomationsPage: React.FC = () => {
 
   return (
     <div className='space-y-8 p-4 sm:p-6'>
-      {/* Hero Section - Simplified */}
-      <section className='text-center space-y-4'>
-        <div className='space-y-2'>
-          <h1 className='text-2xl font-bold'>Automations</h1>
-          <p className='text-muted-foreground max-w-2xl mx-auto'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div>
+          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Automations</h1>
+          <p className='text-sm sm:text-base text-muted-foreground'>
             Automate your customer conversations with templates, follow-ups, and custom flows.
           </p>
         </div>
         {!templates.length && !followUps.length && !flows.length && (
-          <Button size='lg' onClick={() => openBuilder()} className='gap-2'>
-            <Sparkles className='h-4 w-4' />
+          <Button className='w-full sm:w-auto' onClick={() => openBuilder()}>
+            <Sparkles className='h-4 w-4 mr-2' />
             Build Your First Automation
           </Button>
         )}
-      </section>
+      </div>
 
       {/* How it Works - Step by Step */}
       {!templates.length && !followUps.length && !flows.length && (

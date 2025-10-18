@@ -363,6 +363,20 @@ const PaymentPlansPage: React.FC = () => {
             const disableBecausePending = subscription?.status === 'PENDING' && !isCurrentPlan;
             const canSwitch = hasActiveSubscription && !isCurrentPlan && subscription?.status !== 'PENDING';
             const buttonDisabled = isPlanLoading || isPendingPlan || disableBecausePending;
+            const hoverClasses = isCurrentPlan
+              ? 'hover:border-primary hover:bg-primary/10'
+              : isPendingPlan
+              ? 'hover:border-amber-400 hover:bg-amber-100/60'
+              : isPastDuePlan
+              ? 'hover:border-destructive/60 hover:bg-destructive/10'
+              : 'hover:border-primary/50 hover:bg-primary/5';
+            const headerHoverClasses = isCurrentPlan
+              ? 'group-hover:bg-primary/10'
+              : isPendingPlan
+              ? 'group-hover:bg-amber-100/60'
+              : isPastDuePlan
+              ? 'group-hover:bg-destructive/10'
+              : 'group-hover:bg-primary/5';
 
             let actionLabel = 'Choose plan';
             if (canSwitch) {
@@ -390,13 +404,14 @@ const PaymentPlansPage: React.FC = () => {
               >
                 <Card
                   className={cn(
-                    'h-full flex flex-col border-primary/10 hover:border-primary transition-colors shadow-sm hover:shadow-lg',
+                    'group relative h-full flex flex-col border border-border border-solid transition-all duration-300 shadow-sm hover:-translate-y-0.5 hover:border-dashed hover:shadow-lg',
+                    hoverClasses,
                     isCurrentPlan ? 'border-primary bg-primary/5' : '',
                     isPendingPlan ? 'border-amber-300 bg-amber-50/40' : '',
                     isPastDuePlan ? 'border-destructive/50 bg-destructive/5' : ''
                   )}
                 >
-                  <CardHeader className='space-y-2'>
+                  <CardHeader className={cn('space-y-2 transition-colors duration-300 rounded-lg', headerHoverClasses)}>
                     <div className='flex items-center justify-between flex-wrap gap-2'>
                       <CardTitle className='text-xl font-semibold'>{plan.name}</CardTitle>
                       <div className='flex items-center gap-2 flex-wrap'>
