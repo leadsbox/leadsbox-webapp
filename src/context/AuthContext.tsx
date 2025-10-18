@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { notify } from '@/lib/toast';
 import { AuthUser, LoginCredentials, RegisterData, AuthResponse } from '../types';
 import client, { setAccessToken, setOrgId, getOrgId } from '../api/client';
@@ -45,9 +45,9 @@ const persistUser = (value: AuthUser | null) => {
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const cachedUser = readCachedUser();
-  const [user, setUserState] = useState<AuthUser | null>(cachedUser);
-  const [loading, setloading] = useState(() => (cachedUser ? false : true));
+  const cachedUserRef = useRef<AuthUser | null>(readCachedUser());
+  const [user, setUserState] = useState<AuthUser | null>(cachedUserRef.current);
+  const [loading, setloading] = useState(() => (cachedUserRef.current ? false : true));
 
   const setUser = useCallback((value: AuthUser | null) => {
     setUserState(value);
@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        if (!cachedUser) {
+        if (!cachedUserRef.current) {
           setloading(true);
         }
         const urlParams = new URLSearchParams(window.location.search);
@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     checkAuth();
-  }, [cachedUser, acceptPendingInviteIfNeeded, setUser]);
+  }, [acceptPendingInviteIfNeeded, setUser]);
 
   const login = async (email: string, password: string): Promise<void> => {
     setloading(true);

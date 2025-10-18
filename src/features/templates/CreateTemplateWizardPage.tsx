@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, CheckCircle2, Info, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, Info, MessageSquare, Sparkles, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import { TemplatePlaceholder, TemplateCategory } from '@/types';
 import templateApi from '@/api/templates';
 import TemplatePreview from './components/TemplatePreview';
 import TemplateStatusBadge from './components/TemplateStatusBadge';
-import { TEMPLATE_SAMPLES, TemplateSample } from './data/templateSamples';
+import { TEMPLATE_SAMPLES, TEMPLATE_SAMPLES_BY_CATEGORY, TemplateSample } from './data/templateSamples';
 import type { Template } from '@/types';
 import { notify } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -32,10 +32,16 @@ type TemplatePayload = {
   notes?: string | null;
 };
 
+const CATEGORY_LABELS: Record<TemplateCategory, string> = {
+  MARKETING: 'Marketing',
+  UTILITY: 'Utility',
+  AUTHENTICATION: 'Authentication',
+};
+
 const CATEGORY_DESCRIPTIONS: Record<TemplateCategory, string> = {
-  MARKETING: 'Promotional offers, winback campaigns, and product discovery. Requires explicit opt-in from contacts.',
-  UTILITY: 'Transactional updates such as order status, appointment reminders, or billing notifications.',
-  AUTHENTICATION: 'One-time passwords or login alerts that help secure accounts. No marketing copy allowed.',
+  MARKETING: 'Promotional offers and marketing campaigns',
+  UTILITY: 'Order updates and account notifications',
+  AUTHENTICATION: 'Login codes and security alerts',
 };
 
 const CATEGORY_TIPS: Record<TemplateCategory, string[]> = {
@@ -273,6 +279,34 @@ const CreateTemplateWizardPage: React.FC = () => {
   });
   const [notes, setNotes] = useState('');
   const [submitAfterCreate, setSubmitAfterCreate] = useState(false);
+  const samplesByCategory = useMemo(() => TEMPLATE_SAMPLES_BY_CATEGORY, []);
+
+  const applySample = (sample: TemplateSample) => {
+    setCategory(sample.category);
+    setLanguage(sample.language ?? 'en');
+    setName(sample.name ?? '');
+    setHeader(sample.header ?? '');
+    setBody(sample.body ?? '');
+    setFooter(sample.footer ?? '');
+    setPlaceholders(Array.isArray(sample.placeholders) ? sample.placeholders : []);
+    setSampleValues(sample.sampleValues ?? {});
+    setNotes('');
+    setSubmitAfterCreate(false);
+    setStep(1);
+  };
+
+  const renderCategoryIcon = (value: TemplateCategory) => {
+    switch (value) {
+      case 'MARKETING':
+        return <Zap className='h-4 w-4 text-primary' />;
+      case 'UTILITY':
+        return <Clock className='h-4 w-4 text-primary' />;
+      case 'AUTHENTICATION':
+        return <CheckCircle2 className='h-4 w-4 text-primary' />;
+      default:
+        return <MessageSquare className='h-4 w-4 text-primary' />;
+    }
+  };
 
   const detectedKeys = useMemo(
     () => Array.from(new Set([...detectPlaceholders(body), ...detectPlaceholders(header || ''), ...detectPlaceholders(footer || '')])),
@@ -430,29 +464,69 @@ const CreateTemplateWizardPage: React.FC = () => {
       <Tabs value={step.toString()} className='hidden' />
 
       {step === 0 ? (
-        <section className='grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-lg'>Choose template type</CardTitle>
-              <CardDescription>Select the conversation category that best fits your message.</CardDescription>
-            </CardHeader>
-            <CardContent className='grid gap-3 md:grid-cols-3'>
-              {(Object.keys(CATEGORY_DESCRIPTIONS) as TemplateCategory[]).map((option) => {
+        <section className='space-y-6'>
+          <div className='space-y-4'>
+            <div>
+              <h2 className='text-lg font-semibold text-foreground'>Choose a template type</h2>
+              <p className='text-sm text-muted-foreground'>Pick a starting point that matches your message goal. You can tweak the copy later.</p>
+            </div>
+            <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
+              {(Object.keys(samplesByCategory) as TemplateCategory[]).map((option) => {
+                const samples = samplesByCategory[option] ?? [];
                 const active = category === option;
                 return (
-                  <button
-                    type='button'
+                  <Card
                     key={option}
+                    className={cn(
+                      'h-full cursor-pointer transition hover:shadow-md',
+                      active ? 'border-primary/60 shadow-sm ring-1 ring-primary/40' : 'hover:border-primary/50'
+                    )}
                     onClick={() => setCategory(option)}
-                    className={cn('h-full rounded-lg border p-4 text-left transition hover:border-primary', active && 'border-primary bg-primary/5')}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setCategory(option);
+                      }
+                    }}
+                    role='button'
+                    tabIndex={0}
                   >
-                    <p className='text-sm font-semibold text-foreground'>{CATEGORY_DESCRIPTIONS[option].split(' ')[0]}</p>
-                    <p className='mt-2 text-xs text-muted-foreground'>{CATEGORY_DESCRIPTIONS[option]}</p>
-                  </button>
+                    <CardHeader className='space-y-2'>
+                      <div className='flex items-center gap-2'>
+                        {renderCategoryIcon(option)}
+                        <CardTitle className='text-base'>{CATEGORY_LABELS[option]}</CardTitle>
+                      </div>
+                      <CardDescription>{CATEGORY_DESCRIPTIONS[option]}</CardDescription>
+                    </CardHeader>
+                    <CardContent className='space-y-3'>
+                      {samples.slice(0, 2).map((sample) => (
+                        <div key={sample.id} className='rounded-lg border bg-muted/20 p-3 transition hover:bg-muted/40'>
+                          <div className='mb-2 flex items-center justify-between gap-3'>
+                            <p className='text-sm font-medium text-foreground'>{sample.name}</p>
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                applySample(sample);
+                              }}
+                            >
+                              Use
+                            </Button>
+                          </div>
+                          <p className='text-xs text-muted-foreground'>{sample.whyItWorks}</p>
+                        </div>
+                      ))}
+                      {samples.length > 2 ? (
+                        <p className='text-xs text-center text-muted-foreground'>+{samples.length - 2} more examples available</p>
+                      ) : null}
+                    </CardContent>
+                  </Card>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className='text-lg'>Language</CardTitle>
@@ -616,7 +690,7 @@ const CreateTemplateWizardPage: React.FC = () => {
                 </div>
                 <div>
                   <p className='text-xs uppercase text-muted-foreground'>Category</p>
-                  <p className='font-medium text-foreground'>{CATEGORY_DESCRIPTIONS[category].split(' ')[0]}</p>
+                  <p className='font-medium text-foreground'>{CATEGORY_LABELS[category]}</p>
                 </div>
                 <div>
                   <p className='text-xs uppercase text-muted-foreground'>Language</p>

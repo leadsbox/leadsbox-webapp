@@ -34,6 +34,7 @@ import templateApi from '@/api/templates';
 import type { Template, TemplateStatus, TemplateCategory } from '@/types';
 import { notify } from '@/lib/toast';
 import { cn } from '@/lib/utils';
+import { useConfirm } from '@/ui/ux/confirm-dialog';
 
 const ACTION_LABELS: Record<TemplateStatus, string> = {
   DRAFT: 'Draft',
@@ -57,6 +58,7 @@ const TemplateDetailPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirmDialog = useConfirm();
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testValues, setTestValues] = useState<Record<string, string>>({});
@@ -99,6 +101,39 @@ const TemplateDetailPage: React.FC = () => {
     mutationFn: async (payload: { phone: string; values: Record<string, string> }) => {
       if (!id) throw new Error('Missing template id');
       return templateApi.sendTest(id, payload);
+    },
+  });
+  const deleteMutation = useMutation<void, unknown, { id: string; name: string }>({
+    mutationFn: async ({ id: templateId }) => {
+      await templateApi.remove(templateId);
+    },
+    onSuccess: (_, variables) => {
+      notify.success({
+        key: `templates:${variables.id}:deleted`,
+        title: 'Template deleted',
+        description: `"${variables.name}" has been removed.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.removeQueries({ queryKey: ['template', variables.id], exact: true });
+      navigate('/dashboard/templates');
+    },
+    onError: (error, variables) => {
+      let message = 'Failed to delete template.';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        message = String((error as { message?: string }).message || message);
+      }
+      notify.error({
+        key: `templates:${variables.id}:delete:error`,
+        title: 'Unable to delete template',
+        description: message,
+      });
     },
   });
 
@@ -155,6 +190,25 @@ const TemplateDetailPage: React.FC = () => {
         },
       }
     );
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!template) {
+      return;
+    }
+    const confirmed = await confirmDialog({
+      title: 'Delete this template?',
+      description: `This will permanently delete "${template.name}". This action cannot be undone.`,
+      confirmText: 'Delete template',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    deleteMutation.mutate({ id: template.id, name: template.name });
   };
 
   const openTestDialog = () => {
@@ -278,6 +332,10 @@ const TemplateDetailPage: React.FC = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => templateQuery.refetch()}>
                 Refresh status
+              </DropdownMenuItem>
+              <DropdownMenuItem className='text-destructive focus:text-destructive' disabled={deleteMutation.isPending} onClick={handleDeleteTemplate}>
+                <Trash2 className='mr-2 h-4 w-4' />
+                Delete template
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

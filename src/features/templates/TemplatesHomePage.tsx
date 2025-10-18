@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, BookOpen, Filter, Library, Plus, RefreshCcw, CheckCircle, MessageSquare, Clock, Zap } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, BookOpen, Filter, Plus, RefreshCcw, CheckCircle, MessageSquare, Clock, Zap, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,10 +14,10 @@ import { notify } from '@/lib/toast';
 import templateApi from '@/api/templates';
 import TemplateStatusBadge from './components/TemplateStatusBadge';
 import type { Template, TemplateCategory, TemplateStatus } from '@/types';
-import { TEMPLATE_SAMPLES_BY_CATEGORY, TemplateSample } from './data/templateSamples';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useConfirm } from '@/ui/ux/confirm-dialog';
 
 type TemplateListFilters = {
   search?: string;
@@ -132,68 +132,6 @@ const useTemplateFilters = () => {
   } as const;
 };
 
-const TemplateSamplesSection = ({
-  category,
-  samples,
-  onUseSample,
-}: {
-  category: TemplateCategory;
-  samples: TemplateSample[];
-  onUseSample: (sample: TemplateSample) => void;
-}) => {
-  const getCategoryIcon = (cat: TemplateCategory) => {
-    switch (cat) {
-      case 'MARKETING':
-        return <Zap className='h-4 w-4' />;
-      case 'UTILITY':
-        return <Clock className='h-4 w-4' />;
-      case 'AUTHENTICATION':
-        return <CheckCircle className='h-4 w-4' />;
-      default:
-        return <MessageSquare className='h-4 w-4' />;
-    }
-  };
-
-  const getCategoryDescription = (cat: TemplateCategory) => {
-    switch (cat) {
-      case 'MARKETING':
-        return 'Promotional offers and marketing campaigns';
-      case 'UTILITY':
-        return 'Order updates and account notifications';
-      case 'AUTHENTICATION':
-        return 'Login codes and security alerts';
-      default:
-        return '';
-    }
-  };
-
-  return (
-    <Card className='h-full hover:shadow-md transition-shadow'>
-      <CardHeader className='pb-3'>
-        <div className='flex items-center gap-2'>
-          {getCategoryIcon(category)}
-          <CardTitle className='text-base'>{CATEGORY_LABELS[category]}</CardTitle>
-        </div>
-        <CardDescription className='text-sm'>{getCategoryDescription(category)}</CardDescription>
-      </CardHeader>
-      <CardContent className='space-y-3'>
-        {samples.slice(0, 2).map((sample) => (
-          <div key={sample.id} className='rounded-lg border bg-muted/20 p-3 hover:bg-muted/40 transition-colors'>
-            <div className='flex items-center justify-between gap-3 mb-2'>
-              <p className='text-sm font-medium'>{sample.name}</p>
-              <Button size='sm' variant='outline' onClick={() => onUseSample(sample)}>
-                Use
-              </Button>
-            </div>
-            <p className='text-xs text-muted-foreground line-clamp-2'>{sample.whyItWorks}</p>
-          </div>
-        ))}
-        {samples.length > 2 && <p className='text-xs text-muted-foreground text-center pt-2'>+{samples.length - 2} more examples available</p>}
-      </CardContent>
-    </Card>
-  );
-};
-
 const TemplatesHomePage: React.FC = () => {
   const navigate = useNavigate();
   const { filters, ui } = useTemplateFilters();
@@ -206,15 +144,61 @@ const TemplatesHomePage: React.FC = () => {
     },
   });
 
+  const queryClient = useQueryClient();
+  const confirmDialog = useConfirm();
+  const deleteMutation = useMutation<void, unknown, { id: string; name: string }>({
+    mutationFn: async ({ id }) => {
+      await templateApi.remove(id);
+    },
+    onSuccess: (_, variables) => {
+      notify.success({
+        key: `templates:${variables.id}:deleted`,
+        title: 'Template deleted',
+        description: `"${variables.name}" has been removed.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+    onError: (error, variables) => {
+      let message = 'Failed to delete template.';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        message = String((error as { message?: string }).message || message);
+      }
+
+      notify.error({
+        key: `templates:${variables.id}:delete:error`,
+        title: 'Unable to delete template',
+        description: message,
+      });
+    },
+  });
+
   const templates = templatesQuery.data ?? [];
   const isLoading = templatesQuery.isLoading;
   const isTestMode = Boolean(import.meta.env.VITE_APP_ENV?.toLowerCase() === 'test');
 
   const onCreate = () => navigate('/dashboard/templates/new');
-  const onUseSample = (sample: TemplateSample) => navigate('/dashboard/templates/new', { state: { sampleId: sample.id, prefills: sample } });
+  const handleDeleteTemplate = async (template: Template) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete this template?',
+      description: `This will permanently delete "${template.name}". You won't be able to use it in broadcasts or automations.`,
+      confirmText: 'Delete template',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    });
 
-  const filteredSamples = useMemo(() => TEMPLATE_SAMPLES_BY_CATEGORY, []);
+    if (!confirmed) {
+      return;
+    }
 
+    await deleteMutation.mutateAsync({ id: template.id, name: template.name });
+  };
   return (
     <div className='p-4 sm:p-6 space-y-8'>
       {/* Hero Section - Simplified */}
@@ -249,18 +233,6 @@ const TemplatesHomePage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-      </section>
-
-      {/* Template Categories - Simplified */}
-      <section>
-        <div className='space-y-4'>
-          <h2 className='text-lg font-semibold'>Choose a template type</h2>
-          <div className='grid gap-4 md:grid-cols-3'>
-            {(Object.keys(filteredSamples) as TemplateCategory[]).map((category) => (
-              <TemplateSamplesSection key={category} category={category} samples={filteredSamples[category]} onUseSample={onUseSample} />
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Existing Templates - Only show if user has templates */}
@@ -354,8 +326,10 @@ const TemplatesHomePage: React.FC = () => {
                       </TableRow>
                     ))
                   ) : templates.length ? (
-                    templates.map((template) => (
-                      <TableRow key={template.id} className='hover:bg-muted/50'>
+                    templates.map((template) => {
+                      const isDeleting = deleteMutation.isPending && deleteMutation.variables?.id === template.id;
+                      return (
+                        <TableRow key={template.id} className='hover:bg-muted/50'>
                         <TableCell className='font-medium'>
                           <div>
                             <p className='font-medium'>{template.name}</p>
@@ -372,28 +346,43 @@ const TemplatesHomePage: React.FC = () => {
                           {new Date(template.updatedAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className='text-right'>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant='ghost' size='sm'>
-                                <ArrowRight className='h-4 w-4' />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align='end'>
-                              <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate('/dashboard/templates/new', {
-                                    state: { duplicateOf: template.id, prefills: template },
-                                  })
-                                }
-                              >
-                                Duplicate
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className='flex items-center justify-end gap-2'>
+                            <Button
+                              variant='destructive'
+                              size='sm'
+                              disabled={isDeleting}
+                              onClick={async (event) => {
+                                event.stopPropagation();
+                                await handleDeleteTemplate(template);
+                              }}
+                            >
+                              <Trash2 className='mr-2 h-4 w-4' />
+                              Delete
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant='ghost' size='sm'>
+                                  <ArrowRight className='h-4 w-4' />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align='end'>
+                                <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    navigate('/dashboard/templates/new', {
+                                      state: { duplicateOf: template.id, prefills: template },
+                                    })
+                                  }
+                                >
+                                  Duplicate
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ))
+                    );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell colSpan={5} className='py-8 text-center text-sm text-muted-foreground'>
