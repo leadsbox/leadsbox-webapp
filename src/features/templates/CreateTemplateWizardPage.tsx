@@ -680,15 +680,18 @@ const CreateTemplateWizardPage: React.FC = () => {
                 }))
               }
             />
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-sm'>Category guidance</CardTitle>
-                <CardDescription>Select tips to increase approval success.</CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-2 text-sm text-muted-foreground'>
-                {category ? CATEGORY_TIPS[category].map((tip) => <p key={tip}>• {tip}</p>) : <p>Select a category to see approval tips.</p>}
-              </CardContent>
-            </Card>
+            <p className='text-xs text-muted-foreground'>
+              Need inspiration?{' '}
+              <a
+                className='text-primary underline underline-offset-4 hover:text-primary/80'
+                href='https://developers.facebook.com/docs/whatsapp/message-templates/guidelines#categories'
+                target='_blank'
+                rel='noreferrer'
+              >
+                Review WhatsApp’s category guidelines
+              </a>
+              .
+            </p>
           </div>
         </section>
       ) : null}
