@@ -50,18 +50,18 @@ const sanitize = (value?: string): string | undefined => {
   if (!value) return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  const masked = trimmed.replace(/[0-9A-Za-z]{6,}/g, '***');
-  return masked.length > DESCRIPTION_LIMIT
-    ? `${masked.slice(0, DESCRIPTION_LIMIT - 1)}…`
-    : masked;
+
+  // Only mask what looks like sensitive data (tokens, keys, etc.)
+  // Look for patterns that are likely to be tokens/keys: long strings of mixed case + numbers without spaces
+  const masked = trimmed
+    .replace(/\b[A-Za-z0-9]{20,}\b/g, '***')
+    .replace(/\b[A-Fa-f0-9]{32,}\b/g, '***') // hex strings (32+ chars)
+    .replace(/\b[A-Za-z0-9+/]{20,}={0,2}\b/g, '***'); // base64-like strings
+
+  return masked.length > DESCRIPTION_LIMIT ? `${masked.slice(0, DESCRIPTION_LIMIT - 1)}…` : masked;
 };
 
-const analyticsEvent = (
-  severity: Severity,
-  key: string,
-  count: number,
-  meta?: Record<string, unknown>
-) => {
+const analyticsEvent = (severity: Severity, key: string, count: number, meta?: Record<string, unknown>) => {
   try {
     const tenantId = localStorage.getItem(CACHE_KEYS.organization);
     const detail = {
@@ -156,21 +156,15 @@ type PromiseMessages<T> = {
   key?: string;
 };
 
-const toToastOptions = <T,>(
-  input: ToastOptions | ((value: T) => ToastOptions),
-  payload: T
-): ToastOptions => {
+const toToastOptions = <T>(input: ToastOptions | ((value: T) => ToastOptions), payload: T): ToastOptions => {
   if (typeof input === 'function') {
     return input(payload);
   }
   return input;
 };
 
-const promise = async <T,>(task: Promise<T>, messages: PromiseMessages<T>) => {
-  const key =
-    messages.key ??
-    messages.loading.key ??
-    `promise:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 7)}`;
+const promise = async <T>(task: Promise<T>, messages: PromiseMessages<T>) => {
+  const key = messages.key ?? messages.loading.key ?? `promise:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 7)}`;
 
   show('info', {
     ...messages.loading,

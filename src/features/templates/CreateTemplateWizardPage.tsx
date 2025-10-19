@@ -478,8 +478,8 @@ const CreateTemplateWizardPage: React.FC = () => {
                   <Card
                     key={option}
                     className={cn(
-                      'h-full cursor-pointer transition hover:shadow-md',
-                      active ? 'border-primary/60 shadow-sm ring-1 ring-primary/40' : 'hover:border-primary/50'
+                      'group relative h-full cursor-pointer border border-border border-solid transition-all duration-300 hover:-translate-y-0.5 hover:border-dashed hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      active ? 'border-primary bg-primary/5 shadow-lg' : ''
                     )}
                     onClick={() => setCategory(option)}
                     onKeyDown={(event) => {
@@ -491,7 +491,7 @@ const CreateTemplateWizardPage: React.FC = () => {
                     role='button'
                     tabIndex={0}
                   >
-                    <CardHeader className='space-y-2'>
+                    <CardHeader className={cn('space-y-2 rounded-lg transition-colors duration-300', active ? 'bg-primary/10' : 'group-hover:bg-primary/5')}>
                       <div className='flex items-center gap-2'>
                         {renderCategoryIcon(option)}
                         <CardTitle className='text-base'>{CATEGORY_LABELS[option]}</CardTitle>
