@@ -95,8 +95,8 @@ export const TEMPLATE_SAMPLES: TemplateSample[] = [
     language: 'en',
     header: 'Order {{order_number}} update',
     body:
-      'Hello {{first_name}}, your order {{order_number}} is now {{order_status}}. Track progress here: {{tracking_url}}. We’ll notify you again on delivery day.',
-    footer: 'Thanks for choosing {{brand_name}}!',
+      'Hello {{first_name}}, your order {{order_number}} is now {{order_status}}. Track progress here: {{tracking_url}}. We’ll notify you again on delivery day. Thanks for choosing {{brand_name}}!',
+    footer: null,
     buttons: null,
     placeholders: buildPlaceholders([
       { key: 'first_name', label: 'First name', example: 'Ada' },

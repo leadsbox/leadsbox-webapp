@@ -354,6 +354,15 @@ const CreateTemplateWizardPage: React.FC = () => {
       return;
     }
 
+    if (/\{\{\s*[^}]+\s*\}\}/.test(footer)) {
+      notify.error({
+        key: 'wizard:template:footer-variables',
+        title: 'Footer cannot include variables',
+        description: 'Move dynamic text into the header or body instead of the footer.',
+      });
+      return;
+    }
+
     // Get all placeholders that are actually used in the template content
     const actuallyUsedKeys = Array.from(
       new Set([...detectPlaceholders(body), ...detectPlaceholders(header || ''), ...detectPlaceholders(footer || '')])
