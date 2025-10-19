@@ -113,11 +113,13 @@ const ReceiptsList = ({
 
 const VerifyInvoiceButton = ({
   code,
-  disabled,
+  isPaid,
+  hasReceipt,
   onComplete,
 }: {
   code: string;
-  disabled: boolean;
+  isPaid: boolean;
+  hasReceipt: boolean;
   onComplete: (receipt: ReceiptInfo | undefined) => void;
 }) => {
   const queryClient = useQueryClient();
@@ -159,9 +161,11 @@ const VerifyInvoiceButton = ({
 
   const handleClick = async () => {
     const confirmed = await confirm({
-      title: 'Mark invoice as paid?',
-      description: 'This will generate a receipt and notify the buyer. Continue?',
-      confirmText: 'Mark as paid',
+      title: hasReceipt ? 'Re-send receipt to customer?' : 'Issue receipt for this invoice?',
+      description: hasReceipt
+        ? 'A new receipt link will be generated and the invoice status will be refreshed.'
+        : 'This will mark the invoice as paid, generate a receipt, and notify the customer.',
+      confirmText: hasReceipt ? 'Re-send receipt' : 'Issue receipt',
       variant: 'destructive',
     });
     if (!confirmed) return;
@@ -169,9 +173,9 @@ const VerifyInvoiceButton = ({
   };
 
   return (
-    <Button size='sm' variant='outline' disabled={disabled || verifyMutation.isPending} onClick={handleClick}>
+    <Button size='sm' variant='outline' disabled={verifyMutation.isPending} onClick={handleClick}>
       {verifyMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <CheckCircle className='mr-2 h-4 w-4' />}
-      Mark as paid
+      {hasReceipt || isPaid ? 'Re-send receipt' : 'Issue receipt'}
     </Button>
   );
 };
@@ -281,7 +285,8 @@ const InvoiceDetailPage: React.FC = () => {
             <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
               <VerifyInvoiceButton
                 code={data.invoice.code}
-                disabled={data.invoice.isPaid}
+                isPaid={data.invoice.isPaid}
+                hasReceipt={Boolean(data.invoice.receiptCount)}
                 onComplete={(receipt) => {
                   if (receipt) {
                     setLatestReceipt(receipt);
