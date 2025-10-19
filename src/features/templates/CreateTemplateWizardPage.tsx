@@ -72,41 +72,6 @@ const detectPlaceholders = (content: string): string[] => {
   return Array.from(tokens);
 };
 
-// Convert user-friendly placeholders to WhatsApp indexed format
-const convertToWhatsAppFormat = (content: string, placeholders: TemplatePlaceholder[]): string => {
-  if (!content) return content;
-
-  let convertedContent = content;
-
-  // Sort placeholders by index to ensure consistent mapping
-  const sortedPlaceholders = [...placeholders].sort((a, b) => a.index - b.index);
-
-  sortedPlaceholders.forEach((placeholder) => {
-    const userFormat = `{{${placeholder.key}}}`;
-    const whatsappFormat = `{{${placeholder.index}}}`;
-    // Replace all occurrences of the user-friendly format with WhatsApp format
-    convertedContent = convertedContent.replace(new RegExp(userFormat.replace(/[{}]/g, '\\$&'), 'g'), whatsappFormat);
-  });
-
-  return convertedContent;
-};
-
-// Convert WhatsApp indexed format back to user-friendly placeholders
-const convertFromWhatsAppFormat = (content: string, placeholders: TemplatePlaceholder[]): string => {
-  if (!content) return content;
-
-  let convertedContent = content;
-
-  placeholders.forEach((placeholder) => {
-    const whatsappFormat = `{{${placeholder.index}}}`;
-    const userFormat = `{{${placeholder.key}}}`;
-    // Replace WhatsApp format with user-friendly format
-    convertedContent = convertedContent.replace(new RegExp(whatsappFormat.replace(/[{}]/g, '\\$&'), 'g'), userFormat);
-  });
-
-  return convertedContent;
-};
-
 // Validate that placeholders follow WhatsApp requirements
 const validatePlaceholders = (placeholders: TemplatePlaceholder[]): { valid: boolean; error?: string } => {
   if (placeholders.length === 0) return { valid: true };
@@ -133,11 +98,15 @@ const scaffoldPlaceholders = (keys: string[], existing: TemplatePlaceholder[], e
   const map = new Map(existing.map((item) => [item.key, item] as const));
   return keys.map((key, index) => {
     const current = map.get(key);
+    const fallbackLabel = key.replace(/_/g, ' ');
+    const exampleFromExamples = examples?.[key]?.trim() ?? '';
+    const exampleFromExisting = typeof current?.example === 'string' ? current.example.trim() : '';
+    const inferredExample = inferSampleValue(key);
     return {
       key,
-      label: current?.label ?? key.replace(/_/g, ' '),
-      example: current?.example ?? examples[key] ?? '',
-      index: current?.index ?? index + 1,
+      label: current?.label?.toString().trim() || fallbackLabel,
+      example: exampleFromExisting || exampleFromExamples || inferredExample,
+      index: typeof current?.index === 'number' && current.index > 0 ? current.index : index + 1,
     };
   });
 };
@@ -263,7 +232,7 @@ const CreateTemplateWizardPage: React.FC = () => {
   const isTestMode = Boolean(import.meta.env.VITE_APP_ENV?.toLowerCase() === 'test');
 
   const [step, setStep] = useState(0);
-  const [category, setCategory] = useState<TemplateCategory>(prefills?.category ?? 'UTILITY');
+  const [category, setCategory] = useState<TemplateCategory | null>(prefills?.category ?? null);
   const [language, setLanguage] = useState(prefills?.language ?? 'en');
   const [name, setName] = useState(prefills?.name ?? '');
   const [header, setHeader] = useState(prefills?.header ?? '');
@@ -347,7 +316,7 @@ const CreateTemplateWizardPage: React.FC = () => {
     },
   });
 
-  const canContinueStepOne = category && language;
+  const canContinueStepOne = Boolean(category && language);
   const isNameValid = /^([a-z0-9]+_)*[a-z0-9]+$/.test(name); // snake_case
   const canContinueStepTwo = body.trim().length > 0 && isNameValid;
 
@@ -376,9 +345,52 @@ const CreateTemplateWizardPage: React.FC = () => {
       return;
     }
 
+    if (!category) {
+      notify.error({
+        key: 'wizard:template:category-missing',
+        title: 'Choose a template type',
+        description: 'Select a category before saving or submitting your template.',
+      });
+      return;
+    }
+
+    // Get all placeholders that are actually used in the template content
+    const actuallyUsedKeys = Array.from(
+      new Set([...detectPlaceholders(body), ...detectPlaceholders(header || ''), ...detectPlaceholders(footer || '')])
+    );
+
+    // Create placeholder definitions for all used keys, ensuring we have definitions for every key
+    const existingPlaceholdersMap = new Map(
+      (Array.isArray(placeholders) ? placeholders : [])
+        .filter((item): item is TemplatePlaceholder => Boolean(item && typeof item === 'object' && item.key))
+        .map((item) => [item.key.trim(), item])
+    );
+
+    const normalizedPlaceholders = actuallyUsedKeys.map((key, idx) => {
+      const existing = existingPlaceholdersMap.get(key);
+      const sanitizedKey = key.trim();
+      const fallbackLabel = sanitizedKey.replace(/_/g, ' ');
+      const rawLabel = typeof existing?.label === 'string' ? existing.label.trim() : '';
+      const rawExample = typeof existing?.example === 'string' ? existing.example.trim() : '';
+      const rawSampleValue = sampleValues?.[sanitizedKey];
+      const sanitizedSampleValue = typeof rawSampleValue === 'string' ? rawSampleValue.trim() : '';
+      const example = rawExample || sanitizedSampleValue || inferSampleValue(sanitizedKey);
+
+      // Ensure label and example are never empty
+      const finalLabel = rawLabel || fallbackLabel || sanitizedKey;
+      const finalExample = example || inferSampleValue(sanitizedKey) || 'sample';
+
+      return {
+        key: sanitizedKey,
+        label: finalLabel,
+        example: finalExample,
+        index: idx + 1, // Sequential indices starting from 1
+      };
+    });
+
     // Validate placeholders for WhatsApp requirements
     if (submit) {
-      const validation = validatePlaceholders(placeholders);
+      const validation = validatePlaceholders(normalizedPlaceholders);
       if (!validation.valid) {
         notify.error({
           key: 'wizard:template:placeholder-validation',
@@ -389,21 +401,27 @@ const CreateTemplateWizardPage: React.FC = () => {
       }
     }
 
-    // Convert content to WhatsApp format for submission
-    const convertedHeader = header.trim() ? convertToWhatsAppFormat(header.trim(), placeholders) : undefined;
-    const convertedBody = convertToWhatsAppFormat(body.trim(), placeholders);
-    const convertedFooter = footer.trim() ? convertToWhatsAppFormat(footer.trim(), placeholders) : undefined;
+    const normalizedSampleValues = normalizedPlaceholders.reduce<Record<string, string>>((acc, item) => {
+      const rawSampleValue = sampleValues?.[item.key];
+      const sanitizedSampleValue = typeof rawSampleValue === 'string' ? rawSampleValue.trim() : '';
+      acc[item.key] = sanitizedSampleValue || item.example || inferSampleValue(item.key);
+      return acc;
+    }, {});
+
+    const normalizedHeader = header.trim() ? header.trim() : undefined;
+    const normalizedBody = body.trim();
+    const normalizedFooter = footer.trim() ? footer.trim() : undefined;
 
     const payload: TemplatePayload & { submit?: boolean } = {
       name: name.trim(),
       category,
       language,
-      header: convertedHeader,
-      body: convertedBody,
-      footer: convertedFooter,
+      header: normalizedHeader,
+      body: normalizedBody,
+      footer: normalizedFooter,
       buttons: null,
-      placeholders,
-      sampleValues,
+      placeholders: normalizedPlaceholders,
+      sampleValues: normalizedSampleValues,
       notes: notes || undefined,
       submit,
     };
@@ -491,7 +509,9 @@ const CreateTemplateWizardPage: React.FC = () => {
                     role='button'
                     tabIndex={0}
                   >
-                    <CardHeader className={cn('space-y-2 rounded-lg transition-colors duration-300', active ? 'bg-primary/10' : 'group-hover:bg-primary/5')}>
+                    <CardHeader
+                      className={cn('space-y-2 rounded-lg transition-colors duration-300', active ? 'bg-primary/10' : 'group-hover:bg-primary/5')}
+                    >
                       <div className='flex items-center gap-2'>
                         {renderCategoryIcon(option)}
                         <CardTitle className='text-base'>{CATEGORY_LABELS[option]}</CardTitle>
@@ -666,9 +686,7 @@ const CreateTemplateWizardPage: React.FC = () => {
                 <CardDescription>Select tips to increase approval success.</CardDescription>
               </CardHeader>
               <CardContent className='space-y-2 text-sm text-muted-foreground'>
-                {CATEGORY_TIPS[category].map((tip) => (
-                  <p key={tip}>• {tip}</p>
-                ))}
+                {category ? CATEGORY_TIPS[category].map((tip) => <p key={tip}>• {tip}</p>) : <p>Select a category to see approval tips.</p>}
               </CardContent>
             </Card>
           </div>
@@ -690,7 +708,7 @@ const CreateTemplateWizardPage: React.FC = () => {
                 </div>
                 <div>
                   <p className='text-xs uppercase text-muted-foreground'>Category</p>
-                  <p className='font-medium text-foreground'>{CATEGORY_LABELS[category]}</p>
+                  <p className='font-medium text-foreground'>{category ? CATEGORY_LABELS[category] : '—'}</p>
                 </div>
                 <div>
                   <p className='text-xs uppercase text-muted-foreground'>Language</p>

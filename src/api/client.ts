@@ -201,12 +201,12 @@ client.interceptors.response.use(
         variant: 'warning',
         autoHideMs: 12_000,
       });
-    } else if (status && status >= 500) {
-      showBanner(SERVER_ERROR_BANNER_ID, {
-        title: 'We’re having trouble on our side. Your data is safe.',
-        description: 'We track these automatically—most recover quickly.',
-        variant: 'error',
-      });
+    // } else if (status && status >= 500) {
+    //   showBanner(SERVER_ERROR_BANNER_ID, {
+    //     title: 'We’re having trouble on our side. Your data is safe.',
+    //     description: 'We track these automatically—most recover quickly.',
+    //     variant: 'error',
+    //   });
     } else if (status === 401) {
       showBanner(AUTH_BANNER_ID, {
         title: 'Session needs attention',
