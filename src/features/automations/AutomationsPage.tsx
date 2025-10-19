@@ -33,15 +33,15 @@ const Step = ({
   title: string;
   description: string;
 }) => (
-  <div className='text-center space-y-3'>
-    <div className='mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center relative'>
-      <Icon className='h-5 w-5 text-primary' />
-      <span className='absolute -top-2 -right-2 w-6 h-6 bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center justify-center'>
-        {number}
-      </span>
+  <div className='flex gap-3 items-start'>
+    <div className='flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center'>
+      <span className='text-sm font-semibold text-primary'>{number}</span>
     </div>
     <div className='space-y-1'>
-      <h3 className='font-medium'>{title}</h3>
+      <div className='flex items-center gap-2'>
+        <Icon className='h-4 w-4 text-primary' />
+        <h3 className='font-medium text-sm'>{title}</h3>
+      </div>
       <p className='text-sm text-muted-foreground'>{description}</p>
     </div>
   </div>

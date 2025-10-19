@@ -1,18 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  AlertCircle,
-  ArrowLeft,
-  CheckCircle,
-  CreditCard,
-  FileText,
-  Loader2,
-  Plus,
-  Receipt,
-  Save,
-  Zap,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, CreditCard, FileText, Loader2, Plus, Receipt, Save, Zap } from 'lucide-react';
 
 import { endpoints } from '@/api/config';
 import client from '@/api/client';
@@ -80,7 +69,7 @@ const CreateInvoicePage: React.FC = () => {
   const navigate = useNavigate();
   const confirmDialog = useConfirm();
   const queryClient = useQueryClient();
-  
+
   const [contactPhone, setContactPhone] = React.useState('');
   const [currency, setCurrency] = React.useState('NGN');
   const [items, setItems] = React.useState<InvoiceItem[]>([{ name: '', qty: 1, unitPrice: 0 }]);
@@ -250,25 +239,20 @@ const CreateInvoicePage: React.FC = () => {
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
             ) : null}
-            
+
             <div className='grid gap-4 sm:grid-cols-2'>
               <div className='space-y-2'>
                 <Label htmlFor='contactPhone'>Customer phone (WhatsApp)</Label>
-                <Input 
-                  id='contactPhone' 
-                  placeholder='+2348012345678' 
-                  value={contactPhone} 
-                  onChange={(event) => setContactPhone(event.target.value)} 
+                <Input
+                  id='contactPhone'
+                  placeholder='+2348012345678'
+                  value={contactPhone}
+                  onChange={(event) => setContactPhone(event.target.value)}
                 />
               </div>
               <div className='space-y-2'>
                 <Label htmlFor='currency'>Currency</Label>
-                <Input 
-                  id='currency' 
-                  value={currency} 
-                  onChange={(event) => setCurrency(event.target.value.toUpperCase())} 
-                  placeholder='NGN' 
-                />
+                <Input id='currency' value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} placeholder='NGN' />
               </div>
             </div>
 

@@ -2,11 +2,7 @@ import LeadsboxToaster from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import {
-  ConfirmProvider,
-  NetworkBannerProvider,
-  NetworkBannerSurface,
-} from '@/ui/ux';
+import { ConfirmProvider, NetworkBannerProvider, NetworkBannerSurface } from '@/ui/ux';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
@@ -40,11 +36,7 @@ import InvoicesPage from './features/invoices/InvoicesPage';
 import CreateInvoicePage from './features/invoices/CreateInvoicePage';
 import ReceiptPage from './features/receipts/ReceiptPage';
 import AutomationsPage from './features/automations/AutomationsPage';
-import {
-  TemplatesHomePage,
-  CreateTemplateWizardPage,
-  TemplateDetailPage,
-} from './features/templates';
+import { TemplatesHomePage, CreateTemplateWizardPage, TemplateDetailPage } from './features/templates';
 import PaymentPlansPage from './features/billing/PaymentPlansPage';
 
 const queryClient = new QueryClient();
@@ -58,8 +50,8 @@ const App = () => {
             <TooltipProvider>
               <LeadsboxToaster />
               <BrowserRouter>
-                <div className="pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-4">
-                  <NetworkBannerSurface className="max-w-3xl" />
+                <div className='pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-4'>
+                  <NetworkBannerSurface className='max-w-3xl' />
                 </div>
                 <Routes>
                   <Route path='/' element={<Index />} />

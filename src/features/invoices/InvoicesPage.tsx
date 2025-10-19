@@ -116,8 +116,6 @@ type ReceiptInfo = {
   apiUrl?: string;
 };
 
-
-
 const statusTone: Record<string, { label: string; badgeClass: string }> = {
   PAID: {
     label: 'Paid',
@@ -496,8 +494,6 @@ const InvoiceDetail = ({ code }: { code: string | null }) => {
   );
 };
 
-
-
 const InvoicesTable = ({
   items,
   onSelect,
@@ -644,8 +640,6 @@ const InvoicesPage: React.FC = () => {
     setLatestReceipt(null);
   };
 
-
-
   const handleReceiptCopied = () => {
     if (!latestReceipt) return;
     navigator.clipboard
@@ -676,10 +670,7 @@ const InvoicesPage: React.FC = () => {
             Create professional invoices, track payments, and issue receipts in 3 simple steps.
           </p>
         </div>
-        <Button
-          className='w-full sm:w-auto'
-          onClick={() => navigate('/dashboard/invoices/new')}
-        >
+        <Button className='w-full sm:w-auto' onClick={() => navigate('/dashboard/invoices/new')}>
           <Plus className='h-4 w-4 mr-2' />
           Create Invoice
         </Button>
