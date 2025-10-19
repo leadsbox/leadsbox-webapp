@@ -1,3 +1,4 @@
+import React from 'react';
 import { toast } from 'sonner';
 import { CACHE_KEYS } from '@/api/config';
 
@@ -46,7 +47,12 @@ const severityToFn: Record<Severity, (title: string, options: Parameters<typeof 
   error: (title, options) => toast.error(title, options),
 };
 
-const sanitize = (value?: string): string | undefined => {
+type SanitizedValue = {
+  full: string;
+  display: string;
+};
+
+const sanitize = (value?: string): SanitizedValue | undefined => {
   if (!value) return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -58,7 +64,13 @@ const sanitize = (value?: string): string | undefined => {
     .replace(/\b[A-Fa-f0-9]{32,}\b/g, '***') // hex strings (32+ chars)
     .replace(/\b[A-Za-z0-9+/]{20,}={0,2}\b/g, '***'); // base64-like strings
 
-  return masked.length > DESCRIPTION_LIMIT ? `${masked.slice(0, DESCRIPTION_LIMIT - 1)}…` : masked;
+  const display =
+    masked.length > DESCRIPTION_LIMIT ? `${masked.slice(0, DESCRIPTION_LIMIT - 1)}…` : masked;
+
+  return {
+    full: masked,
+    display,
+  };
 };
 
 const analyticsEvent = (severity: Severity, key: string, count: number, meta?: Record<string, unknown>) => {
@@ -120,12 +132,22 @@ const show = (severity: Severity, options: ToastOptions) => {
   }
 
   const titleWithCount = count > 1 ? `${options.title} ×${count}` : options.title;
-  const description = sanitize(options.description);
+  const sanitized = sanitize(options.description);
+  const descriptionNode = sanitized
+    ? React.createElement(
+        'span',
+        {
+          title: sanitized.full,
+          className: 'block max-w-[360px] whitespace-pre-wrap break-words',
+        },
+        sanitized.display
+      )
+    : undefined;
   const action = resolveAction(options.action, options.undo);
 
   const toastOptions = {
     id: key,
-    description,
+    description: descriptionNode,
     duration: options.duration ?? DEFAULT_DURATIONS[severity],
     dismissible: true,
     action: action

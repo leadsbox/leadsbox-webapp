@@ -435,11 +435,54 @@ const CreateTemplateWizardPage: React.FC = () => {
       });
       navigate(`/dashboard/templates/${created.id}`);
     } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'message' in error ? (error as { message: string }).message : 'Please try again.';
+      // Enhanced error parsing to extract user-friendly messages from API responses
+      let toastTitle = submit ? 'Submission failed' : 'Save failed';
+      let toastDescription = 'Please try again.';
+
+      const extractWhatsAppError = (message: string | undefined) => {
+        if (!message) return;
+        try {
+          // Try to parse nested error structure from API response
+          // Example: "Failed to submit template for approval: 400 {\"error\":{...}}"
+          const jsonMatch = message.match(/\{.*\}$/);
+          if (!jsonMatch) {
+            toastDescription = message;
+            return;
+          }
+          const errorData = JSON.parse(jsonMatch[0]);
+
+          const userTitle = errorData?.error?.error_user_title;
+          const userMessage =
+            errorData?.error?.error_user_msg ||
+            errorData?.error?.message ||
+            message;
+
+          if (typeof userTitle === 'string' && userTitle.trim()) {
+            toastTitle = userTitle.trim();
+          }
+
+          if (typeof userMessage === 'string' && userMessage.trim()) {
+            toastDescription = userMessage.trim();
+          }
+        } catch {
+          // If JSON parsing fails, use the raw message
+          toastDescription = message;
+        }
+      };
+
+      if (error && typeof error === 'object') {
+        const fromAxios = error as { response?: { data?: { message?: string } }; message?: string };
+        if (fromAxios?.response?.data?.message) {
+          extractWhatsAppError(fromAxios.response.data.message);
+        } else if (fromAxios?.message) {
+          extractWhatsAppError(fromAxios.message);
+        }
+      }
+
       notify.error({
         key: 'wizard:template:create:error',
-        title: submit ? 'Submission failed' : 'Save failed',
-        description: errorMessage,
+        title: toastTitle,
+        description: toastDescription,
       });
     }
   };
