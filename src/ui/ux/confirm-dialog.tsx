@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type ConfirmOptions = {
@@ -152,16 +152,16 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
                 {cancelText}
               </Button>
             </AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <Button
-                ref={confirmRef}
-                type='button'
-                variant={variant === 'destructive' ? 'destructive' : 'default'}
-                className={cn(variant === 'destructive' ? 'focus:ring-destructive' : undefined)}
-                onClick={closeDialogConfirmed}
-              >
-                {confirmText}
-              </Button>
+            <AlertDialogAction
+              ref={confirmRef}
+              type='button'
+              className={cn(
+                buttonVariants({ variant: variant === 'destructive' ? 'destructive' : 'default' }),
+                variant === 'destructive' ? 'bg-red-700 hover:bg-red-800 focus-visible:ring-destructive' : undefined
+              )}
+              onClick={closeDialogConfirmed}
+            >
+              {confirmText}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

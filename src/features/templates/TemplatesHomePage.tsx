@@ -313,18 +313,19 @@ const TemplatesHomePage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className='hidden md:table-cell'>Updated</TableHead>
-                    <TableHead className='text-right'>Actions</TableHead>
+                    <TableHead className='w-[30%]'>Template</TableHead>
+                    <TableHead className='w-[14%]'>Type</TableHead>
+                    <TableHead className='hidden lg:table-cell w-[12%]'>Language</TableHead>
+                    <TableHead className='w-[16%]'>Status</TableHead>
+                    <TableHead className='hidden md:table-cell w-[16%]'>Updated</TableHead>
+                    <TableHead className='w-[140px] text-right'>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     Array.from({ length: 3 }).map((_, index) => (
                       <TableRow key={index}>
-                        <TableCell colSpan={5}>
+                        <TableCell colSpan={6}>
                           <Skeleton className='h-10 w-full' />
                         </TableCell>
                       </TableRow>
@@ -333,8 +334,20 @@ const TemplatesHomePage: React.FC = () => {
                     templates.map((template) => {
                       const isDeleting = deleteMutation.isPending && deleteMutation.variables?.id === template.id;
                       return (
-                        <TableRow key={template.id} className='hover:bg-muted/50'>
-                          <TableCell className='font-medium'>
+                        <TableRow
+                          key={template.id}
+                          className='group cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2'
+                          role='button'
+                          tabIndex={0}
+                          onClick={() => navigate(`/dashboard/templates/${template.id}`)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              navigate(`/dashboard/templates/${template.id}`);
+                            }
+                          }}
+                        >
+                          <TableCell className='align-middle'>
                             <div>
                               <p className='font-medium'>{template.name}</p>
                               <p className='text-xs text-muted-foreground'>{template.variables?.length ?? 0} variables</p>
@@ -343,6 +356,9 @@ const TemplatesHomePage: React.FC = () => {
                           <TableCell>
                             <Badge variant='secondary'>{CATEGORY_LABELS[template.category]}</Badge>
                           </TableCell>
+                          <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>
+                            {template.language?.toUpperCase() || '—'}
+                          </TableCell>
                           <TableCell>
                             <TemplateStatusBadge status={template.status as TemplateStatus} />
                           </TableCell>
@@ -350,9 +366,9 @@ const TemplatesHomePage: React.FC = () => {
                             {new Date(template.updatedAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell className='text-right'>
-                            <div className='flex items-center justify-end gap-2'>
+                            <div className='flex items-center justify-end gap-2 whitespace-nowrap'>
                               <Button
-                                variant='destructive'
+                                variant='default'
                                 size='sm'
                                 disabled={isDeleting}
                                 onClick={(event) => {
@@ -367,14 +383,23 @@ const TemplatesHomePage: React.FC = () => {
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant='ghost' size='sm'>
+                                  <Button
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                    }}
+                                  >
                                     <ArrowRight className='h-4 w-4' />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align='end'>
-                                  <DropdownMenuItem onClick={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => navigate(`/dashboard/templates/${template.id}`)}>
+                                    View details
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() =>
+                                    onSelect={() =>
                                       navigate('/dashboard/templates/new', {
                                         state: { duplicateOf: template.id, prefills: template },
                                       })
@@ -391,7 +416,7 @@ const TemplatesHomePage: React.FC = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className='py-8 text-center text-sm text-muted-foreground'>
+                      <TableCell colSpan={6} className='py-8 text-center text-sm text-muted-foreground'>
                         No templates found. Try adjusting your filters.
                       </TableCell>
                     </TableRow>
