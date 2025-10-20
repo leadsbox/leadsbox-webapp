@@ -29,7 +29,7 @@ export const TEMPLATE_SAMPLES: TemplateSample[] = [
     name: 'welcome_offer',
     category: 'MARKETING',
     language: 'en',
-    header: 'Welcome to {{brand_name}} ✨',
+    header: 'Welcome to {{brand_name}}',
     body:
       'Hi {{first_name}}, thanks for joining {{brand_name}}! Enjoy {{discount}} off your first order. Use code {{coupon_code}} before {{expiry_date}}. Reply STOP to opt out.',
     footer: 'Need help? Chat with us anytime.',
