@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, BookOpen, Filter, Plus, RefreshCcw, CheckCircle, MessageSquare, Clock, Zap, Trash2 } from 'lucide-react';
+import { ArrowRight, BookOpen, Filter, Plus, RefreshCcw, CheckCircle, MessageSquare, Clock, Zap, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -156,6 +156,11 @@ const TemplatesHomePage: React.FC = () => {
         title: 'Template deleted successfully',
         description: `"${variables.name}" has been permanently removed from your templates.`,
       });
+      setSelectedTemplateIds((prev) => {
+        const next = new Set(prev);
+        next.delete(variables.id);
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ['templates'] });
     },
     onError: (error, variables) => {
@@ -182,6 +187,56 @@ const TemplatesHomePage: React.FC = () => {
   const templates = templatesQuery.data ?? [];
   const isLoading = templatesQuery.isLoading;
   const isTestMode = Boolean(import.meta.env.VITE_APP_ENV?.toLowerCase() === 'test');
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
+  const selectAllTemplatesRef = React.useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set<string>();
+      templates.forEach((template) => {
+        if (prev.has(template.id)) {
+          next.add(template.id);
+        }
+      });
+      return next;
+    });
+  }, [templates]);
+
+  const selectedTemplateCount = selectedTemplateIds.size;
+  const allTemplatesSelected =
+    templates.length > 0 && templates.every((template) => selectedTemplateIds.has(template.id));
+
+  useEffect(() => {
+    if (selectAllTemplatesRef.current) {
+      selectAllTemplatesRef.current.indeterminate =
+        selectedTemplateCount > 0 && !allTemplatesSelected;
+    }
+  }, [selectedTemplateCount, allTemplatesSelected]);
+
+  const toggleTemplateSelection = (templateId: string) => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(templateId)) {
+        next.delete(templateId);
+      } else {
+        next.add(templateId);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllTemplateSelection = () => {
+    setSelectedTemplateIds((prev) => {
+      const shouldClear =
+        templates.length > 0 && templates.every((template) => prev.has(template.id));
+      if (shouldClear) {
+        return new Set();
+      }
+      return new Set(templates.map((template) => template.id));
+    });
+  };
+
+  const hasTemplateSelection = selectedTemplateCount > 0;
 
   const onCreate = () => navigate('/dashboard/templates/new');
   const handleDeleteTemplate = async (template: Template) => {
@@ -203,6 +258,62 @@ const TemplatesHomePage: React.FC = () => {
       console.error('Error in delete confirmation:', error);
     }
   };
+
+  const bulkDeleteMutation = useMutation<void, unknown, string[]>({
+    mutationFn: async (ids) => {
+      await templateApi.bulkRemove(ids);
+    },
+    onSuccess: (_, ids) => {
+      notify.success({
+        key: `templates:bulk-delete:${ids.length}`,
+        title: 'Templates deleted',
+        description: `${ids.length} template${ids.length === 1 ? '' : 's'} removed.`,
+      });
+      setSelectedTemplateIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+    onError: (error) => {
+      let message = 'Failed to delete templates.';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        message = String((error as { message?: string }).message || message);
+      }
+
+      notify.error({
+        key: 'templates:bulk-delete:error',
+        title: 'Unable to delete templates',
+        description: message,
+      });
+    },
+  });
+
+  const handleBulkDeleteTemplates = async () => {
+    if (!selectedTemplateIds.size) return;
+
+    try {
+      const confirmed = await openConfirm({
+        title: 'Delete selected templates?',
+        description: `This will permanently delete ${selectedTemplateIds.size} template${
+          selectedTemplateIds.size === 1 ? '' : 's'
+        }.`,
+        confirmText: 'Delete templates',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+
+      if (!confirmed) return;
+
+      bulkDeleteMutation.mutate(Array.from(selectedTemplateIds));
+    } catch (error) {
+      console.error('Error confirming template bulk delete:', error);
+    }
+  };
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
@@ -213,10 +324,24 @@ const TemplatesHomePage: React.FC = () => {
             Send approved messages to customers anytime. Create your template in 3 simple steps.
           </p>
         </div>
-        <Button className='w-full sm:w-auto' onClick={onCreate}>
-          <Plus className='h-4 w-4 mr-2' />
-          Create Template
-        </Button>
+        <div className='flex flex-wrap items-center gap-2 justify-end'>
+          {hasTemplateSelection ? (
+            <Button
+              className='w-full sm:w-auto'
+              variant='default'
+              size='sm'
+              onClick={handleBulkDeleteTemplates}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
+              Delete selected ({selectedTemplateCount})
+            </Button>
+          ) : null}
+          <Button className='w-full sm:w-auto' onClick={onCreate}>
+            <Plus className='h-4 w-4 mr-2' />
+            Create Template
+          </Button>
+        </div>
       </div>
 
       {/* How it Works - Step by Step */}

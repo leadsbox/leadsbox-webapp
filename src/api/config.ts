@@ -91,6 +91,7 @@ export const endpoints = {
     resubmit: (id: string) => `/templates/${id}/resubmit`,
     deprecate: (id: string) => `/templates/${id}/deprecate`,
     remove: (id: string) => `/templates/${id}`,
+    bulkRemove: '/templates/bulk-delete',
     sendTest: (id: string) => `/templates/${id}/send-test`,
     refresh: (id: string) => `/templates/${id}/refresh`,
   },
@@ -129,6 +130,7 @@ export const endpoints = {
     approveClaim: (claimId: string) => `/invoices/claims/${claimId}/approve`,
     rejectClaim: (claimId: string) => `/invoices/claims/${claimId}/reject`,
     remove: (code: string) => `/invoices/${code}`,
+    bulkRemove: '/invoices/bulk-delete',
   },
 } as const;
 
