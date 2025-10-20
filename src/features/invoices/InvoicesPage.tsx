@@ -304,7 +304,14 @@ const InvoicesTable = ({
                       }
                     }}
                   >
-                    <TableCell>
+                    <TableCell
+                      className='cursor-pointer'
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleSelection(invoice.code);
+                      }}
+                    >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => toggleSelection(invoice.code, checked === true)}

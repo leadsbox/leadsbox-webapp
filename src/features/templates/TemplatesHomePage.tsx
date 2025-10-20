@@ -489,7 +489,14 @@ const TemplatesHomePage: React.FC = () => {
                             }
                           }}
                         >
-                          <TableCell className='align-middle'>
+                          <TableCell
+                            className='align-middle cursor-pointer'
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleTemplateSelection(template.id);
+                            }}
+                          >
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={(checked) => toggleTemplateSelection(template.id, checked === true)}
