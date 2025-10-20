@@ -133,6 +133,17 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
               closeDialogConfirmed();
             }
           }}
+          onEscapeKeyDown={(event) => {
+            event.preventDefault();
+            skipNextCloseRef.current = false;
+            closeDialog(false);
+          }}
+          onPointerDownOutside={(event) => {
+            // Radix passes detail.originalEvent; prevent closing when inner buttons clicked
+            if (event?.defaultPrevented) return;
+            skipNextCloseRef.current = false;
+            closeDialog(false);
+          }}
         >
           <AlertDialogHeader>
             <AlertDialogTitle>{state?.title}</AlertDialogTitle>
