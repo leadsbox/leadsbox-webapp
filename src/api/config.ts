@@ -128,6 +128,7 @@ export const endpoints = {
     verifyQueue: '/invoices/verify/queue/list',
     approveClaim: (claimId: string) => `/invoices/claims/${claimId}/approve`,
     rejectClaim: (claimId: string) => `/invoices/claims/${claimId}/reject`,
+    remove: (code: string) => `/invoices/${code}`,
   },
 } as const;
 

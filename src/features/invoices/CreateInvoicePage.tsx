@@ -162,24 +162,38 @@ const CreateInvoicePage: React.FC = () => {
       return;
     }
 
-    const shouldAutoSend =
-      contactPhone.trim().length > 0 &&
-      (await confirmDialog({
+    // If there's a phone number, ask user if they want to send via WhatsApp
+    if (contactPhone.trim().length > 0) {
+      const shouldAutoSend = await confirmDialog({
         title: 'Send invoice via WhatsApp?',
         description: 'We can text a payment request to this contact with the invoice link. Send it now?',
         confirmText: 'Send invoice',
-        cancelText: 'Skip',
-      }));
+        cancelText: 'Cancel',
+      });
 
-    createMutation.mutate({
-      contactPhone: contactPhone.trim() || undefined,
-      currency: currency.trim() || 'NGN',
-      items: validItems,
-      autoSendTo: shouldAutoSend ? contactPhone.trim() : undefined,
-      sendText: shouldAutoSend,
-    });
+      // If user cancels, don't create the invoice at all
+      if (!shouldAutoSend) {
+        return;
+      }
 
-    if (!shouldAutoSend) {
+      // User confirmed, create invoice and send via WhatsApp
+      createMutation.mutate({
+        contactPhone: contactPhone.trim(),
+        currency: currency.trim() || 'NGN',
+        items: validItems,
+        autoSendTo: contactPhone.trim(),
+        sendText: true,
+      });
+    } else {
+      // No phone number, just create the invoice
+      createMutation.mutate({
+        contactPhone: undefined,
+        currency: currency.trim() || 'NGN',
+        items: validItems,
+        autoSendTo: undefined,
+        sendText: false,
+      });
+
       notify.info({
         key: 'invoice:auto-send:skip',
         title: 'Invoice ready',

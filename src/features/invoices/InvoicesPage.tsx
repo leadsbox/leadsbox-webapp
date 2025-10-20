@@ -1,7 +1,7 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2, Plus, RefreshCw, ShieldCheck, FileText, Zap, MessageSquare, CreditCard } from 'lucide-react';
+import { ArrowRight, Loader2, Plus, RefreshCw, ShieldCheck, FileText, Zap, MessageSquare, CreditCard, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { endpoints } from '@/api/config';
@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { notify } from '@/lib/toast';
+import { useConfirm } from '@/ui/ux/confirm-dialog';
 
 import { InvoiceCollection, InvoiceSummary, formatCurrency, parseItems, statusTone } from './invoiceTypes';
 
@@ -171,13 +173,17 @@ const InvoiceSummaryCards = ({ data }: { data: InvoiceCollection | undefined }) 
 const InvoicesTable = ({
   items,
   onView,
+  onDelete,
   isRefreshing,
   onRefresh,
+  deletingCode,
 }: {
   items: InvoiceSummary[];
   onView: (invoice: InvoiceSummary) => void;
+  onDelete: (invoice: InvoiceSummary) => void;
   isRefreshing: boolean;
   onRefresh: () => void;
+  deletingCode: string | null;
 }) => {
   return (
     <Card>
@@ -214,12 +220,28 @@ const InvoicesTable = ({
                       {invoice.contactPhone || 'No customer phone'} • {format(new Date(invoice.createdAt), 'PPp')}
                     </div>
                   </div>
-                  <div className='flex items-center gap-6 pt-3 text-sm sm:pt-0'>
+                  <div className='flex items-center gap-4 pt-3 text-sm sm:pt-0'>
                     <div className='text-right'>
                       <div className='font-medium text-foreground'>{formatCurrency(invoice.total, invoice.currency)}</div>
                       <div className='text-xs text-muted-foreground'>Outstanding {formatCurrency(invoice.outstanding, invoice.currency)}</div>
                     </div>
-                    <ArrowRight className='hidden h-4 w-4 text-muted-foreground sm:block' />
+                    <div className='flex items-center gap-2'>
+                      <ArrowRight className='hidden h-4 w-4 text-muted-foreground sm:block' />
+                      <Button
+                        variant='ghost'
+                        size='icon'
+                        className='text-destructive hover:text-destructive'
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onDelete(invoice);
+                        }}
+                        disabled={deletingCode === invoice.code}
+                        aria-label={`Delete invoice ${invoice.code}`}
+                      >
+                        {deletingCode === invoice.code ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
+                      </Button>
+                    </div>
                   </div>
                 </button>
               );
@@ -234,12 +256,62 @@ const InvoicesTable = ({
 const InvoicesPage: React.FC = () => {
   const navigate = useNavigate();
   const invoicesQuery = useInvoices();
+  const queryClient = useQueryClient();
+  const openConfirm = useConfirm();
 
   const isLoading = invoicesQuery.isLoading;
   const hasInvoices = invoicesQuery.data?.items?.length;
 
   const handleViewInvoice = (invoice: InvoiceSummary) => {
     navigate(`/dashboard/invoices/${invoice.code}`);
+  };
+
+  const deleteMutation = useMutation<void, unknown, { code: string; total: number }>({
+    mutationFn: async ({ code }) => {
+      await client.delete(endpoints.invoices.remove(code));
+    },
+    onSuccess: (_, variables) => {
+      notify.success({
+        key: `invoice:${variables.code}:deleted`,
+        title: 'Invoice deleted',
+        description: `Invoice ${variables.code} has been removed.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+    onError: (error, variables) => {
+      let message = 'Failed to delete invoice.';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        message = String((error as { message?: string }).message || message);
+      }
+      notify.error({
+        key: `invoice:${variables.code}:delete:error`,
+        title: 'Unable to delete invoice',
+        description: message,
+      });
+    },
+  });
+
+  const handleDeleteInvoice = async (invoice: InvoiceSummary) => {
+    try {
+      const confirmed = await openConfirm({
+        title: 'Delete this invoice?',
+        description: `Invoice ${invoice.code} and its receipts will be removed permanently.`,
+        confirmText: 'Delete invoice',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+      if (!confirmed) return;
+      deleteMutation.mutate({ code: invoice.code, total: invoice.total });
+    } catch (error) {
+      console.error('Error confirming invoice deletion:', error);
+    }
   };
 
   return (
@@ -269,8 +341,10 @@ const InvoicesPage: React.FC = () => {
           <InvoicesTable
             items={invoicesQuery.data!.items}
             onView={handleViewInvoice}
+             onDelete={handleDeleteInvoice}
             isRefreshing={invoicesQuery.isRefetching}
             onRefresh={() => invoicesQuery.refetch()}
+            deletingCode={deleteMutation.isPending ? deleteMutation.variables?.code ?? null : null}
           />
         </>
       ) : (

@@ -1,15 +1,6 @@
 import React from 'react';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -123,8 +114,8 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
   return (
     <ConfirmContext.Provider value={{ openConfirm }}>
       {children}
-      <AlertDialog open={Boolean(state)} onOpenChange={handleOpenChange}>
-        <AlertDialogContent
+      <Dialog open={Boolean(state)} onOpenChange={handleOpenChange}>
+        <DialogContent
           role='alertdialog'
           aria-live='assertive'
           onKeyDown={(event) => {
@@ -138,32 +129,24 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
             skipNextCloseRef.current = false;
             closeDialog(false);
           }}
-          onPointerDownOutside={(event) => {
-            // Radix passes detail.originalEvent; prevent closing when inner buttons clicked
-            if (event?.defaultPrevented) return;
-            skipNextCloseRef.current = false;
-            closeDialog(false);
-          }}
         >
-          <AlertDialogHeader>
-            <AlertDialogTitle>{state?.title}</AlertDialogTitle>
-            {state?.description ? <AlertDialogDescription>{state.description}</AlertDialogDescription> : null}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel asChild>
-              <Button
-                ref={cancelRef}
-                type='button'
-                variant='outline'
-                onClick={() => {
-                  skipNextCloseRef.current = false;
-                  closeDialog(false);
-                }}
-              >
-                {cancelText}
-              </Button>
-            </AlertDialogCancel>
-            <AlertDialogAction
+          <DialogHeader>
+            <DialogTitle>{state?.title}</DialogTitle>
+            {state?.description ? <DialogDescription>{state.description}</DialogDescription> : null}
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              ref={cancelRef}
+              type='button'
+              variant='outline'
+              onClick={() => {
+                skipNextCloseRef.current = false;
+                closeDialog(false);
+              }}
+            >
+              {cancelText}
+            </Button>
+            <Button
               ref={confirmRef}
               type='button'
               className={cn(
@@ -173,10 +156,10 @@ export const ConfirmProvider = ({ children }: ProviderProps) => {
               onClick={closeDialogConfirmed}
             >
               {confirmText}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ConfirmContext.Provider>
   );
 };
