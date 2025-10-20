@@ -157,8 +157,8 @@ export const TEMPLATE_SAMPLES: TemplateSample[] = [
     language: 'en',
     header: 'Your login code',
     body:
-      'Use {{otp_code}} to sign in to {{product_name}}. Do not share this code with anyone. It expires in {{valid_for_minutes}} minutes.',
-    footer: 'Need help? Visit {{help_url}}',
+      'Use {{otp_code}} to sign in to {{product_name}}. Do not share this code with anyone. It expires in {{valid_for_minutes}} minutes. Need help? Visit {{help_url}}',
+    footer: '',
     buttons: null,
     placeholders: buildPlaceholders([
       { key: 'otp_code', label: 'OTP code', example: '482193' },
