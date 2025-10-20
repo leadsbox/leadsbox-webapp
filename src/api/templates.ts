@@ -1,14 +1,49 @@
 import client from './client';
 import { endpoints } from './config';
 import type {
-  TemplateDetail,
-  TemplateListFilters,
-  TemplateListResponse,
-  TemplatePayload,
-  TemplateSendTestPayload,
-  TemplateSummary,
-  TemplateUpdatePayload,
+  Template,
+  TemplateCategory,
+  TemplateStatus,
+  TemplatePlaceholder,
 } from '@/types';
+
+// Template API types (these should ideally be defined in @/types)
+type TemplateListFilters = {
+  search?: string;
+  category?: TemplateCategory;
+  status?: TemplateStatus;
+  language?: string;
+};
+
+type TemplateDetail = Template & {
+  versions?: unknown[];
+  reviews?: unknown[];
+  audits?: unknown[];
+};
+
+type TemplateListResponse = Template[];
+
+type TemplatePayload = {
+  name: string;
+  category: TemplateCategory;
+  language?: string;
+  header?: string | null;
+  body: string;
+  footer?: string | null;
+  buttons?: unknown;
+  placeholders: TemplatePlaceholder[];
+  sampleValues?: Record<string, string>;
+  notes?: string | null;
+};
+
+type TemplateSendTestPayload = {
+  phoneNumber: string;
+  variables?: Record<string, string>;
+};
+
+type TemplateSummary = Template;
+
+type TemplateUpdatePayload = Partial<Omit<TemplatePayload, 'name' | 'category'>>;
 
 const buildQueryString = (filters?: TemplateListFilters) => {
   if (!filters) return '';
@@ -59,6 +94,9 @@ export const templateApi = {
   },
   remove(id: string) {
     return client.delete(endpoints.templates.remove(id));
+  },
+  bulkRemove(ids: string[]) {
+    return client.post(endpoints.templates.bulkRemove, { ids });
   },
   sendTest(id: string, payload: TemplateSendTestPayload) {
     return client.post(endpoints.templates.sendTest(id), payload);

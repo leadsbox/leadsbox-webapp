@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, BookOpen, Filter, Plus, RefreshCcw, CheckCircle, MessageSquare, Clock, Zap, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/components/ui/skeleton';
 import { notify } from '@/lib/toast';
 import templateApi from '@/api/templates';
+
+// Custom type for checkbox refs that support indeterminate
+type CheckboxRef = HTMLButtonElement & { indeterminate?: boolean };
 import TemplateStatusBadge from './components/TemplateStatusBadge';
 import type { Template, TemplateCategory, TemplateStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -188,7 +192,7 @@ const TemplatesHomePage: React.FC = () => {
   const isLoading = templatesQuery.isLoading;
   const isTestMode = Boolean(import.meta.env.VITE_APP_ENV?.toLowerCase() === 'test');
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
-  const selectAllTemplatesRef = React.useRef<HTMLInputElement | null>(null);
+  const selectAllTemplatesRef = React.useRef<CheckboxRef | null>(null);
 
   useEffect(() => {
     setSelectedTemplateIds((prev) => {
@@ -213,23 +217,34 @@ const TemplatesHomePage: React.FC = () => {
     }
   }, [selectedTemplateCount, allTemplatesSelected]);
 
-  const toggleTemplateSelection = (templateId: string) => {
+  const toggleTemplateSelection = (templateId: string, checked?: boolean | string) => {
     setSelectedTemplateIds((prev) => {
       const next = new Set(prev);
-      if (next.has(templateId)) {
-        next.delete(templateId);
-      } else {
+      const shouldSelect =
+        typeof checked === 'boolean'
+          ? checked
+          : checked === 'indeterminate'
+          ? !next.has(templateId)
+          : !next.has(templateId);
+      if (shouldSelect) {
         next.add(templateId);
+      } else {
+        next.delete(templateId);
       }
       return next;
     });
   };
 
-  const toggleAllTemplateSelection = () => {
+  const toggleAllTemplateSelection = (checked?: boolean | string) => {
     setSelectedTemplateIds((prev) => {
-      const shouldClear =
-        templates.length > 0 && templates.every((template) => prev.has(template.id));
-      if (shouldClear) {
+      if (checked === false) {
+        return new Set();
+      }
+      if (checked === true) {
+        return new Set(templates.map((template) => template.id));
+      }
+      const hasAll = templates.length > 0 && templates.every((template) => prev.has(template.id));
+      if (hasAll) {
         return new Set();
       }
       return new Set(templates.map((template) => template.id));
@@ -294,7 +309,7 @@ const TemplatesHomePage: React.FC = () => {
   });
 
   const handleBulkDeleteTemplates = async () => {
-    if (!selectedTemplateIds.size) return;
+    if (!selectedTemplateIds.size || bulkDeleteMutation.isPending) return;
 
     try {
       const confirmed = await openConfirm({
@@ -324,24 +339,10 @@ const TemplatesHomePage: React.FC = () => {
             Send approved messages to customers anytime. Create your template in 3 simple steps.
           </p>
         </div>
-        <div className='flex flex-wrap items-center gap-2 justify-end'>
-          {hasTemplateSelection ? (
-            <Button
-              className='w-full sm:w-auto'
-              variant='default'
-              size='sm'
-              onClick={handleBulkDeleteTemplates}
-              disabled={bulkDeleteMutation.isPending}
-            >
-              {bulkDeleteMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
-              Delete selected ({selectedTemplateCount})
-            </Button>
-          ) : null}
-          <Button className='w-full sm:w-auto' onClick={onCreate}>
-            <Plus className='h-4 w-4 mr-2' />
-            Create Template
-          </Button>
-        </div>
+        <Button className='w-full sm:w-auto' onClick={onCreate}>
+          <Plus className='h-4 w-4 mr-2' />
+          Create Template
+        </Button>
       </div>
 
       {/* How it Works - Step by Step */}
@@ -431,6 +432,19 @@ const TemplatesHomePage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <div className='ml-auto flex items-center gap-2'>
+              {hasTemplateSelection ? (
+                <Button
+                  variant='default'
+                  size='sm'
+                  onClick={handleBulkDeleteTemplates}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  {bulkDeleteMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
+                  Delete selected ({selectedTemplateCount})
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           <Card>
@@ -438,7 +452,19 @@ const TemplatesHomePage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className='w-[30%]'>Template</TableHead>
+                    <TableHead className='w-[40px]'>
+                      <Checkbox
+                        ref={selectAllTemplatesRef}
+                        checked={allTemplatesSelected && templates.length > 0}
+                        onCheckedChange={(checked) =>
+                          toggleAllTemplateSelection(
+                            checked === true ? true : checked === false ? false : undefined
+                          )
+                        }
+                        aria-label='Select all templates'
+                      />
+                    </TableHead>
+                    <TableHead className='w-[28%]'>Template</TableHead>
                     <TableHead className='w-[14%]'>Type</TableHead>
                     <TableHead className='hidden lg:table-cell w-[12%]'>Language</TableHead>
                     <TableHead className='w-[16%]'>Status</TableHead>
@@ -450,28 +476,43 @@ const TemplatesHomePage: React.FC = () => {
                   {isLoading ? (
                     Array.from({ length: 3 }).map((_, index) => (
                       <TableRow key={index}>
-                        <TableCell colSpan={6}>
+                        <TableCell colSpan={7}>
                           <Skeleton className='h-10 w-full' />
                         </TableCell>
                       </TableRow>
                     ))
                   ) : templates.length ? (
                     templates.map((template) => {
+                      const isSelected = selectedTemplateIds.has(template.id);
                       const isDeleting = deleteMutation.isPending && deleteMutation.variables?.id === template.id;
                       return (
                         <TableRow
                           key={template.id}
-                          className='group cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2'
+                          className={cn(
+                            'group cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2',
+                            isSelected ? 'bg-primary/5' : undefined
+                          )}
                           role='button'
                           tabIndex={0}
                           onClick={() => navigate(`/dashboard/templates/${template.id}`)}
                           onKeyDown={(event) => {
+                            if (event.target instanceof HTMLInputElement) {
+                              return;
+                            }
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
                               navigate(`/dashboard/templates/${template.id}`);
                             }
                           }}
                         >
+                          <TableCell className='align-middle'>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => toggleTemplateSelection(template.id, checked === true)}
+                              onClick={(event) => event.stopPropagation()}
+                              aria-label={`Select template ${template.name}`}
+                            />
+                          </TableCell>
                           <TableCell className='align-middle'>
                             <div>
                               <p className='font-medium'>{template.name}</p>
@@ -495,7 +536,7 @@ const TemplatesHomePage: React.FC = () => {
                               <Button
                                 variant='default'
                                 size='sm'
-                                disabled={isDeleting}
+                                disabled={isDeleting || bulkDeleteMutation.isPending}
                                 onClick={(event) => {
                                   event.preventDefault();
                                   event.stopPropagation();
@@ -541,7 +582,7 @@ const TemplatesHomePage: React.FC = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className='py-8 text-center text-sm text-muted-foreground'>
+                      <TableCell colSpan={7} className='py-8 text-center text-sm text-muted-foreground'>
                         No templates found. Try adjusting your filters.
                       </TableCell>
                     </TableRow>

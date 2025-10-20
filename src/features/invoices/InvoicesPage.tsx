@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2, Plus, RefreshCw, ShieldCheck, FileText, Zap, MessageSquare, CreditCard, Trash2 } from 'lucide-react';
@@ -8,9 +8,14 @@ import { endpoints } from '@/api/config';
 import client from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+
+// Custom type for checkbox refs that support indeterminate
+type CheckboxRef = HTMLButtonElement & { indeterminate?: boolean };
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/toast';
 import { useConfirm } from '@/ui/ux/confirm-dialog';
@@ -83,20 +88,49 @@ const InvoicesTableSkeleton = () => (
       <CardTitle>Invoices</CardTitle>
       <Skeleton className='h-8 w-24' />
     </CardHeader>
-    <CardContent>
-      <div className='space-y-3'>
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,120px)_minmax(0,120px)] gap-3 rounded-lg border p-3 text-sm'
-          >
-            <Skeleton className='h-4 w-32' />
-            <Skeleton className='h-4 w-48' />
-            <Skeleton className='h-4 w-20' />
-            <Skeleton className='h-4 w-24 justify-self-end' />
-          </div>
-        ))}
-      </div>
+    <CardContent className='p-0'>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className='w-[40px]'>
+              <Skeleton className='h-4 w-4 rounded' />
+            </TableHead>
+            <TableHead className='w-[24%]'>Invoice</TableHead>
+            <TableHead className='w-[16%]'>Status</TableHead>
+            <TableHead className='w-[18%] text-right'>Outstanding</TableHead>
+            <TableHead className='hidden lg:table-cell w-[18%]'>Created</TableHead>
+            <TableHead className='w-[160px] text-right'>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <Skeleton className='h-4 w-4 rounded' />
+              </TableCell>
+              <TableCell>
+                <Skeleton className='h-4 w-32' />
+                <Skeleton className='mt-2 h-3 w-48' />
+              </TableCell>
+              <TableCell>
+                <Skeleton className='h-4 w-20' />
+              </TableCell>
+              <TableCell className='text-right'>
+                <Skeleton className='h-4 w-24 ml-auto' />
+              </TableCell>
+              <TableCell className='hidden lg:table-cell'>
+                <Skeleton className='h-4 w-24' />
+              </TableCell>
+              <TableCell className='text-right'>
+                <div className='flex items-center justify-end gap-2'>
+                  <Skeleton className='h-8 w-24' />
+                  <Skeleton className='h-8 w-12' />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </CardContent>
   </Card>
 );
@@ -122,11 +156,6 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
     </CardContent>
   </Card>
 );
-
-const InvoiceStatusBadge = ({ status }: { status: string }) => {
-  const config = statusTone[status] || statusTone.DEFAULT;
-  return <Badge className={cn('px-2 py-1 text-xs font-medium', config.badgeClass)}>{config.label}</Badge>;
-};
 
 const InvoiceSummaryCards = ({ data }: { data: InvoiceCollection | undefined }) => {
   if (!data) return null;
@@ -177,6 +206,12 @@ const InvoicesTable = ({
   isRefreshing,
   onRefresh,
   deletingCode,
+  selectedCodes,
+  toggleSelection,
+  toggleAll,
+  selectAllRef,
+  allSelected,
+  bulkDeleting,
 }: {
   items: InvoiceSummary[];
   onView: (invoice: InvoiceSummary) => void;
@@ -184,6 +219,12 @@ const InvoicesTable = ({
   isRefreshing: boolean;
   onRefresh: () => void;
   deletingCode: string | null;
+  selectedCodes: Set<string>;
+  toggleSelection: (code: string, checked?: boolean | string) => void;
+  toggleAll: (checked?: boolean | string) => void;
+  selectAllRef: React.RefObject<CheckboxRef | null>;
+  allSelected: boolean;
+  bulkDeleting: boolean;
 }) => {
   return (
     <Card>
@@ -197,66 +238,120 @@ const InvoicesTable = ({
           Refresh
         </Button>
       </CardHeader>
-      <CardContent className='relative'>
+      <CardContent className='p-0'>
         <ScrollArea className='h-[420px]'>
-          <div className='space-y-2'>
-            {items.map((invoice) => {
-              const statusConfig = statusTone[invoice.status] || statusTone.DEFAULT;
-              return (
-                <button
-                  type='button'
-                  key={invoice.id}
-                  onClick={() => onView(invoice)}
-                  className={cn(
-                    'flex w-full flex-col rounded-lg border px-4 py-3 text-left transition hover:border-muted-foreground/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex-row sm:items-center sm:justify-between'
-                  )}
-                >
-                  <div className='space-y-1'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-sm font-semibold text-foreground'>{invoice.code}</span>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className='w-[40px]'>
+                  <Checkbox
+                    ref={selectAllRef}
+                    checked={allSelected && items.length > 0}
+                    onCheckedChange={(checked) =>
+                      toggleAll(checked === true ? true : checked === false ? false : undefined)
+                    }
+                    aria-label='Select all invoices'
+                  />
+                </TableHead>
+                <TableHead className='w-[24%]'>Invoice</TableHead>
+                <TableHead className='w-[16%]'>Status</TableHead>
+                <TableHead className='w-[18%] text-right'>Outstanding</TableHead>
+                <TableHead className='hidden lg:table-cell w-[18%]'>Created</TableHead>
+                <TableHead className='w-[160px] text-right'>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((invoice) => {
+                const statusConfig = statusTone[invoice.status] || statusTone.DEFAULT;
+                const isSelected = selectedCodes.has(invoice.code);
+                return (
+                  <TableRow
+                    key={invoice.id}
+                    className={cn(
+                      'group cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      isSelected ? 'bg-primary/5' : undefined
+                    )}
+                    tabIndex={0}
+                    onClick={() => onView(invoice)}
+                    onKeyDown={(event) => {
+                      if (event.target instanceof HTMLInputElement) {
+                        return;
+                      }
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onView(invoice);
+                      }
+                    }}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => toggleSelection(invoice.code, checked === true)}
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label={`Select invoice ${invoice.code}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className='space-y-1'>
+                        <span className='text-sm font-semibold text-foreground'>{invoice.code}</span>
+                        <div className='text-xs text-muted-foreground'>
+                          {invoice.contactPhone || 'No customer phone'} • {format(new Date(invoice.createdAt), 'PPp')}
+                        </div>
+                        <div className='text-xs text-muted-foreground'>
+                          Total {formatCurrency(invoice.total, invoice.currency)}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <Badge className={cn('text-xs', statusConfig.badgeClass)}>{statusConfig.label}</Badge>
-                    </div>
-                    <div className='text-xs text-muted-foreground'>
-                      {invoice.contactPhone || 'No customer phone'} • {format(new Date(invoice.createdAt), 'PPp')}
-                    </div>
-                  </div>
-                  <div className='flex items-center gap-6 pt-3 text-sm sm:pt-0'>
-                    <div className='text-right'>
-                      <div className='font-medium text-foreground'>{formatCurrency(invoice.total, invoice.currency)}</div>
-                      <div className='text-xs text-muted-foreground'>Outstanding {formatCurrency(invoice.outstanding, invoice.currency)}</div>
-                    </div>
-                    <div className='flex items-center gap-2 whitespace-nowrap'>
-                      <Button
-                        variant='default'
-                        size='sm'
-                        disabled={deletingCode === invoice.code}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          onDelete(invoice);
-                        }}
-                        type='button'
-                      >
-                        {deletingCode === invoice.code ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
-                        Delete
-                      </Button>
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          onView(invoice);
-                        }}
-                      >
-                        <ArrowRight className='h-4 w-4' />
-                      </Button>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      {formatCurrency(invoice.outstanding, invoice.currency)}
+                    </TableCell>
+                    <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>
+                      {format(new Date(invoice.createdAt), 'PP')}
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      <div className='flex items-center justify-end gap-2 whitespace-nowrap'>
+                        <Button
+                          variant='default'
+                          size='sm'
+                        disabled={deletingCode === invoice.code || bulkDeleting}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onDelete(invoice);
+                          }}
+                          type='button'
+                        >
+                          {deletingCode === invoice.code ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
+                          Delete
+                        </Button>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onView(invoice);
+                          }}
+                        >
+                          <ArrowRight className='h-4 w-4' />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className='py-8 text-center text-sm text-muted-foreground'>
+                    No invoices found.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
         </ScrollArea>
       </CardContent>
     </Card>
@@ -269,8 +364,70 @@ const InvoicesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const openConfirm = useConfirm();
 
+  const [selectedInvoiceCodes, setSelectedInvoiceCodes] = useState<Set<string>>(new Set());
+  const selectAllInvoicesRef = useRef<CheckboxRef | null>(null);
+
+  const invoices = invoicesQuery.data?.items ?? [];
+
+  useEffect(() => {
+    setSelectedInvoiceCodes((prev) => {
+      const next = new Set<string>();
+      invoices.forEach((invoice) => {
+        if (prev.has(invoice.code)) {
+          next.add(invoice.code);
+        }
+      });
+      return next;
+    });
+  }, [invoices]);
+
+  const selectedInvoiceCount = selectedInvoiceCodes.size;
+  const allInvoicesSelected = invoices.length > 0 && invoices.every((invoice) => selectedInvoiceCodes.has(invoice.code));
+
+  useEffect(() => {
+    if (selectAllInvoicesRef.current) {
+      selectAllInvoicesRef.current.indeterminate = selectedInvoiceCount > 0 && !allInvoicesSelected;
+    }
+  }, [selectedInvoiceCount, allInvoicesSelected]);
+
+  const toggleInvoiceSelection = (code: string, checked?: boolean | string) => {
+    setSelectedInvoiceCodes((prev) => {
+      const next = new Set(prev);
+      const shouldSelect =
+        typeof checked === 'boolean'
+          ? checked
+          : checked === 'indeterminate'
+          ? !next.has(code)
+          : !next.has(code);
+      if (shouldSelect) {
+        next.add(code);
+      } else {
+        next.delete(code);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllInvoices = (checked?: boolean | string) => {
+    setSelectedInvoiceCodes((prev) => {
+      if (checked === false) {
+        return new Set();
+      }
+      if (checked === true) {
+        return new Set(invoices.map((invoice) => invoice.code));
+      }
+      const shouldClear = invoices.length > 0 && invoices.every((invoice) => prev.has(invoice.code));
+      if (shouldClear) {
+        return new Set();
+      }
+      return new Set(invoices.map((invoice) => invoice.code));
+    });
+  };
+
+  const hasInvoiceSelection = selectedInvoiceCount > 0;
+
   const isLoading = invoicesQuery.isLoading;
-  const hasInvoices = invoicesQuery.data?.items?.length;
+  const hasInvoices = invoices.length > 0;
 
   const handleViewInvoice = (invoice: InvoiceSummary) => {
     navigate(`/dashboard/invoices/${invoice.code}`);
@@ -285,6 +442,11 @@ const InvoicesPage: React.FC = () => {
         key: `invoice:${variables.code}:deleted`,
         title: 'Invoice deleted',
         description: `Invoice ${variables.code} has been removed.`,
+      });
+      setSelectedInvoiceCodes((prev) => {
+        const next = new Set(prev);
+        next.delete(variables.code);
+        return next;
       });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
@@ -308,6 +470,40 @@ const InvoicesPage: React.FC = () => {
     },
   });
 
+  const bulkDeleteMutation = useMutation<void, unknown, string[]>({
+    mutationFn: async (codes) => {
+      await client.post(endpoints.invoices.bulkRemove, { codes });
+    },
+    onSuccess: (_, codes) => {
+      notify.success({
+        key: `invoices:bulk-delete:${codes.length}`,
+        title: 'Invoices deleted',
+        description: `${codes.length} invoice${codes.length === 1 ? '' : 's'} removed.`,
+      });
+      setSelectedInvoiceCodes(new Set());
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+    onError: (error) => {
+      let message = 'Failed to delete invoices.';
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+      ) {
+        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        message = String((error as { message?: string }).message || message);
+      }
+
+      notify.error({
+        key: 'invoices:bulk-delete:error',
+        title: 'Unable to delete invoices',
+        description: message,
+      });
+    },
+  });
+
   const handleDeleteInvoice = async (invoice: InvoiceSummary) => {
     try {
       const confirmed = await openConfirm({
@@ -324,6 +520,25 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
+  const handleBulkDeleteInvoices = async () => {
+    if (!selectedInvoiceCodes.size || bulkDeleteMutation.isPending) return;
+    try {
+      const confirmed = await openConfirm({
+        title: 'Delete selected invoices?',
+        description: `This will remove ${selectedInvoiceCodes.size} invoice${
+          selectedInvoiceCodes.size === 1 ? '' : 's'
+        } and related records.`,
+        confirmText: 'Delete invoices',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+      if (!confirmed) return;
+      bulkDeleteMutation.mutate(Array.from(selectedInvoiceCodes));
+    } catch (error) {
+      console.error('Error confirming invoice bulk delete:', error);
+    }
+  };
+
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
       {/* Header */}
@@ -334,10 +549,24 @@ const InvoicesPage: React.FC = () => {
             Create professional invoices, track payments, and issue receipts in 3 simple steps.
           </p>
         </div>
-        <Button className='w-full sm:w-auto' onClick={() => navigate('/dashboard/invoices/new')}>
-          <Plus className='h-4 w-4 mr-2' />
-          Create Invoice
-        </Button>
+        <div className='flex flex-wrap items-center gap-2 justify-end'>
+          {hasInvoiceSelection ? (
+            <Button
+              className='w-full sm:w-auto'
+              variant='default'
+              size='sm'
+              onClick={handleBulkDeleteInvoices}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
+              Delete selected ({selectedInvoiceCount})
+            </Button>
+          ) : null}
+          <Button className='w-full sm:w-auto' onClick={() => navigate('/dashboard/invoices/new')}>
+            <Plus className='h-4 w-4 mr-2' />
+            Create Invoice
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -349,12 +578,18 @@ const InvoicesPage: React.FC = () => {
         <>
           <InvoiceSummaryCards data={invoicesQuery.data} />
           <InvoicesTable
-            items={invoicesQuery.data!.items}
+            items={invoices}
             onView={handleViewInvoice}
-             onDelete={handleDeleteInvoice}
+            onDelete={handleDeleteInvoice}
             isRefreshing={invoicesQuery.isRefetching}
             onRefresh={() => invoicesQuery.refetch()}
             deletingCode={deleteMutation.isPending ? deleteMutation.variables?.code ?? null : null}
+            selectedCodes={selectedInvoiceCodes}
+            toggleSelection={toggleInvoiceSelection}
+            toggleAll={toggleAllInvoices}
+            selectAllRef={selectAllInvoicesRef}
+            allSelected={allInvoicesSelected}
+            bulkDeleting={bulkDeleteMutation.isPending}
           />
         </>
       ) : (
