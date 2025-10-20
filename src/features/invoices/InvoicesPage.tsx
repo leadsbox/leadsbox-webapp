@@ -220,26 +220,36 @@ const InvoicesTable = ({
                       {invoice.contactPhone || 'No customer phone'} • {format(new Date(invoice.createdAt), 'PPp')}
                     </div>
                   </div>
-                  <div className='flex items-center gap-4 pt-3 text-sm sm:pt-0'>
+                  <div className='flex items-center gap-6 pt-3 text-sm sm:pt-0'>
                     <div className='text-right'>
                       <div className='font-medium text-foreground'>{formatCurrency(invoice.total, invoice.currency)}</div>
                       <div className='text-xs text-muted-foreground'>Outstanding {formatCurrency(invoice.outstanding, invoice.currency)}</div>
                     </div>
-                    <div className='flex items-center gap-2'>
-                      <ArrowRight className='hidden h-4 w-4 text-muted-foreground sm:block' />
+                    <div className='flex items-center gap-2 whitespace-nowrap'>
                       <Button
-                        variant='ghost'
-                        size='icon'
-                        className='text-destructive hover:text-destructive'
+                        variant='default'
+                        size='sm'
+                        disabled={deletingCode === invoice.code}
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
                           onDelete(invoice);
                         }}
-                        disabled={deletingCode === invoice.code}
-                        aria-label={`Delete invoice ${invoice.code}`}
+                        type='button'
                       >
-                        {deletingCode === invoice.code ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
+                        {deletingCode === invoice.code ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
+                        Delete
+                      </Button>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onView(invoice);
+                        }}
+                      >
+                        <ArrowRight className='h-4 w-4' />
                       </Button>
                     </div>
                   </div>
