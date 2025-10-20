@@ -13,9 +13,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/components/ui/skeleton';
 import { notify } from '@/lib/toast';
 import templateApi from '@/api/templates';
-
-// Custom type for checkbox refs that support indeterminate
-type CheckboxRef = HTMLButtonElement & { indeterminate?: boolean };
 import TemplateStatusBadge from './components/TemplateStatusBadge';
 import type { Template, TemplateCategory, TemplateStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -188,11 +185,10 @@ const TemplatesHomePage: React.FC = () => {
     },
   });
 
-  const templates = templatesQuery.data ?? [];
+  const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
   const isLoading = templatesQuery.isLoading;
   const isTestMode = Boolean(import.meta.env.VITE_APP_ENV?.toLowerCase() === 'test');
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
-  const selectAllTemplatesRef = React.useRef<CheckboxRef | null>(null);
 
   useEffect(() => {
     setSelectedTemplateIds((prev) => {
@@ -207,25 +203,12 @@ const TemplatesHomePage: React.FC = () => {
   }, [templates]);
 
   const selectedTemplateCount = selectedTemplateIds.size;
-  const allTemplatesSelected =
-    templates.length > 0 && templates.every((template) => selectedTemplateIds.has(template.id));
-
-  useEffect(() => {
-    if (selectAllTemplatesRef.current) {
-      selectAllTemplatesRef.current.indeterminate =
-        selectedTemplateCount > 0 && !allTemplatesSelected;
-    }
-  }, [selectedTemplateCount, allTemplatesSelected]);
+  const allTemplatesSelected = templates.length > 0 && templates.every((template) => selectedTemplateIds.has(template.id));
 
   const toggleTemplateSelection = (templateId: string, checked?: boolean | string) => {
     setSelectedTemplateIds((prev) => {
       const next = new Set(prev);
-      const shouldSelect =
-        typeof checked === 'boolean'
-          ? checked
-          : checked === 'indeterminate'
-          ? !next.has(templateId)
-          : !next.has(templateId);
+      const shouldSelect = typeof checked === 'boolean' ? checked : checked === 'indeterminate' ? !next.has(templateId) : !next.has(templateId);
       if (shouldSelect) {
         next.add(templateId);
       } else {
@@ -314,9 +297,7 @@ const TemplatesHomePage: React.FC = () => {
     try {
       const confirmed = await openConfirm({
         title: 'Delete selected templates?',
-        description: `This will permanently delete ${selectedTemplateIds.size} template${
-          selectedTemplateIds.size === 1 ? '' : 's'
-        }.`,
+        description: `This will permanently delete ${selectedTemplateIds.size} template${selectedTemplateIds.size === 1 ? '' : 's'}.`,
         confirmText: 'Delete templates',
         cancelText: 'Cancel',
         variant: 'destructive',
@@ -434,12 +415,7 @@ const TemplatesHomePage: React.FC = () => {
             </Select>
             <div className='ml-auto flex items-center gap-2'>
               {hasTemplateSelection ? (
-                <Button
-                  variant='default'
-                  size='sm'
-                  onClick={handleBulkDeleteTemplates}
-                  disabled={bulkDeleteMutation.isPending}
-                >
+                <Button variant='default' size='sm' onClick={handleBulkDeleteTemplates} disabled={bulkDeleteMutation.isPending}>
                   {bulkDeleteMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Trash2 className='mr-2 h-4 w-4' />}
                   Delete selected ({selectedTemplateCount})
                 </Button>
@@ -454,8 +430,15 @@ const TemplatesHomePage: React.FC = () => {
                   <TableRow>
                     <TableHead className='w-[40px]'>
                       <Checkbox
-                        ref={selectAllTemplatesRef}
-                        checked={allTemplatesSelected && templates.length > 0}
+                        checked={
+                          templates.length === 0
+                            ? false
+                            : allTemplatesSelected
+                            ? true
+                            : selectedTemplateCount > 0
+                            ? 'indeterminate'
+                            : false
+                        }
                         onCheckedChange={(checked) =>
                           toggleAllTemplateSelection(
                             checked === true ? true : checked === false ? false : undefined
@@ -496,7 +479,7 @@ const TemplatesHomePage: React.FC = () => {
                           tabIndex={0}
                           onClick={() => navigate(`/dashboard/templates/${template.id}`)}
                           onKeyDown={(event) => {
-                            if (event.target instanceof HTMLInputElement) {
+                            if (event.target instanceof HTMLButtonElement) {
                               return;
                             }
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -561,9 +544,7 @@ const TemplatesHomePage: React.FC = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align='end'>
-                                  <DropdownMenuItem onSelect={() => navigate(`/dashboard/templates/${template.id}`)}>
-                                    View details
-                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => navigate(`/dashboard/templates/${template.id}`)}>View details</DropdownMenuItem>
                                   <DropdownMenuItem
                                     onSelect={() =>
                                       navigate('/dashboard/templates/new', {

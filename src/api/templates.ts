@@ -1,11 +1,6 @@
 import client from './client';
 import { endpoints } from './config';
-import type {
-  Template,
-  TemplateCategory,
-  TemplateStatus,
-  TemplatePlaceholder,
-} from '@/types';
+import type { Template, TemplateCategory, TemplateStatus, TemplatePlaceholder } from '@/types';
 
 // Template API types (these should ideally be defined in @/types)
 type TemplateListFilters = {
@@ -58,39 +53,25 @@ const buildQueryString = (filters?: TemplateListFilters) => {
 
 export const templateApi = {
   list(filters?: TemplateListFilters) {
-    return client
-      .get(endpoints.templates.list + buildQueryString(filters))
-      .then((res) => res?.data?.data as TemplateListResponse | undefined);
+    return client.get(endpoints.templates.list + buildQueryString(filters)).then((res) => res?.data?.data as TemplateListResponse | undefined);
   },
   detail(id: string) {
-    return client
-      .get(endpoints.templates.detail(id))
-      .then((res) => res?.data?.data as TemplateDetail | undefined);
+    return client.get(endpoints.templates.detail(id)).then((res) => res?.data?.data as TemplateDetail | undefined);
   },
   create(payload: TemplatePayload) {
-    return client
-      .post(endpoints.templates.create, payload)
-      .then((res) => res?.data?.data as TemplateDetail | TemplateSummary | undefined);
+    return client.post(endpoints.templates.create, payload).then((res) => res?.data?.data as TemplateDetail | TemplateSummary | undefined);
   },
   update(id: string, payload: TemplateUpdatePayload) {
-    return client
-      .put(endpoints.templates.update(id), payload)
-      .then((res) => res?.data?.data as TemplateDetail | undefined);
+    return client.put(endpoints.templates.update(id), payload).then((res) => res?.data?.data as TemplateDetail | undefined);
   },
   submit(id: string) {
-    return client
-      .post(endpoints.templates.submit(id))
-      .then((res) => res?.data?.data as TemplateDetail | undefined);
+    return client.post(endpoints.templates.submit(id)).then((res) => res?.data?.data as TemplateDetail | undefined);
   },
   resubmit(id: string) {
-    return client
-      .post(endpoints.templates.resubmit(id))
-      .then((res) => res?.data?.data as TemplateDetail | undefined);
+    return client.post(endpoints.templates.resubmit(id)).then((res) => res?.data?.data as TemplateDetail | undefined);
   },
   deprecate(id: string) {
-    return client
-      .post(endpoints.templates.deprecate(id))
-      .then((res) => res?.data?.data as TemplateDetail | undefined);
+    return client.post(endpoints.templates.deprecate(id)).then((res) => res?.data?.data as TemplateDetail | undefined);
   },
   remove(id: string) {
     return client.delete(endpoints.templates.remove(id));
@@ -102,9 +83,7 @@ export const templateApi = {
     return client.post(endpoints.templates.sendTest(id), payload);
   },
   refresh(id: string) {
-    return client
-      .post(endpoints.templates.refresh(id))
-      .then((res) => res?.data?.data as TemplateDetail | undefined);
+    return client.post(endpoints.templates.refresh(id)).then((res) => res?.data?.data as TemplateDetail | undefined);
   },
 };
 
