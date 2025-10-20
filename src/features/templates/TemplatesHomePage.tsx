@@ -235,6 +235,7 @@ const TemplatesHomePage: React.FC = () => {
   };
 
   const hasTemplateSelection = selectedTemplateCount > 0;
+  const shouldShowTemplateTable = isLoading || templates.length > 0;
 
   const onCreate = () => navigate('/dashboard/templates/new');
   const handleDeleteTemplate = async (template: Template) => {
@@ -347,7 +348,7 @@ const TemplatesHomePage: React.FC = () => {
       </section>
 
       {/* Templates Section */}
-      {templates.length > 0 ? (
+      {shouldShowTemplateTable ? (
         <section className='space-y-4'>
           <div className='flex items-center justify-between'>
             <h2 className='text-lg font-semibold'>Your Templates ({templates.length})</h2>
@@ -452,7 +453,7 @@ const TemplatesHomePage: React.FC = () => {
                     <TableHead className='hidden lg:table-cell w-[12%]'>Language</TableHead>
                     <TableHead className='w-[16%]'>Status</TableHead>
                     <TableHead className='hidden md:table-cell w-[16%]'>Updated</TableHead>
-                    <TableHead className='w-[140px] text-right'>Actions</TableHead>
+                    <TableHead className='w-[140px]'>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -514,8 +515,8 @@ const TemplatesHomePage: React.FC = () => {
                           <TableCell className='hidden text-sm text-muted-foreground md:table-cell'>
                             {new Date(template.updatedAt).toLocaleDateString()}
                           </TableCell>
-                          <TableCell className='text-right'>
-                            <div className='flex items-center justify-end gap-2 whitespace-nowrap'>
+                          <TableCell>
+                            <div className='flex items-center gap-2 whitespace-nowrap'>
                               <Button
                                 variant='default'
                                 size='sm'

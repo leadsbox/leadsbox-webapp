@@ -94,9 +94,9 @@ const InvoicesTableSkeleton = () => (
             </TableHead>
             <TableHead className='w-[24%]'>Invoice</TableHead>
             <TableHead className='w-[16%]'>Status</TableHead>
-            <TableHead className='w-[18%] text-right'>Outstanding</TableHead>
+            <TableHead className='w-[18%]'>Outstanding</TableHead>
             <TableHead className='hidden lg:table-cell w-[18%]'>Created</TableHead>
-            <TableHead className='w-[160px] text-right'>Actions</TableHead>
+            <TableHead className='w-[160px]'>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -112,14 +112,14 @@ const InvoicesTableSkeleton = () => (
               <TableCell>
                 <Skeleton className='h-4 w-20' />
               </TableCell>
-              <TableCell className='text-right'>
-                <Skeleton className='h-4 w-24 ml-auto' />
+              <TableCell>
+                <Skeleton className='h-4 w-24' />
               </TableCell>
               <TableCell className='hidden lg:table-cell'>
                 <Skeleton className='h-4 w-24' />
               </TableCell>
-              <TableCell className='text-right'>
-                <div className='flex items-center justify-end gap-2'>
+              <TableCell>
+                <div className='flex items-center gap-2'>
                   <Skeleton className='h-8 w-24' />
                   <Skeleton className='h-8 w-12' />
                 </div>
@@ -276,9 +276,9 @@ const InvoicesTable = ({
                 </TableHead>
                 <TableHead className='w-[24%]'>Invoice</TableHead>
                 <TableHead className='w-[16%]'>Status</TableHead>
-                <TableHead className='w-[18%] text-right'>Outstanding</TableHead>
+                <TableHead className='w-[18%]'>Outstanding</TableHead>
                 <TableHead className='hidden lg:table-cell w-[18%]'>Created</TableHead>
-                <TableHead className='w-[160px] text-right'>Actions</TableHead>
+                <TableHead className='w-[160px]'>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -324,10 +324,10 @@ const InvoicesTable = ({
                     <TableCell>
                       <Badge className={cn('text-xs', statusConfig.badgeClass)}>{statusConfig.label}</Badge>
                     </TableCell>
-                    <TableCell className='text-right'>{formatCurrency(invoice.outstanding, invoice.currency)}</TableCell>
+                    <TableCell>{formatCurrency(invoice.outstanding, invoice.currency)}</TableCell>
                     <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>{format(new Date(invoice.createdAt), 'PP')}</TableCell>
-                    <TableCell className='text-right'>
-                      <div className='flex items-center justify-end gap-2 whitespace-nowrap'>
+                    <TableCell>
+                      <div className='flex items-center gap-2 whitespace-nowrap'>
                         <Button
                           variant='default'
                           size='sm'
