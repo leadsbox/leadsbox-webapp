@@ -262,47 +262,34 @@ const LeadDetailPage: React.FC = () => {
       if (!leadId) return;
 
       try {
-        setIsLoading(true);
-        console.log('Loading lead with ID:', leadId);
+  setIsLoading(true);
 
         // Try to get the lead directly from the leads API
         // This should return lead with contact and thread relations included
         let backendLead: BackendLead | null = null;
 
         try {
-          console.log('Fetching lead from leads API...');
           const resp = await client.get(endpoints.lead(leadId));
-          console.log('Lead API response:', resp?.data);
-          console.log('Lead API response structure keys:', Object.keys(resp?.data || {}));
 
           // The backend returns {message: '...', data: {...}}
           // Extract the actual lead data from the nested structure
           backendLead = resp?.data?.data || resp?.data?.lead || resp?.data;
-          console.log('Extracted backend lead:', backendLead);
-          console.log('Backend lead keys:', Object.keys(backendLead || {}));
 
           if (backendLead) {
-            console.log('Successfully loaded lead:', backendLead);
-            console.log('Lead contact:', backendLead.contact);
-            console.log('Lead thread:', backendLead.thread);
-            console.log('Lead contactId:', backendLead.contactId);
-            console.log('Lead threadId:', backendLead.threadId);
+            // loaded
           }
         } catch (leadError) {
-          console.log('Lead API failed:', leadError);
+          
 
           // If lead API fails, this might be a contact ID or thread ID being used as leadId
           // Let's try to find if there are leads associated with this contact
           try {
-            console.log('Trying contact API as fallback...');
             const contactResp = await client.get(endpoints.contact(leadId));
-            console.log('Contact API response:', contactResp?.data);
 
             const contactData = contactResp?.data?.contact || contactResp?.data;
             if (contactData && contactData.Lead && contactData.Lead.length > 0) {
               // If contact has leads, redirect to the first lead
               const firstLead = contactData.Lead[0];
-              console.log('Found lead via contact, redirecting to:', firstLead.id);
               navigate(`/dashboard/leads/${firstLead.id}`, { replace: true });
               return;
             } else if (contactData) {
@@ -310,7 +297,6 @@ const LeadDetailPage: React.FC = () => {
               throw new Error('This contact does not have any associated leads.');
             }
           } catch (contactError) {
-            console.log('Contact API also failed:', contactError);
             throw leadError; // Re-throw original lead error
           }
         }
@@ -400,8 +386,7 @@ const LeadDetailPage: React.FC = () => {
             label: normalizedLabel as LeadLabel | undefined,
           };
 
-          console.log('Final mapped lead:', mappedLead);
-          console.log('Lead ID being set:', mappedLead.id);
+          
 
           setLead(mappedLead);
         } else {
@@ -413,7 +398,7 @@ const LeadDetailPage: React.FC = () => {
           navigate('/leads');
         }
       } catch (error) {
-        console.error('Error loading lead:', error);
+        
         const errorMessage = error instanceof Error ? error.message : 'Failed to load lead details';
 
         notify.error({
@@ -556,15 +541,9 @@ const LeadDetailPage: React.FC = () => {
       return;
     }
 
-    try {
-      console.log('Attempting to delete with ID:', lead.id);
-      console.log('Lead contactId:', lead.contactId);
-      console.log('Lead conversationId:', lead.conversationId);
-      console.log('Lead createdAt:', lead.createdAt);
-
+      try {
       // Check if this is a proper lead with backend relationships
       const hasProperLeadData = lead.contactId || lead.threadId || lead.conversationId;
-      console.log('Has proper lead data:', hasProperLeadData);
 
       if (!hasProperLeadData) {
         throw new Error('This does not appear to be a valid lead record. Please ensure you are accessing a proper lead.');
@@ -574,13 +553,9 @@ const LeadDetailPage: React.FC = () => {
 
       // Strategy 1: Try deleting as a lead first
       try {
-        console.log('Trying to delete as lead...');
         const response = await client.delete(endpoints.deleteLead(lead.id));
-        console.log('Lead delete response:', response);
         deleteSuccess = true;
       } catch (leadDeleteError) {
-        console.log('Lead delete failed:', leadDeleteError);
-
         // Strategy 2: If lead delete fails with 500 error, it might be a contact ID
         if (leadDeleteError instanceof AxiosError && leadDeleteError.response?.status === 500) {
           // Backend error suggests this might be a contact ID being treated as lead ID
@@ -601,7 +576,6 @@ const LeadDetailPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error deleting:', error);
-      console.log('Lead data:', lead);
 
       // Handle specific error cases
       let errorMessage = 'Failed to delete';
@@ -613,7 +587,6 @@ const LeadDetailPage: React.FC = () => {
           'This appears to be contact information rather than a lead record. Contact deletion is not currently supported. You can edit the contact information instead.';
       } else if (error instanceof AxiosError && error.response?.data?.message) {
         const backendMessage = error.response.data.message;
-        console.log('Backend error message:', backendMessage);
 
         if (backendMessage.includes('not found')) {
           errorMessage = 'Record not found';

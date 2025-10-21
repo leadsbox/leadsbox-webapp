@@ -19,7 +19,7 @@ const NotFound = () => {
         <div className='container mx-auto flex h-16 items-center justify-between px-4'>
           <a href='/' className='flex items-center gap-3 transition-transform hover:scale-105'>
             <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-              <img src='/leadsboxlogo.svg' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+              <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
             </div>
             <span className='text-xl font-semibold'>LeadsBox</span>
           </a>
@@ -55,14 +55,16 @@ const NotFound = () => {
       </header>
 
       {/* Content */}
-      <main className='flex items-center justify-center w-full h-[calc(100vh-4rem)] px-6 sm:px-12'>
+      <section aria-labelledby='not-found-heading' className='flex items-center justify-center w-full h-[calc(100vh-4rem)] px-6 sm:px-12'>
         <div className='max-w-xl w-full text-center'>
           <div className='mb-6 inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm'>
             <span className='mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-destructive/10 text-destructive'>404</span>
             We couldn't find that page
           </div>
 
-          <h1 className='text-3xl font-semibold sm:text-4xl'>This page has moved or never existed.</h1>
+          <h1 id='not-found-heading' className='text-3xl font-semibold sm:text-4xl'>
+            This page has moved or never existed.
+          </h1>
           <p className='mt-4 text-base text-muted-foreground'>
             The link <span className='font-medium text-foreground'>{location.pathname}</span> may be broken or the page may have been removed. Check
             the URL or return to a known location.
@@ -89,7 +91,7 @@ const NotFound = () => {
             and we'll help you out.
           </p>
         </div>
-      </main>
+      </section>
     </div>
   );
 };

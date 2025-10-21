@@ -77,12 +77,10 @@ export class SocketIOService {
   // Connect to Socket.IO server
   async connect(): Promise<void> {
     if (this.socket?.connected) {
-      console.log('Socket already connected:', this.socket.id);
       return;
     }
 
     if (this.isConnecting) {
-      console.log('Socket connection already in progress...');
       return;
     }
 
@@ -94,12 +92,7 @@ export class SocketIOService {
         const token = localStorage.getItem('lb_access_token');
         const orgId = localStorage.getItem('lb_org_id');
 
-        console.log('Socket.IO Auth Check:', {
-          hasToken: !!token,
-          hasOrgId: !!orgId,
-          tokenLength: token?.length || 0,
-          orgId: orgId,
-        });
+        // Auth check performed; proceed or reject below.
 
         if (!token) {
           this.isConnecting = false;
@@ -116,7 +109,7 @@ export class SocketIOService {
         // Socket.IO server URL
         const serverUrl = import.meta.env.VITE_API_BASE?.replace('/api', '') || 'http://localhost:3010';
 
-        console.log('Connecting to Socket.IO server:', serverUrl, 'with auth:', { orgId });
+  // Connecting to Socket.IO server
 
         // Create Socket.IO connection
         this.socket = io(serverUrl, {
@@ -131,7 +124,6 @@ export class SocketIOService {
 
         // Connection successful
         this.socket.on('connect', () => {
-          console.log('Socket.IO connected:', this.socket?.id);
           this.isConnecting = false;
           this.reconnectAttempts = 0;
           resolve();
@@ -147,18 +139,16 @@ export class SocketIOService {
 
         // Disconnection
         this.socket.on('disconnect', (reason) => {
-          console.log('Socket.IO disconnected:', reason);
           this.handleDisconnection(reason);
         });
 
         // Server confirmation
         this.socket.on('connected', () => {
-          console.log('Socket.IO server confirmed connection');
+          this.emitToListeners('connected', undefined as any);
         });
 
         // Error handling
         this.socket.on('error', (data) => {
-          console.error('Socket.IO server error:', data);
           this.emitToListeners('error', data);
         });
 
@@ -174,7 +164,6 @@ export class SocketIOService {
   // Disconnect from Socket.IO server
   disconnect(): void {
     if (this.socket) {
-      console.log('Disconnecting socket:', this.socket.id);
       this.socket.disconnect();
       this.socket = null;
     }
@@ -191,7 +180,6 @@ export class SocketIOService {
   joinThread(threadId: string): void {
     if (this.socket?.connected) {
       this.socket.emit('thread:join', { threadId });
-      console.log('Joined thread room:', threadId);
     }
   }
 
@@ -199,52 +187,25 @@ export class SocketIOService {
   leaveThread(threadId: string): void {
     if (this.socket?.connected) {
       this.socket.emit('thread:leave', { threadId });
-      console.log('Left thread room:', threadId);
     }
   }
 
   // Send a message
   sendMessage(threadId: string, text: string, type: string = 'text'): void {
-    console.log('=== ATTEMPTING TO SEND MESSAGE ===');
-    console.log('Socket connected:', this.socket?.connected);
-    console.log('Socket ID:', this.socket?.id);
-    console.log('Socket readyState:', this.socket?.connected ? 'OPEN' : 'CLOSED');
-    console.log('Socket instance exists:', !!this.socket);
-    console.log('Socket transport:', this.socket?.io?.engine?.transport?.name);
-    console.log('Socket auth:', this.socket?.auth);
-    console.log('Message data:', { threadId, text, type });
+    // sendMessage called — emit if connected
 
     if (this.socket?.connected) {
       // Add unique identifier to track this specific emission
-      const emissionId = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      console.log('🚀 About to emit message:send event with ID:', emissionId);
+  const emissionId = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
       // Emit the message with tracking ID
       const messageData = { threadId, text, type, emissionId };
-      this.socket.emit('message:send', messageData);
-      console.log('✅ Message emitted via Socket.IO:', { threadId, text, emissionId });
+  this.socket.emit('message:send', messageData);
 
       // Add a small delay and check if the event was actually sent
-      setTimeout(() => {
-        console.log('🔍 Post-emission check:');
-        console.log('  - Socket still connected:', this.socket?.connected);
-        console.log('  - Socket ID:', this.socket?.id);
-      }, 100);
-
-      // Add delays between emissions to test rapid-fire theory
-      setTimeout(() => {
-        console.log('🔗 Also emitting thread:join for comparison...');
-        this.socket?.emit('thread:join', { threadId });
-        console.log('✅ thread:join emitted for comparison');
-      }, 500);
-
-      setTimeout(() => {
-        console.log('🏓 Testing socket emission with typing:start...');
-        this.socket?.emit('typing:start', { threadId });
-        console.log('✅ typing:start emitted for connectivity test');
-      }, 1000);
+      // Optional: small post-emission checks or follow-up emits were removed
     } else {
-      console.error('❌ Socket not connected - cannot send message');
+      console.error('Socket not connected - cannot send message');
     }
   }
 
@@ -265,7 +226,6 @@ export class SocketIOService {
   subscribeToDashboard(): void {
     if (this.socket?.connected) {
       this.socket.emit('dashboard:subscribe');
-      console.log('Subscribed to dashboard updates');
     }
   }
 

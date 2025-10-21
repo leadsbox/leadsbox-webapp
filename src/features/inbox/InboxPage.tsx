@@ -93,7 +93,6 @@ const InboxPage: React.FC = () => {
   React.useEffect(() => {
     const token = localStorage.getItem('lb_access_token');
     const orgId = localStorage.getItem('lb_org_id');
-    console.log('Inbox Auth State:', { hasToken: !!token, hasOrgId: !!orgId, socketError, isConnected });
   }, [socketError, isConnected]);
 
   useEffect(() => {
@@ -237,37 +236,8 @@ const InboxPage: React.FC = () => {
       });
       const list = (res?.data?.data?.threads || []) as ApiThread[];
 
-      // Debug: Log the contact data we're receiving and how it's mapped
-      console.log(
-        'API Threads Contact Data:',
-        list.map((t) => ({
-          id: t.id,
-          contact: t.contact,
-          channel: t.channel,
-          contactFields: Object.keys(t.contact || {}),
-        }))
-      );
-
       const ui = list.map(toUiThread);
-      console.log(
-        'Mapped UI Leads:',
-        ui.map((thread) => ({
-          id: thread.id,
-          leadName: thread.lead.name,
-          leadPhone: thread.lead.phone,
-          leadEmail: thread.lead.email,
-        }))
-      );
 
-      console.log(
-        'Mapped UI Leads:',
-        ui.map((thread) => ({
-          id: thread.id,
-          leadName: thread.lead.name,
-          leadPhone: thread.lead.phone,
-          leadEmail: thread.lead.email,
-        }))
-      );
       setThreads(ui);
       if (!selectedThread && ui.length > 0) setSelectedThread(ui[0]);
     } catch (error) {
@@ -317,14 +287,14 @@ const InboxPage: React.FC = () => {
   useEffect(() => {
     if (!selectedThread?.id || isConnected) return;
 
-    console.log('🔄 Setting up periodic message refresh (Socket.IO fallback)');
+    
     const interval = setInterval(() => {
-      console.log('⏰ Fetching messages (Socket.IO offline fallback)');
+      
       fetchMessages(selectedThread.id);
     }, 5000); // Refresh every 5 seconds when offline
 
     return () => {
-      console.log('🛑 Clearing periodic message refresh');
+      
       clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -333,64 +303,37 @@ const InboxPage: React.FC = () => {
   // Socket.IO event listeners for real-time updates
   useEffect(() => {
     if (!isConnected) {
-      console.log('⚠️ Socket.IO not connected, skipping event listener setup');
       return;
     }
 
-    console.log('🔌 Setting up Socket.IO event listeners - socket connected:', {
-      isConnected,
-      socketError,
-      selectedThreadId: selectedThread?.id,
-      timestamp: new Date().toISOString(),
-    });
+    
 
     // Add debugging for ALL Socket.IO events
     const logAllEvents = socketOn('*', (eventName: string, ...args: unknown[]) => {
-      console.log('🎯 Socket.IO Event Received:', {
-        eventName,
-        args,
-        timestamp: new Date().toISOString(),
-      });
+      // intentionally left blank for production - debugging disabled
     });
 
     // Handle new messages
     const unsubscribeNewMessage = socketOn('message:new', (data) => {
       const { message, thread } = data;
 
-      console.log('🔔 Received new message via Socket.IO:', {
-        messageId: message.id,
-        threadId: message.threadId,
-        content: message.content,
-        sender: message.sender,
-        selectedThreadId: selectedThread?.id,
-        leadTags: thread.lead?.tags,
-        leadStage: thread.lead?.stage,
-        timestamp: new Date().toISOString(),
-      });
+      
 
       // Update messages if this is the selected thread
       if (selectedThread?.id === message.threadId) {
-        console.log('📨 Message is for currently selected thread - updating UI');
+        
         setMessages((prev) => {
           // Avoid duplicates
           const exists = prev.some((m) => m.id === message.id);
-          if (exists) {
-            console.log('⚠️ Duplicate message detected, skipping');
+            if (exists) {
             return prev;
           }
-
-          console.log('✅ Adding new message to thread');
           const newMessages = [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           // Scroll to bottom after new message is added
           setTimeout(scrollToBottom, 100);
           return newMessages;
         });
-      } else {
-        console.log('📝 Message is for different thread:', {
-          messageThread: message.threadId,
-          currentThread: selectedThread?.id,
-        });
-      }
+  }
 
       // Update thread list
       setThreads((prev) => {
@@ -420,14 +363,7 @@ const InboxPage: React.FC = () => {
     const unsubscribeThreadUpdate = socketOn('thread:updated', (data) => {
       const { thread } = data;
 
-      console.log('🔄 Thread updated via Socket.IO:', {
-        threadId: thread.id,
-        leadName: thread.lead?.name,
-        leadTags: thread.lead?.tags,
-        leadStage: thread.lead?.stage,
-        timestamp: new Date().toISOString(),
-        fullThread: thread,
-      });
+      
 
       setThreads((prev) => {
         const existingIndex = prev.findIndex((t) => t.id === thread.id);
@@ -449,7 +385,7 @@ const InboxPage: React.FC = () => {
     const unsubscribeNewThread = socketOn('thread:new', (data) => {
       const { thread } = data;
 
-      console.log('New thread:', thread);
+      
 
       setThreads((prev) => {
         // Avoid duplicates
@@ -503,14 +439,12 @@ const InboxPage: React.FC = () => {
 
   // Join/leave thread rooms when selected thread changes
   useEffect(() => {
-    if (!isConnected || !selectedThread?.id) return;
-
-    console.log('Joining thread room:', selectedThread.id);
+  if (!isConnected || !selectedThread?.id) return;
     joinThread(selectedThread.id);
 
     return () => {
       if (selectedThread?.id) {
-        console.log('Leaving thread room:', selectedThread.id);
+        
         leaveThread(selectedThread.id);
       }
     };
@@ -573,7 +507,6 @@ const InboxPage: React.FC = () => {
 
       // Check the response structure: { message: "Reply sent", data: { ok: true, externalMsgId: "..." } }
       if (response.data && response.data.data && response.data.data.ok) {
-        console.log('Message sent via REST API:', response.data);
         // Success - no notification needed as real-time updates will show the message
       } else {
         throw new Error(response.data?.message || 'Failed to send message');
@@ -1393,7 +1326,7 @@ const InboxPage: React.FC = () => {
               {/* Follow-up Panel removed */}
             </div>
           </>
-        ) : (!selectedThread && (loadingThreads || loadingMessages)) ? (
+        ) : !selectedThread && (loadingThreads || loadingMessages) ? (
           <div className='flex-1 flex flex-col gap-4 p-4 sm:p-6'>
             <div className='flex items-center justify-between gap-4'>
               <Skeleton className='h-8 w-48 max-w-[60%]' />

@@ -7,13 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { notify } from '@/lib/toast';
-import { ArrowUpDown, CheckCircle2, Clock, MessageSquare, Plus, RefreshCw, Sparkles, Trash2, Zap, Bot, Settings } from 'lucide-react';
+import { ArrowUpDown, Clock, MessageSquare, Plus, Sparkles, Trash2, Zap, Bot } from 'lucide-react';
 import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { FollowUpRule, FollowUpStatus, Template, TemplateStatus } from '@/types';
 import templateApi from '@/api/templates';
 import { useAuth } from '@/context/useAuth';
-import TemplateComposer from './components/TemplateComposer';
 import ScheduleFollowUpModal, { ConversationOption } from './components/ScheduleFollowUpModal';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
@@ -156,17 +155,13 @@ const AutomationsPage: React.FC = () => {
   const organizationId = user?.orgId || user?.currentOrgId || getOrgId();
   const userId = user?.id;
 
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [followUpTemplates, setFollowUpTemplates] = useState<Template[]>([]);
 
   const [followUps, setFollowUps] = useState<FollowUpRule[]>([]);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
 
   const [conversations, setConversations] = useState<ConversationOption[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
-
-  const [templateComposerOpen, setTemplateComposerOpen] = useState(false);
-  const [activeTemplate, setActiveTemplate] = useState<Template | null>(null);
 
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [followUpMode, setFollowUpMode] = useState<'create' | 'edit'>('create');
@@ -178,20 +173,18 @@ const AutomationsPage: React.FC = () => {
   const [builderKey, setBuilderKey] = useState(0);
 
   const loadTemplates = useCallback(async () => {
-    setTemplatesLoading(true);
     try {
       const list = await templateApi.list();
-      setTemplates(list ?? []);
+      const approved = (list ?? []).filter((template) => resolveTemplateStatus(template.status) === 'APPROVED');
+      setFollowUpTemplates(approved);
     } catch (error: unknown) {
-      setTemplates([]);
+      setFollowUpTemplates([]);
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load templates.';
       notify.error({
         key: 'automations:templates:load',
         title: 'Unable to load templates',
         description: message,
       });
-    } finally {
-      setTemplatesLoading(false);
     }
   }, []);
 
@@ -251,8 +244,6 @@ const AutomationsPage: React.FC = () => {
     return map;
   }, [conversations]);
 
-  const approvedTemplates = useMemo(() => templates.filter((template) => resolveTemplateStatus(template.status) === 'APPROVED'), [templates]);
-
   const hasOrgContext = Boolean(userId && organizationId);
 
   const flowsSummary = useMemo(() => {
@@ -260,73 +251,6 @@ const AutomationsPage: React.FC = () => {
     const live = flows.filter((flow) => flow.status === 'ON').length;
     return `${live} live · ${flows.length} total`;
   }, [flows]);
-
-  const openTemplateComposer = (template?: Template | null) => {
-    setActiveTemplate(template ?? null);
-    setTemplateComposerOpen(true);
-  };
-
-  const handleTemplateSaved = async () => {
-    await loadTemplates();
-  };
-
-  const handleTemplateDeleted = (templateId: string) => {
-    setTemplates((current) => current.filter((template) => template.id !== templateId));
-  };
-
-  const handleSubmitTemplate = async (template: Template) => {
-    try {
-      const status = resolveTemplateStatus(template.status);
-      if (status === 'APPROVED' || status === 'SUBMITTED') {
-        notify.info({
-          key: `automations:template:${template.id}:submitted`,
-          title: 'Template already submitted',
-          description: 'This template is awaiting approval or already approved.',
-        });
-        return;
-      }
-      const updated = await templateApi.submit(template.id);
-      notify.success({
-        key: `automations:template:${template.id}:submit-success`,
-        title: 'Template submitted',
-        description: 'We sent your template to WhatsApp for review.',
-      });
-      if (updated) {
-        setTemplates((current) => current.map((item) => (item.id === template.id ? updated : item)));
-      } else {
-        await loadTemplates();
-      }
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Submission failed.';
-      notify.error({
-        key: `automations:template:${template.id}:submit-error`,
-        title: 'Unable to submit template',
-        description: message,
-      });
-    }
-  };
-
-  const handleRefreshTemplate = async (template: Template) => {
-    try {
-      const refreshed = await templateApi.refresh(template.id);
-      if (refreshed) {
-        setTemplates((current) => current.map((item) => (item.id === refreshed.id ? refreshed : item)));
-        notify.success({
-          key: `automations:template:${template.id}:refresh`,
-          title: 'Template status updated',
-        });
-      } else {
-        await loadTemplates();
-      }
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to refresh status.';
-      notify.error({
-        key: `automations:template:${template.id}:refresh-error`,
-        title: 'Unable to refresh status',
-        description: message,
-      });
-    }
-  };
 
   const openFollowUpModal = (mode: 'create' | 'edit', followUp?: FollowUpRule | null) => {
     if (!hasOrgContext) {
@@ -449,16 +373,6 @@ const AutomationsPage: React.FC = () => {
     });
   };
 
-  const sortedTemplates = useMemo(() => {
-    return [...templates].sort((a, b) => {
-      const statusA = resolveTemplateStatus(a.status);
-      const statusB = resolveTemplateStatus(b.status);
-      const diff = TEMPLATE_STATUS_ORDER.indexOf(statusA) - TEMPLATE_STATUS_ORDER.indexOf(statusB);
-      if (diff !== 0) return diff;
-      return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
-    });
-  }, [templates]);
-
   const sortedFollowUps = useMemo(() => {
     return [...followUps].sort((a, b) => {
       const aTime = a.scheduledTime ? new Date(a.scheduledTime).getTime() : Number.POSITIVE_INFINITY;
@@ -474,10 +388,10 @@ const AutomationsPage: React.FC = () => {
         <div>
           <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Automations</h1>
           <p className='text-sm sm:text-base text-muted-foreground'>
-            Automate your customer conversations with templates, follow-ups, and custom flows.
+            Automate your customer conversations with scheduled follow-ups and custom flows.
           </p>
         </div>
-        {!templates.length && !followUps.length && !flows.length && (
+        {!followUps.length && !flows.length && (
           <Button className='w-full sm:w-auto' onClick={() => openBuilder()}>
             <Sparkles className='h-4 w-4 mr-2' />
             Build Your First Automation
@@ -486,29 +400,27 @@ const AutomationsPage: React.FC = () => {
       </div>
 
       {/* How it Works - Step by Step */}
-      {!templates.length && !followUps.length && !flows.length && (
-        <section>
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Zap className='h-5 w-5 text-primary' />
-                How it works
-              </CardTitle>
-              <CardDescription>Create automated workflows to engage customers at the right time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className='grid gap-6 md:grid-cols-3'>
-                <Step number={1} icon={MessageSquare} title='Create Templates' description='Build approved message templates for WhatsApp' />
-                <Step number={2} icon={Clock} title='Schedule Follow-ups' description='Set automatic follow-ups for your conversations' />
-                <Step number={3} icon={Bot} title='Build Flows' description='Create complex automation workflows with conditions' />
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      <section aria-labelledby='automations-how-it-works'>
+        <Card>
+          <CardHeader>
+            <CardTitle id='automations-how-it-works' className='flex items-center gap-2'>
+              <Zap className='h-5 w-5 text-primary' />
+              How it works
+            </CardTitle>
+            <CardDescription>Create automated workflows to engage customers at the right time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-6 md:grid-cols-3'>
+              <Step number={1} icon={MessageSquare} title='Create Templates' description='Build approved WhatsApp templates from the Templates page' />
+              <Step number={2} icon={Clock} title='Schedule Follow-ups' description='Set automatic follow-ups for your conversations' />
+              <Step number={3} icon={Bot} title='Build Flows' description='Create complex automation workflows with conditions' />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Quick Actions for Existing Users */}
-      {(templates.length > 0 || followUps.length > 0 || flows.length > 0) && (
+      {(followUps.length > 0 || flows.length > 0) && (
         <section>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <div>
@@ -525,90 +437,11 @@ const AutomationsPage: React.FC = () => {
         </section>
       )}
 
-      <Tabs defaultValue='templates' className='w-full'>
-        <TabsList className='grid w-full grid-cols-3 sm:w-auto'>
-          <TabsTrigger value='templates'>Templates</TabsTrigger>
+      <Tabs defaultValue='followups' className='w-full'>
+        <TabsList className='grid w-full grid-cols-2 sm:w-auto'>
           <TabsTrigger value='followups'>Follow-ups</TabsTrigger>
           <TabsTrigger value='flows'>Flows</TabsTrigger>
         </TabsList>
-
-        <TabsContent value='templates' className='space-y-6 pt-4'>
-          {templateComposerOpen && (
-            <TemplateComposer
-              open={templateComposerOpen}
-              onOpenChange={(open) => {
-                setTemplateComposerOpen(open);
-                if (!open) {
-                  setActiveTemplate(null);
-                }
-              }}
-              template={activeTemplate}
-              onSaved={handleTemplateSaved}
-              onDeleted={handleTemplateDeleted}
-            />
-          )}
-          <Card>
-            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <CardTitle>WhatsApp Templates</CardTitle>
-                <CardDescription>Create and manage approved message templates.</CardDescription>
-              </div>
-              <Button onClick={() => openTemplateComposer()}>
-                <Plus className='mr-2 h-4 w-4' />
-                New template
-              </Button>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              {templatesLoading ? (
-                <div className='space-y-3'>
-                  {[...Array(4)].map((_, index) => (
-                    <Skeleton key={index} className='h-20 w-full rounded-md' />
-                  ))}
-                </div>
-              ) : sortedTemplates.length ? (
-                <div className='space-y-4'>
-                  {sortedTemplates.map((template) => {
-                    const status = resolveTemplateStatus(template.status);
-                    const approved = status === 'APPROVED';
-                    return (
-                      <div key={template.id} className='rounded-lg border border-border/70 bg-card p-4 shadow-sm transition hover:border-primary/50'>
-                        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                          <div className='space-y-2'>
-                            <div className='flex flex-wrap items-center gap-2'>
-                              <h3 className='text-base font-semibold'>{template.name}</h3>
-                              <Badge variant={approved ? 'default' : 'secondary'}>{TEMPLATE_STATUS_LABELS[status]}</Badge>
-                              <Badge variant='outline'>{template.category.toLowerCase()}</Badge>
-                            </div>
-                            <p className='text-sm text-muted-foreground line-clamp-3 whitespace-pre-line'>{template.body}</p>
-                          </div>
-                          <div className='flex flex-wrap gap-2'>
-                            <Button size='sm' variant='outline' onClick={() => openTemplateComposer(template)}>
-                              <MessageSquare className='mr-2 h-3.5 w-3.5' />
-                              Edit
-                            </Button>
-                            <Button size='sm' variant='outline' onClick={() => handleRefreshTemplate(template)}>
-                              <RefreshCw className='mr-2 h-3.5 w-3.5' />
-                              Refresh
-                            </Button>
-                            <Button size='sm' disabled={approved} onClick={() => handleSubmitTemplate(template)}>
-                              <CheckCircle2 className='mr-2 h-3.5 w-3.5' />
-                              Submit
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
-                  No templates yet. Create your first WhatsApp template to get started.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <WhatsAppPrinciples />
-        </TabsContent>
 
         <TabsContent value='followups' className='space-y-6 pt-4'>
           {hasOrgContext && followUpModalOpen && (
@@ -623,7 +456,7 @@ const AutomationsPage: React.FC = () => {
               mode={followUpMode}
               followUp={activeFollowUp}
               conversationOptions={conversations}
-              templateOptions={approvedTemplates}
+              templateOptions={followUpTemplates}
               conversationsLoading={conversationsLoading}
               userId={userId!}
               organizationId={organizationId!}
@@ -802,7 +635,7 @@ const AutomationsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className='rounded-md border border-dashed border-border/60 bg-muted/40 p-6 text-center text-sm text-muted-foreground'>
-                  Build your first automation flow to route conversations, send templates, and trigger follow-ups automatically.
+                  Build your first automation flow to route conversations and trigger follow-ups automatically.
                 </div>
               )}
             </CardContent>

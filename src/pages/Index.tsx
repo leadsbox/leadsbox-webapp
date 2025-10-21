@@ -19,7 +19,7 @@ const META = {
   description:
     'One inbox for WhatsApp + Instagram. AI tags leads, schedules follow-ups, and tracks deals to “paid”. Built for creators and modern businesses.',
   url: typeof window !== 'undefined' ? window.location.origin : 'https://leadsbox.app',
-  image: '/leadboxlogo.png',
+  image: '/leadboxlogo.webp',
 };
 
 function useDocumentMeta(meta: typeof META) {
@@ -105,7 +105,7 @@ const Index = () => {
         <div className='container mx-auto flex h-16 items-center justify-between px-4'>
           <a href='/' className='flex items-center gap-3 transition-transform hover:scale-105'>
             <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-              <img src='/leadsboxlogo.svg' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+              <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
             </div>
             <span className='text-xl font-semibold'>LeadsBox</span>
           </a>
@@ -126,12 +126,7 @@ const Index = () => {
           </nav>
 
           <div className='flex items-center gap-2 sm:gap-3'>
-            <Button
-              variant='ghost'
-              size='icon'
-              aria-label='Toggle theme'
-              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            >
+            <Button variant='ghost' size='icon' aria-label='Toggle theme' onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
               <ThemeIcon className='h-4 w-4' />
             </Button>
             <Button variant='ghost' size='sm' asChild>
@@ -220,6 +215,8 @@ const Index = () => {
                         title='LeadsBox demo'
                         className='h-full w-full'
                         src='https://www.youtube.com/embed/dQw4w9WgXcQ'
+                        loading='lazy'
+                        referrerPolicy='strict-origin-when-cross-origin'
                         allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
                         allowFullScreen
                       />
@@ -257,7 +254,7 @@ const Index = () => {
                 {/* Chat Header */}
                 <div className='flex items-center gap-3 p-4 border-b border-border bg-muted/50'>
                   <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                    <img src='/leadsboxlogo.svg' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+                    <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
                   </div>
                   <div>
                     <div className='font-medium'>LeadsBox Bot</div>
@@ -324,7 +321,7 @@ const Index = () => {
           <Card>
             <CardContent className='p-6 space-y-3'>
               <Badge variant='secondary'>For Businesses</Badge>
-              <h3 className='text-2xl font-semibold'>Never miss money in the DMs</h3>
+              <h2 className='text-2xl font-semibold'>Never miss money in the DMs</h2>
               <p className='text-muted-foreground'>Reply faster, keep context, and track chats to “paid”.</p>
               <div className='flex gap-3 pt-2'>
                 <Button onClick={() => setWaitlistOpen(true)} data-cta='business_join'>
@@ -339,7 +336,7 @@ const Index = () => {
           <Card>
             <CardContent className='p-6 space-y-3'>
               <Badge variant='secondary'>For Creators</Badge>
-              <h3 className='text-2xl font-semibold'>Earn on referrals, get a VIP inbox</h3>
+              <h2 className='text-2xl font-semibold'>Earn on referrals, get a VIP inbox</h2>
               <p className='text-muted-foreground'>Partner with LeadsBox brands and own your upside.</p>
               <div className='flex gap-3 pt-2'>
                 <Button variant='outline' onClick={() => setWaitlistOpen(true)} data-cta='creator_join'>
@@ -442,12 +439,7 @@ const Index = () => {
               badgeVariant: 'secondary' as const,
               price: '₦0',
               subtitle: '/ month',
-              features: [
-                'Unified inbox',
-                'AI tagging (starter)',
-                'Basic pipeline',
-                'Simple analytics',
-              ],
+              features: ['Unified inbox', 'AI tagging (starter)', 'Basic pipeline', 'Simple analytics'],
               ctaVariant: 'default' as const,
               blurb: 'Get your team onboarded in minutes.',
               ctaEvent: 'pricing_starter',
@@ -457,12 +449,7 @@ const Index = () => {
               badgeVariant: 'default' as const,
               price: '₦4,500',
               subtitle: '/ month',
-              features: [
-                'Everything in Starter',
-                'Advanced AI follow-ups',
-                'Team assignments',
-                'Detailed analytics',
-              ],
+              features: ['Everything in Starter', 'Advanced AI follow-ups', 'Team assignments', 'Detailed analytics'],
               ctaVariant: 'outline' as const,
               blurb: 'Influencer partners get special rev-share.',
               ctaEvent: 'pricing_pro',
@@ -472,12 +459,7 @@ const Index = () => {
               badgeVariant: 'default' as const,
               price: '₦10,000',
               subtitle: '/ month',
-              features: [
-                'Unlimited seats & workspaces',
-                'Custom integrations & SLAs',
-                'Dedicated success manager',
-                'Advanced security & reporting',
-              ],
+              features: ['Unlimited seats & workspaces', 'Custom integrations & SLAs', 'Dedicated success manager', 'Advanced security & reporting'],
               ctaVariant: 'outline' as const,
               blurb: 'Tailored for high-volume teams that need white-glove support.',
               ctaEvent: 'pricing_enterprise',
@@ -497,12 +479,7 @@ const Index = () => {
                     </li>
                   ))}
                 </ul>
-                <Button
-                  variant={plan.ctaVariant}
-                  className='w-full'
-                  onClick={() => setWaitlistOpen(true)}
-                  data-cta={plan.ctaEvent}
-                >
+                <Button variant={plan.ctaVariant} className='w-full' onClick={() => setWaitlistOpen(true)} data-cta={plan.ctaEvent}>
                   Lock Early Access
                 </Button>
                 <p className='text-xs text-muted-foreground'>{plan.blurb}</p>
@@ -541,7 +518,7 @@ const Index = () => {
       <section className='container mx-auto px-4 pb-16' id='waitlist-cta'>
         <Card className='max-w-3xl mx-auto'>
           <CardContent className='p-6 space-y-4'>
-            <h3 className='text-2xl font-semibold'>Ready to turn DMs into revenue?</h3>
+            <h2 className='text-2xl font-semibold'>Ready to turn DMs into revenue?</h2>
             <div className='flex flex-col sm:flex-row gap-3'>
               <Input
                 type='email'
@@ -567,7 +544,7 @@ const Index = () => {
           <div className='flex flex-col md:flex-row items-center justify-between gap-6'>
             <div className='flex items-center gap-3'>
               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                <img src='/leadsboxlogo.svg' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+                <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
               </div>
               <span className='font-semibold'>LeadsBox</span>
               <span className='text-muted-foreground'>© {new Date().getFullYear()}</span>

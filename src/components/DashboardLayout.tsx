@@ -1,6 +1,6 @@
 // Dashboard Layout Component for LeadsBox
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -17,6 +17,7 @@ import {
   Sparkles,
   Home,
   CreditCard,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -117,6 +118,13 @@ const sidebarItems: SidebarItem[] = [
     description: 'Account and preferences',
   },
 ];
+
+const DashboardContentFallback = () => (
+  <div className='flex min-h-[320px] items-center justify-center text-muted-foreground' role='status' aria-live='polite'>
+    <Loader2 className='h-6 w-6 animate-spin text-primary' />
+    <span className='sr-only'>Loading dashboard content…</span>
+  </div>
+);
 
 export const DashboardLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -267,7 +275,7 @@ export const DashboardLayout: React.FC = () => {
           {!sidebarCollapsed && (
             <div className='flex items-center space-x-2'>
               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                <img src='/leadsboxlogo.svg' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+                <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
               </div>
               <span className='font-semibold text-sidebar-foreground'>LeadsBox</span>
             </div>
@@ -409,7 +417,7 @@ export const DashboardLayout: React.FC = () => {
           <div className='flex h-16 items-center justify-between px-4 border-b border-sidebar-border'>
             <div className='flex items-center space-x-2'>
               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                <img src='/leadsboxlogo.svg' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+                <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
               </div>
               <span className='font-semibold text-sidebar-foreground'>LeadsBox</span>
             </div>
@@ -479,9 +487,11 @@ export const DashboardLayout: React.FC = () => {
         <DashboardHeader onSidebarToggle={toggleSidebar} sidebarOpen={isMobile ? mobileOpen : !sidebarCollapsed} />
 
         {/* Page content */}
-        <main className='dashboard-main flex-1 overflow-auto'>
-          <Outlet />
-        </main>
+        <section className='dashboard-main flex-1 overflow-auto' aria-label='Dashboard content'>
+          <Suspense fallback={<DashboardContentFallback />}>
+            <Outlet />
+          </Suspense>
+        </section>
       </div>
     </div>
   );

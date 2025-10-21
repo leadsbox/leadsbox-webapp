@@ -7,6 +7,12 @@
     <meta name="description" content="Leadsbox web app" />
     <meta name="author" content="leadsbox" />
 
+    <!-- Mobile responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://www.leadsboxapp.com" />
+
     <meta property="og:title" content="leadsbox" />
     <meta property="og:description" content="leadsbox" />
     <meta property="og:type" content="website" />
@@ -15,6 +21,29 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@leadsbox" />
     <meta name="twitter:image" content="https://leadsbox.dev/opengraph-image-p98pqg.png" />
+    <link rel="preload" href="/src/index.css" as="style" onload="this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="/src/index.css" /></noscript>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background-color: #e8ecf5;
+        color: #0f172a;
+        min-height: 100vh;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #05070f;
+          color: #e2e8f0;
+        }
+      }
+      .min-h-screen {
+        min-height: 100vh;
+      }
+    </style>
   </head>
 
   <body>
