@@ -287,14 +287,11 @@ const InboxPage: React.FC = () => {
   useEffect(() => {
     if (!selectedThread?.id || isConnected) return;
 
-    
     const interval = setInterval(() => {
-      
       fetchMessages(selectedThread.id);
     }, 5000); // Refresh every 5 seconds when offline
 
     return () => {
-      
       clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,8 +303,6 @@ const InboxPage: React.FC = () => {
       return;
     }
 
-    
-
     // Add debugging for ALL Socket.IO events
     const logAllEvents = socketOn('*', (eventName: string, ...args: unknown[]) => {
       // intentionally left blank for production - debugging disabled
@@ -317,15 +312,12 @@ const InboxPage: React.FC = () => {
     const unsubscribeNewMessage = socketOn('message:new', (data) => {
       const { message, thread } = data;
 
-      
-
       // Update messages if this is the selected thread
       if (selectedThread?.id === message.threadId) {
-        
         setMessages((prev) => {
           // Avoid duplicates
           const exists = prev.some((m) => m.id === message.id);
-            if (exists) {
+          if (exists) {
             return prev;
           }
           const newMessages = [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -333,7 +325,7 @@ const InboxPage: React.FC = () => {
           setTimeout(scrollToBottom, 100);
           return newMessages;
         });
-  }
+      }
 
       // Update thread list
       setThreads((prev) => {
@@ -363,8 +355,6 @@ const InboxPage: React.FC = () => {
     const unsubscribeThreadUpdate = socketOn('thread:updated', (data) => {
       const { thread } = data;
 
-      
-
       setThreads((prev) => {
         const existingIndex = prev.findIndex((t) => t.id === thread.id);
         if (existingIndex >= 0) {
@@ -384,8 +374,6 @@ const InboxPage: React.FC = () => {
     // Handle new threads
     const unsubscribeNewThread = socketOn('thread:new', (data) => {
       const { thread } = data;
-
-      
 
       setThreads((prev) => {
         // Avoid duplicates
@@ -439,12 +427,11 @@ const InboxPage: React.FC = () => {
 
   // Join/leave thread rooms when selected thread changes
   useEffect(() => {
-  if (!isConnected || !selectedThread?.id) return;
+    if (!isConnected || !selectedThread?.id) return;
     joinThread(selectedThread.id);
 
     return () => {
       if (selectedThread?.id) {
-        
         leaveThread(selectedThread.id);
       }
     };

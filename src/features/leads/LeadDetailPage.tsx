@@ -194,9 +194,7 @@ const LeadDetailPage: React.FC = () => {
       if (!member) return undefined;
 
       const { user } = member;
-      const fullName = [user?.firstName, user?.lastName]
-        .filter(Boolean)
-        .join(' ');
+      const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
 
       return {
         id: member.userId,
@@ -262,7 +260,7 @@ const LeadDetailPage: React.FC = () => {
       if (!leadId) return;
 
       try {
-  setIsLoading(true);
+        setIsLoading(true);
 
         // Try to get the lead directly from the leads API
         // This should return lead with contact and thread relations included
@@ -279,8 +277,6 @@ const LeadDetailPage: React.FC = () => {
             // loaded
           }
         } catch (leadError) {
-          
-
           // If lead API fails, this might be a contact ID or thread ID being used as leadId
           // Let's try to find if there are leads associated with this contact
           try {
@@ -386,8 +382,6 @@ const LeadDetailPage: React.FC = () => {
             label: normalizedLabel as LeadLabel | undefined,
           };
 
-          
-
           setLead(mappedLead);
         } else {
           notify.error({
@@ -398,7 +392,6 @@ const LeadDetailPage: React.FC = () => {
           navigate('/leads');
         }
       } catch (error) {
-        
         const errorMessage = error instanceof Error ? error.message : 'Failed to load lead details';
 
         notify.error({
@@ -541,7 +534,7 @@ const LeadDetailPage: React.FC = () => {
       return;
     }
 
-      try {
+    try {
       // Check if this is a proper lead with backend relationships
       const hasProperLeadData = lead.contactId || lead.threadId || lead.conversationId;
 
@@ -1023,11 +1016,8 @@ const LeadDetailPage: React.FC = () => {
                   <SelectContent>
                     {members.map((member) => {
                       const { user } = member;
-                      const fullName = [user?.firstName, user?.lastName]
-                        .filter(Boolean)
-                        .join(' ');
-                      const displayName =
-                        fullName || user?.username || user?.email || 'Team member';
+                      const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+                      const displayName = fullName || user?.username || user?.email || 'Team member';
 
                       return (
                         <SelectItem key={member.userId} value={member.userId}>
@@ -1036,9 +1026,7 @@ const LeadDetailPage: React.FC = () => {
                               {user?.profileImage ? (
                                 <AvatarImage src={user.profileImage} />
                               ) : (
-                                <AvatarFallback className='text-xs'>
-                                  {displayName.charAt(0).toUpperCase()}
-                                </AvatarFallback>
+                                <AvatarFallback className='text-xs'>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                               )}
                             </Avatar>
                             <span>{displayName}</span>
@@ -1056,9 +1044,7 @@ const LeadDetailPage: React.FC = () => {
                         {getAssignedUser(lead.assignedTo)?.avatar ? (
                           <AvatarImage src={getAssignedUser(lead.assignedTo)?.avatar} />
                         ) : (
-                          <AvatarFallback className='text-xs'>
-                            {getAssignedUser(lead.assignedTo)?.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
+                          <AvatarFallback className='text-xs'>{getAssignedUser(lead.assignedTo)?.name.charAt(0).toUpperCase()}</AvatarFallback>
                         )}
                       </Avatar>
                       <span className='text-sm'>{getAssignedUser(lead.assignedTo)?.name}</span>

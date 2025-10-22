@@ -109,7 +109,7 @@ export class SocketIOService {
         // Socket.IO server URL
         const serverUrl = import.meta.env.VITE_API_BASE?.replace('/api', '') || 'http://localhost:3010';
 
-  // Connecting to Socket.IO server
+        // Connecting to Socket.IO server
 
         // Create Socket.IO connection
         this.socket = io(serverUrl, {
@@ -196,11 +196,11 @@ export class SocketIOService {
 
     if (this.socket?.connected) {
       // Add unique identifier to track this specific emission
-  const emissionId = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const emissionId = `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
       // Emit the message with tracking ID
       const messageData = { threadId, text, type, emissionId };
-  this.socket.emit('message:send', messageData);
+      this.socket.emit('message:send', messageData);
 
       // Add a small delay and check if the event was actually sent
       // Optional: small post-emission checks or follow-up emits were removed
@@ -245,20 +245,16 @@ export class SocketIOService {
       }
     }
 
-    this.socket?.emit(
-      'analytics:subscribe',
-      { range },
-      (response?: { success?: boolean; data?: Analytics }) => {
-        if (response?.success && response.data) {
-          this.emitToListeners('analytics:overview', response.data);
-        } else if (response && response.success === false) {
-          this.emitToListeners('error', {
-            message: 'Failed to load analytics overview',
-            code: 'ANALYTICS_OVERVIEW_FAILED',
-          });
-        }
+    this.socket?.emit('analytics:subscribe', { range }, (response?: { success?: boolean; data?: Analytics }) => {
+      if (response?.success && response.data) {
+        this.emitToListeners('analytics:overview', response.data);
+      } else if (response && response.success === false) {
+        this.emitToListeners('error', {
+          message: 'Failed to load analytics overview',
+          code: 'ANALYTICS_OVERVIEW_FAILED',
+        });
       }
-    );
+    });
   }
 
   unsubscribeFromAnalytics(): void {
