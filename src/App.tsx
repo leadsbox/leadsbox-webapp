@@ -1,17 +1,15 @@
+import { Suspense, lazy } from 'react';
 import LeadsboxToaster from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfirmProvider, NetworkBannerProvider, NetworkBannerSurface } from '@/ui/ux';
-
-// Context Providers
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 
-// Components
-import ProtectedRoute from './components/ProtectedRoute';
-import DashboardLayout from './components/DashboardLayout';
+const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
 
-// Pages
+// Marketing / Auth (keep eager to avoid blank on primary entry paths)
 import Index from './pages/Index';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
@@ -23,22 +21,28 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import AcceptInvitePage from './pages/AcceptInvite';
 
-// Dashboard Pages
-import InboxPage from './features/inbox/InboxPage';
-import LeadsPage from './features/leads/LeadsPage';
-import LeadDetailPage from './features/leads/LeadDetailPage';
-import PipelinePage from './features/pipeline/PipelinePage';
-import TasksPage from './features/tasks/TasksPage';
-import AnalyticsPage from './features/analytics/AnalyticsPage';
-import SettingsPage from './features/settings/SettingsPage';
-import DashboardHomePage from './features/dashboard/DashboardHomePage';
-import InvoicesPage from './features/invoices/InvoicesPage';
-import InvoiceDetailPage from './features/invoices/InvoiceDetailPage';
-import CreateInvoicePage from './features/invoices/CreateInvoicePage';
-import ReceiptPage from './features/receipts/ReceiptPage';
-import AutomationsPage from './features/automations/AutomationsPage';
-import { TemplatesHomePage, CreateTemplateWizardPage, TemplateDetailPage } from './features/templates';
-import PaymentPlansPage from './features/billing/PaymentPlansPage';
+// Dashboard Pages (lazy-loaded so the marketing shell stays light)
+const InboxPage = lazy(() => import('./features/inbox/InboxPage'));
+const LeadsPage = lazy(() => import('./features/leads/LeadsPage'));
+const LeadDetailPage = lazy(() => import('./features/leads/LeadDetailPage'));
+const PipelinePage = lazy(() => import('./features/pipeline/PipelinePage'));
+const TasksPage = lazy(() => import('./features/tasks/TasksPage'));
+const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
+const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
+const DashboardHomePage = lazy(() => import('./features/dashboard/DashboardHomePage'));
+const InvoicesPage = lazy(() => import('./features/invoices/InvoicesPage'));
+const InvoiceDetailPage = lazy(() => import('./features/invoices/InvoiceDetailPage'));
+const CreateInvoicePage = lazy(() => import('./features/invoices/CreateInvoicePage'));
+const ReceiptPage = lazy(() => import('./features/receipts/ReceiptPage'));
+const AutomationsPage = lazy(() => import('./features/automations/AutomationsPage'));
+const TemplatesHomePage = lazy(() => import('./features/templates/TemplatesHomePage'));
+const CreateTemplateWizardPage = lazy(() => import('./features/templates/CreateTemplateWizardPage'));
+const TemplateDetailPage = lazy(() => import('./features/templates/TemplateDetailPage'));
+const PaymentPlansPage = lazy(() => import('./features/billing/PaymentPlansPage'));
+
+const RouteLoader = () => (
+  <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>
+);
 
 const queryClient = new QueryClient();
 
@@ -54,56 +58,60 @@ const App = () => {
                 <div className='pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-4'>
                   <NetworkBannerSurface className='max-w-3xl' />
                 </div>
-                <Routes>
-                  <Route path='/' element={<Index />} />
-                  <Route path='/login' element={<Login />} />
-                  <Route path='/register' element={<Register />} />
-                  <Route path='/invite/:token' element={<AcceptInvitePage />} />
-                  <Route path='/verify-email' element={<VerifyEmail />} />
-                  <Route path='/privacy' element={<PrivacyPolicy />} />
-                  <Route path='/terms' element={<Terms />} />
-                  <Route path='/forgot-password' element={<ForgotPassword />} />
-                  <Route path='/reset-password' element={<ResetPassword />} />
+                <Suspense fallback={<RouteLoader />}>
+                  <Routes>
+                    <Route path='/' element={<Index />} />
+                    <Route path='/login' element={<Login />} />
+                    <Route path='/register' element={<Register />} />
+                    <Route path='/invite/:token' element={<AcceptInvitePage />} />
+                    <Route path='/verify-email' element={<VerifyEmail />} />
+                    <Route path='/privacy' element={<PrivacyPolicy />} />
+                    <Route path='/terms' element={<Terms />} />
+                    <Route path='/forgot-password' element={<ForgotPassword />} />
+                    <Route path='/reset-password' element={<ResetPassword />} />
 
-                  {/* Protected Dashboard Routes */}
-                  <Route
-                    path='/dashboard'
-                    element={
-                      <ProtectedRoute>
-                        <DashboardLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<Navigate to='home' replace />} />
-                    <Route path='home' element={<DashboardHomePage />} />
-                    <Route path='invoices' element={<InvoicesPage />} />
-                    <Route path='invoices/:code' element={<InvoiceDetailPage />} />
-                    <Route path='invoices/new' element={<CreateInvoicePage />} />
-                    <Route path='receipts/:receiptId' element={<ReceiptPage />} />
-                    <Route path='inbox' element={<InboxPage />} />
-                    <Route path='leads' element={<LeadsPage />} />
-                    <Route path='leads/:leadId' element={<LeadDetailPage />} />
-                    <Route path='pipeline' element={<PipelinePage />} />
-                    <Route path='tasks' element={<TasksPage />} />
-                    <Route path='analytics' element={<AnalyticsPage />} />
-                    <Route path='templates' element={<TemplatesHomePage />} />
-                    <Route path='templates/new' element={<CreateTemplateWizardPage />} />
-                    <Route path='templates/:id' element={<TemplateDetailPage />} />
-                    <Route path='automations' element={<AutomationsPage />} />
-                    <Route path='billing' element={<PaymentPlansPage />} />
+                    {/* Protected Dashboard Routes */}
                     <Route
-                      path='settings'
+                      path='/dashboard'
                       element={
                         <ProtectedRoute>
-                          <SettingsPage />
+                          <Suspense fallback={<RouteLoader />}>
+                            <DashboardLayout />
+                          </Suspense>
                         </ProtectedRoute>
                       }
-                    />
-                  </Route>
+                    >
+                      <Route index element={<Navigate to='home' replace />} />
+                      <Route path='home' element={<DashboardHomePage />} />
+                      <Route path='invoices' element={<InvoicesPage />} />
+                      <Route path='invoices/:code' element={<InvoiceDetailPage />} />
+                      <Route path='invoices/new' element={<CreateInvoicePage />} />
+                      <Route path='receipts/:receiptId' element={<ReceiptPage />} />
+                      <Route path='inbox' element={<InboxPage />} />
+                      <Route path='leads' element={<LeadsPage />} />
+                      <Route path='leads/:leadId' element={<LeadDetailPage />} />
+                      <Route path='pipeline' element={<PipelinePage />} />
+                      <Route path='tasks' element={<TasksPage />} />
+                      <Route path='analytics' element={<AnalyticsPage />} />
+                      <Route path='templates' element={<TemplatesHomePage />} />
+                      <Route path='templates/new' element={<CreateTemplateWizardPage />} />
+                      <Route path='templates/:id' element={<TemplateDetailPage />} />
+                      <Route path='automations' element={<AutomationsPage />} />
+                      <Route path='billing' element={<PaymentPlansPage />} />
+                      <Route
+                        path='settings'
+                        element={
+                          <ProtectedRoute>
+                            <SettingsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                    </Route>
 
-                  {/* Catch-all route */}
-                  <Route path='*' element={<NotFound />} />
-                </Routes>
+                    {/* Catch-all route */}
+                    <Route path='*' element={<NotFound />} />
+                  </Routes>
+                </Suspense>
               </BrowserRouter>
             </TooltipProvider>
           </ConfirmProvider>
