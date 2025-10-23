@@ -3,6 +3,13 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
+const stripModulePreload = () => ({
+  name: "strip-modulepreload",
+  transformIndexHtml(html: string) {
+    return html.replace(/<link rel="modulepreload"[^>]*>/g, "");
+  },
+});
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -11,6 +18,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    stripModulePreload(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),

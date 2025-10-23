@@ -8,7 +8,15 @@ type AuthBrandProps = {
 export const AuthBrand = ({ className, logoClassName }: AuthBrandProps) => {
   return (
     <div className={cn('flex justify-center', className)}>
-      <img src='/leadboxlogo.webp' alt='LeadsBox' className={cn('h-10 w-auto rounded-sm', logoClassName)} loading='lazy' />
+      <img
+        src='/leadsboxlogo.svg'
+        alt='LeadsBox'
+        width={40}
+        height={40}
+        className={cn('h-10 w-auto rounded-sm', logoClassName)}
+        decoding='async'
+        loading='lazy'
+      />
     </div>
   );
 };

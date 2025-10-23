@@ -97,6 +97,19 @@ const Index = () => {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const ThemeIcon = useMemo(() => (resolvedTheme === 'dark' ? Sun : Moon), [resolvedTheme]);
+  const logoSrc = '/leadsboxlogo.svg';
+  const LogoImage = ({ priority = false, className }: { priority?: boolean; className?: string }) => (
+    <img
+      src={logoSrc}
+      alt='LeadsBox Logo'
+      width={24}
+      height={24}
+      className={className ?? 'h-full w-full object-contain'}
+      decoding='async'
+      fetchpriority={priority ? 'high' : undefined}
+      loading={priority ? 'eager' : 'lazy'}
+    />
+  );
 
   return (
     <div className='min-h-screen w-full bg-background text-foreground'>
@@ -105,7 +118,7 @@ const Index = () => {
         <div className='container mx-auto flex h-16 items-center justify-between px-4'>
           <a href='/' className='flex items-center gap-3 transition-transform hover:scale-105'>
             <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-              <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+              <LogoImage priority />
             </div>
             <span className='text-xl font-semibold'>LeadsBox</span>
           </a>
@@ -254,7 +267,7 @@ const Index = () => {
                 {/* Chat Header */}
                 <div className='flex items-center gap-3 p-4 border-b border-border bg-muted/50'>
                   <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                    <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+                    <LogoImage />
                   </div>
                   <div>
                     <div className='font-medium'>LeadsBox Bot</div>
@@ -544,7 +557,7 @@ const Index = () => {
           <div className='flex flex-col md:flex-row items-center justify-between gap-6'>
             <div className='flex items-center gap-3'>
               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-                <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+                <LogoImage />
               </div>
               <span className='font-semibold'>LeadsBox</span>
               <span className='text-muted-foreground'>© {new Date().getFullYear()}</span>

@@ -1,11 +1,7 @@
 import { Suspense, lazy } from 'react';
-import LeadsboxToaster from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfirmProvider, NetworkBannerProvider, NetworkBannerSurface } from '@/ui/ux';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
+const AppProviders = lazy(() => import('./AppProviders'));
 
 const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
 
@@ -44,80 +40,66 @@ const RouteLoader = () => (
   <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>
 );
 
-const queryClient = new QueryClient();
-
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NetworkBannerProvider>
-          <ConfirmProvider>
-            <TooltipProvider>
-              <LeadsboxToaster />
-              <BrowserRouter>
-                <div className='pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-4'>
-                  <NetworkBannerSurface className='max-w-3xl' />
-                </div>
-                <Suspense fallback={<RouteLoader />}>
-                  <Routes>
-                    <Route path='/' element={<Index />} />
-                    <Route path='/login' element={<Login />} />
-                    <Route path='/register' element={<Register />} />
-                    <Route path='/invite/:token' element={<AcceptInvitePage />} />
-                    <Route path='/verify-email' element={<VerifyEmail />} />
-                    <Route path='/privacy' element={<PrivacyPolicy />} />
-                    <Route path='/terms' element={<Terms />} />
-                    <Route path='/forgot-password' element={<ForgotPassword />} />
-                    <Route path='/reset-password' element={<ResetPassword />} />
+    <BrowserRouter>
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          <Route path='/' element={<Index />} />
+          <Route element={<AppProviders />}>
+            <Route path='/login' element={<Login />} />
+            <Route path='/register' element={<Register />} />
+            <Route path='/invite/:token' element={<AcceptInvitePage />} />
+            <Route path='/verify-email' element={<VerifyEmail />} />
+            <Route path='/privacy' element={<PrivacyPolicy />} />
+            <Route path='/terms' element={<Terms />} />
+            <Route path='/forgot-password' element={<ForgotPassword />} />
+            <Route path='/reset-password' element={<ResetPassword />} />
 
-                    {/* Protected Dashboard Routes */}
-                    <Route
-                      path='/dashboard'
-                      element={
-                        <ProtectedRoute>
-                          <Suspense fallback={<RouteLoader />}>
-                            <DashboardLayout />
-                          </Suspense>
-                        </ProtectedRoute>
-                      }
-                    >
-                      <Route index element={<Navigate to='home' replace />} />
-                      <Route path='home' element={<DashboardHomePage />} />
-                      <Route path='invoices' element={<InvoicesPage />} />
-                      <Route path='invoices/:code' element={<InvoiceDetailPage />} />
-                      <Route path='invoices/new' element={<CreateInvoicePage />} />
-                      <Route path='receipts/:receiptId' element={<ReceiptPage />} />
-                      <Route path='inbox' element={<InboxPage />} />
-                      <Route path='leads' element={<LeadsPage />} />
-                      <Route path='leads/:leadId' element={<LeadDetailPage />} />
-                      <Route path='pipeline' element={<PipelinePage />} />
-                      <Route path='tasks' element={<TasksPage />} />
-                      <Route path='analytics' element={<AnalyticsPage />} />
-                      <Route path='templates' element={<TemplatesHomePage />} />
-                      <Route path='templates/new' element={<CreateTemplateWizardPage />} />
-                      <Route path='templates/:id' element={<TemplateDetailPage />} />
-                      <Route path='automations' element={<AutomationsPage />} />
-                      <Route path='billing' element={<PaymentPlansPage />} />
-                      <Route
-                        path='settings'
-                        element={
-                          <ProtectedRoute>
-                            <SettingsPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                    </Route>
+            {/* Protected Dashboard Routes */}
+            <Route
+              path='/dashboard'
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<RouteLoader />}>
+                    <DashboardLayout />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to='home' replace />} />
+              <Route path='home' element={<DashboardHomePage />} />
+              <Route path='invoices' element={<InvoicesPage />} />
+              <Route path='invoices/:code' element={<InvoiceDetailPage />} />
+              <Route path='invoices/new' element={<CreateInvoicePage />} />
+              <Route path='receipts/:receiptId' element={<ReceiptPage />} />
+              <Route path='inbox' element={<InboxPage />} />
+              <Route path='leads' element={<LeadsPage />} />
+              <Route path='leads/:leadId' element={<LeadDetailPage />} />
+              <Route path='pipeline' element={<PipelinePage />} />
+              <Route path='tasks' element={<TasksPage />} />
+              <Route path='analytics' element={<AnalyticsPage />} />
+              <Route path='templates' element={<TemplatesHomePage />} />
+              <Route path='templates/new' element={<CreateTemplateWizardPage />} />
+              <Route path='templates/:id' element={<TemplateDetailPage />} />
+              <Route path='automations' element={<AutomationsPage />} />
+              <Route path='billing' element={<PaymentPlansPage />} />
+              <Route
+                path='settings'
+                element={
+                  <ProtectedRoute>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+          </Route>
 
-                    {/* Catch-all route */}
-                    <Route path='*' element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </BrowserRouter>
-            </TooltipProvider>
-          </ConfirmProvider>
-        </NetworkBannerProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+          {/* Catch-all route */}
+          <Route path='*' element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   );
 };
 

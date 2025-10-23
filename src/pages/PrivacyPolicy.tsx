@@ -7,6 +7,18 @@ import { Moon, Sun } from 'lucide-react';
 const PrivacyPolicy: React.FC = () => {
   const { resolvedTheme, setTheme } = useTheme();
   const ThemeIcon = resolvedTheme === 'dark' ? Sun : Moon;
+  const LogoMark = ({ priority = false }: { priority?: boolean }) => (
+    <img
+      src='/leadsboxlogo.svg'
+      alt='LeadsBox Logo'
+      width={24}
+      height={24}
+      className='h-full w-full object-contain'
+      decoding='async'
+      fetchpriority={priority ? 'high' : undefined}
+      loading={priority ? 'eager' : 'lazy'}
+    />
+  );
 
   return (
     <div className='min-h-screen w-full bg-background text-foreground'>
@@ -15,7 +27,7 @@ const PrivacyPolicy: React.FC = () => {
         <div className='container mx-auto flex h-16 items-center justify-between px-4'>
           <a href='/' className='flex items-center gap-3 transition-transform hover:scale-105'>
             <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
-              <img src='/leadboxlogo.webp' alt='LeadsBox Logo' className='w-full h-full object-contain' />
+              <LogoMark priority />
             </div>
             <span className='text-xl font-semibold'>LeadsBox</span>
           </a>
