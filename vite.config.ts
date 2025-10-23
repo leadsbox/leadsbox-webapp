@@ -3,10 +3,20 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
-const stripModulePreload = () => ({
-  name: "strip-modulepreload",
+const optimizeLandingHtml = () => ({
+  name: "optimize-landing-html",
   transformIndexHtml(html: string) {
-    return html.replace(/<link rel="modulepreload"[^>]*>/g, "");
+    const withoutModulePreload = html.replace(/<link rel="modulepreload"[^>]*>/g, "");
+    return withoutModulePreload.replace(
+      /<link rel="stylesheet"([^>]*href="[^"]+"[^>]*)>/g,
+      (match, attrs) => {
+        const hrefMatch = attrs.match(/href="([^"]+)"/);
+        if (!hrefMatch) return match;
+        const href = hrefMatch[1];
+        const crossorigin = /crossorigin/.test(attrs) ? ' crossorigin' : '';
+        return `<link rel="preload"${crossorigin} as="style" href="${href}" onload="this.rel='stylesheet'"><noscript>${match}</noscript>`;
+      }
+    );
   },
 });
 
@@ -18,7 +28,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    stripModulePreload(),
+    optimizeLandingHtml(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),

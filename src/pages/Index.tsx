@@ -1,14 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Play, Moon, Sun } from 'lucide-react';
+import React, { ButtonHTMLAttributes, DetailedHTMLProps, InputHTMLAttributes, Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon, FacebookIcon, CheckIcon } from '@/components/brand-icons';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 /**
  * LeadsBox — Modern landing page with design system integration
@@ -90,6 +86,74 @@ function useEmailCapture() {
   return { email, setEmail, role, setRole, handle, setHandle, state, submit };
 }
 
+const WaitlistDialog = lazy(() => import('./landing/WaitlistDialog'));
+const DemoDialog = lazy(() => import('./landing/DemoDialog'));
+
+const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ');
+
+type LpButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement> & {
+  variant?: 'solid' | 'ghost' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+};
+
+const buttonSize: Record<NonNullable<LpButtonProps['size']>, string> = {
+  sm: 'h-9 px-3 text-sm',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-11 px-6 text-base',
+};
+
+const buttonVariant: Record<NonNullable<LpButtonProps['variant']>, string> = {
+  solid: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  ghost: 'bg-transparent hover:bg-muted text-muted-foreground',
+  outline: 'border border-border bg-transparent text-foreground hover:bg-muted',
+};
+
+const buttonBase =
+  'inline-flex items-center justify-center rounded-md font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none';
+
+const buildButtonClass = (variant: NonNullable<LpButtonProps['variant']>, size: NonNullable<LpButtonProps['size']>, className?: string) =>
+  cx(buttonBase, buttonSize[size], buttonVariant[variant], className);
+
+const LpButton = ({ className, variant = 'solid', size = 'md', ...props }: LpButtonProps) => (
+  <button className={buildButtonClass(variant, size, className)} {...props} />
+);
+
+type LpLinkButtonProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  variant?: LpButtonProps['variant'];
+  size?: LpButtonProps['size'];
+};
+
+const LpLinkButton = ({ className, variant = 'solid', size = 'md', ...props }: LpLinkButtonProps) => (
+  <a className={buildButtonClass(variant, size, className)} {...props} />
+);
+
+type LpInputProps = DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
+const LpInput = ({ className, ...props }: LpInputProps) => (
+  <input
+    className={cx(
+      'flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+      className
+    )}
+    {...props}
+  />
+);
+
+const LpBadge = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
+  <span
+    className={cx(
+      'inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground',
+      className
+    )}
+    {...props}
+  />
+);
+
+const LpCard = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cx('rounded-xl border border-border bg-card shadow-sm', className)} {...props} />
+);
+
+const LpCardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div className={cx('p-6', className)} {...props} />;
+
 const Index = () => {
   useDocumentMeta(META);
   const { email, setEmail, role, setRole, handle, setHandle, state, submit } = useEmailCapture();
@@ -106,13 +170,34 @@ const Index = () => {
       height={24}
       className={className ?? 'h-full w-full object-contain'}
       decoding='async'
-      fetchpriority={priority ? 'high' : undefined}
+      fetchPriority={priority ? 'high' : undefined}
       loading={priority ? 'eager' : 'lazy'}
     />
   );
 
   return (
     <div className='min-h-screen w-full bg-background text-foreground'>
+      {waitlistOpen && (
+        <Suspense fallback={null}>
+          <WaitlistDialog
+            open={waitlistOpen}
+            onOpenChange={setWaitlistOpen}
+            email={email}
+            onEmailChange={setEmail}
+            role={role}
+            onRoleChange={setRole}
+            handle={handle}
+            onHandleChange={setHandle}
+            state={state}
+            onSubmit={submit}
+          />
+        </Suspense>
+      )}
+      {demoOpen && (
+        <Suspense fallback={null}>
+          <DemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
+        </Suspense>
+      )}
       {/* Navigation */}
       <header className='sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md'>
         <div className='container mx-auto flex h-16 items-center justify-between px-4'>
@@ -139,51 +224,21 @@ const Index = () => {
           </nav>
 
           <div className='flex items-center gap-2 sm:gap-3'>
-            <Button variant='ghost' size='icon' aria-label='Toggle theme' onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+            <LpButton
+              variant='ghost'
+              size='sm'
+              aria-label='Toggle theme'
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className='h-9 w-9 p-0 rounded-full'
+            >
               <ThemeIcon className='h-4 w-4' />
-            </Button>
-            <Button variant='ghost' size='sm' asChild>
-              <a href='/login'>Login</a>
-            </Button>
-            <Dialog open={waitlistOpen} onOpenChange={setWaitlistOpen}>
-              <DialogTrigger asChild>
-                <Button size='sm' data-cta='nav_join_waitlist'>
-                  Join Waitlist
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Join the Waitlist</DialogTitle>
-                  <DialogDescription>Be first to access the unified DM inbox.</DialogDescription>
-                </DialogHeader>
-                <div className='space-y-4'>
-                  <div className='grid gap-2'>
-                    <Label htmlFor='wl-email'>Email</Label>
-                    <Input id='wl-email' type='email' value={email} onChange={(e) => setEmail(e.target.value)} placeholder='you@business.com' />
-                  </div>
-                  <div className='grid gap-2'>
-                    <Label>Role</Label>
-                    <Select value={role} onValueChange={(v: undefined) => setRole(v)}>
-                      <SelectTrigger aria-label='Select your role'>
-                        <SelectValue placeholder='Select role' />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value='business'>Business</SelectItem>
-                        <SelectItem value='creator'>Creator</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className='grid gap-2'>
-                    <Label htmlFor='wl-handle'>Handle or link (optional)</Label>
-                    <Input id='wl-handle' value={handle} onChange={(e) => setHandle(e.target.value)} placeholder='@yourhandle or site' />
-                  </div>
-                  <Button className='w-full' onClick={submit} data-cta='modal_join_waitlist'>
-                    {state === 'loading' ? 'Submitting…' : state === 'ok' ? 'Added ✓' : 'Join Waitlist'}
-                  </Button>
-                  <p className='text-xs text-muted-foreground'>No spam. We’ll reach out with early access details.</p>
-                </div>
-              </DialogContent>
-            </Dialog>
+            </LpButton>
+            <LpLinkButton variant='ghost' size='sm' href='/login' className='px-2'>
+              Login
+            </LpLinkButton>
+            <LpButton size='sm' data-cta='nav_join_waitlist' onClick={() => setWaitlistOpen(true)}>
+              Join Waitlist
+            </LpButton>
           </div>
         </div>
       </header>
@@ -212,30 +267,9 @@ const Index = () => {
                 <Button className='w-full sm:w-auto' size='lg' onClick={() => setWaitlistOpen(true)} data-cta='hero_join_waitlist'>
                   Join the Waitlist
                 </Button>
-                <Dialog open={demoOpen} onOpenChange={setDemoOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant='outline' size='lg' className='w-full sm:w-auto' data-cta='hero_demo'>
-                      <Play className='h-4 w-4 mr-2' /> See a 60‑sec Demo
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className='max-w-2xl'>
-                    <DialogHeader>
-                      <DialogTitle>LeadsBox in 60 seconds</DialogTitle>
-                      <DialogDescription>Quick walkthrough of the unified inbox and AI follow‑ups.</DialogDescription>
-                    </DialogHeader>
-                    <div className='aspect-video w-full overflow-hidden rounded-md border'>
-                      <iframe
-                        title='LeadsBox demo'
-                        className='h-full w-full'
-                        src='https://www.youtube.com/embed/dQw4w9WgXcQ'
-                        loading='lazy'
-                        referrerPolicy='strict-origin-when-cross-origin'
-                        allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
-                        allowFullScreen
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button variant='outline' size='lg' className='w-full sm:w-auto' data-cta='hero_demo' onClick={() => setDemoOpen(true)}>
+                  See a 60-sec Demo
+                </Button>
               </div>
               {/* Social proof stripe */}
               <div className='flex items-center gap-3 text-sm text-muted-foreground'>
@@ -261,9 +295,9 @@ const Index = () => {
 
           {/* Product Demo */}
           <div className='lg:col-span-6'>
-            <Card className='relative overflow-hidden animate-slide-in-right'>
+            <LpCard className='relative overflow-hidden animate-slide-in-right'>
               <div className='absolute inset-0 bg-gradient-primary opacity-5' />
-              <CardContent className='p-0'>
+              <LpCardContent className='p-0'>
                 {/* Chat Header */}
                 <div className='flex items-center gap-3 p-4 border-b border-border bg-muted/50'>
                   <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
@@ -290,12 +324,12 @@ const Index = () => {
                 {/* Chat Input */}
                 <div className='p-4 border-t border-border bg-background/80'>
                   <div className='flex gap-2'>
-                    <Input placeholder='Type a message...' className='flex-1' />
-                    <Button size='sm'>Send</Button>
+                    <LpInput placeholder='Type a message...' className='flex-1' />
+                    <LpButton size='sm'>Send</LpButton>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </LpCardContent>
+            </LpCard>
             <p className='mt-4 text-xs text-muted-foreground text-center'>Live demo of WhatsApp integration</p>
           </div>
         </div>
@@ -318,12 +352,12 @@ const Index = () => {
               name: 'Chidi — Creator, 120k followers',
             },
           ].map((t, i) => (
-            <Card key={i} className='h-full'>
-              <CardContent className='p-6 space-y-3'>
+            <LpCard key={i} className='h-full'>
+              <LpCardContent className='p-6 space-y-3'>
                 <p className='text-sm leading-relaxed'>“{t.quote}”</p>
                 <p className='text-xs text-muted-foreground'>{t.name}</p>
-              </CardContent>
-            </Card>
+              </LpCardContent>
+            </LpCard>
           ))}
         </div>
       </section>
@@ -331,36 +365,34 @@ const Index = () => {
       {/* Businesses vs Creators */}
       <section id='creators' className='container mx-auto px-4 py-16'>
         <div className='grid lg:grid-cols-2 gap-6'>
-          <Card>
-            <CardContent className='p-6 space-y-3'>
-              <Badge variant='secondary'>For Businesses</Badge>
+          <LpCard>
+            <LpCardContent className='p-6 space-y-3'>
+              <LpBadge className='bg-muted text-foreground'>For Businesses</LpBadge>
               <h2 className='text-2xl font-semibold'>Never miss money in the DMs</h2>
               <p className='text-muted-foreground'>Reply faster, keep context, and track chats to “paid”.</p>
               <div className='flex gap-3 pt-2'>
-                <Button onClick={() => setWaitlistOpen(true)} data-cta='business_join'>
+                <LpButton onClick={() => setWaitlistOpen(true)} data-cta='business_join'>
                   Join as Business
-                </Button>
-                <Button variant='outline' asChild>
-                  <a href='/dashboard'>Try Dashboard</a>
-                </Button>
+                </LpButton>
+                <LpLinkButton variant='outline' href='/dashboard'>
+                  Try Dashboard
+                </LpLinkButton>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className='p-6 space-y-3'>
-              <Badge variant='secondary'>For Creators</Badge>
+            </LpCardContent>
+          </LpCard>
+          <LpCard>
+            <LpCardContent className='p-6 space-y-3'>
+              <LpBadge className='bg-muted text-foreground'>For Creators</LpBadge>
               <h2 className='text-2xl font-semibold'>Earn on referrals, get a VIP inbox</h2>
               <p className='text-muted-foreground'>Partner with LeadsBox brands and own your upside.</p>
               <div className='flex gap-3 pt-2'>
-                <Button variant='outline' onClick={() => setWaitlistOpen(true)} data-cta='creator_join'>
+                <LpButton variant='outline' onClick={() => setWaitlistOpen(true)} data-cta='creator_join'>
                   Join as Creator
-                </Button>
-                <Button asChild>
-                  <a href='#waitlist'>Get Early Access</a>
-                </Button>
+                </LpButton>
+                <LpLinkButton href='#waitlist'>Get Early Access</LpLinkButton>
               </div>
-            </CardContent>
-          </Card>
+            </LpCardContent>
+          </LpCard>
         </div>
       </section>
 
@@ -369,18 +401,18 @@ const Index = () => {
         <div className='flex flex-col items-center gap-4 text-center'>
           <p className='text-sm text-muted-foreground'>Works with your channels</p>
           <div className='flex flex-wrap items-center justify-center gap-3'>
-            <Badge variant='outline' className='flex items-center gap-2'>
+            <LpBadge className='flex items-center gap-2'>
               <WhatsAppIcon className='h-4 w-4' /> WhatsApp Business
-            </Badge>
-            <Badge variant='outline' className='flex items-center gap-2'>
+            </LpBadge>
+            <LpBadge className='flex items-center gap-2'>
               <TelegramIcon className='h-4 w-4' /> Telegram
-            </Badge>
-            <Badge variant='secondary' className='flex items-center gap-2 opacity-80'>
+            </LpBadge>
+            <LpBadge className='flex items-center gap-2 opacity-80 bg-muted text-muted-foreground'>
               <InstagramIcon className='h-4 w-4' /> Instagram • Coming soon
-            </Badge>
-            <Badge variant='secondary' className='flex items-center gap-2 opacity-80'>
+            </LpBadge>
+            <LpBadge className='flex items-center gap-2 opacity-80 bg-muted text-muted-foreground'>
               <FacebookIcon className='h-4 w-4' /> Facebook • Coming soon
-            </Badge>
+            </LpBadge>
           </div>
         </div>
       </section>
@@ -401,8 +433,8 @@ const Index = () => {
             { title: 'Essential Analytics', desc: 'Know what responses drive revenue. Track time to close.', icon: '📊' },
             { title: 'Team Ready', desc: 'Assign owners, mention teammates, never drop a lead.', icon: '👥' },
           ].map((feature, i) => (
-            <Card key={i} className='group hover:shadow-lg transition-all duration-300 hover:-translate-y-1'>
-              <CardContent className='p-6'>
+            <LpCard key={i} className='group hover:shadow-lg transition-all duration-300 hover:-translate-y-1'>
+              <LpCardContent className='p-6'>
                 <div className='flex items-start gap-4'>
                   <div className='text-2xl'>{feature.icon}</div>
                   <div>
@@ -410,8 +442,8 @@ const Index = () => {
                     <p className='text-sm text-muted-foreground'>{feature.desc}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </LpCardContent>
+            </LpCard>
           ))}
         </div>
       </section>
@@ -529,11 +561,11 @@ const Index = () => {
 
       {/* Final CTA */}
       <section className='container mx-auto px-4 pb-16' id='waitlist-cta'>
-        <Card className='max-w-3xl mx-auto'>
-          <CardContent className='p-6 space-y-4'>
+        <LpCard className='max-w-3xl mx-auto'>
+          <LpCardContent className='p-6 space-y-4'>
             <h2 className='text-2xl font-semibold'>Ready to turn DMs into revenue?</h2>
             <div className='flex flex-col sm:flex-row gap-3'>
-              <Input
+              <LpInput
                 type='email'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -541,14 +573,14 @@ const Index = () => {
                 className='flex-1'
                 onKeyPress={(e) => e.key === 'Enter' && submit()}
               />
-              <Button onClick={submit} disabled={state === 'loading'} className='transition-all hover:scale-105' data-cta='footer_join_waitlist'>
+              <LpButton onClick={submit} disabled={state === 'loading'} className='transition-all hover:scale-105' data-cta='footer_join_waitlist'>
                 {state === 'loading' ? 'Joining…' : state === 'ok' ? "You're in! ✓" : 'Join Waitlist'}
-              </Button>
+              </LpButton>
             </div>
             {state === 'error' && <p className='text-sm text-destructive'>Please enter a valid email address</p>}
             <p className='text-sm text-muted-foreground'>No spam. We’ll email you when your workspace is ready.</p>
-          </CardContent>
-        </Card>
+          </LpCardContent>
+        </LpCard>
       </section>
 
       {/* Footer */}
