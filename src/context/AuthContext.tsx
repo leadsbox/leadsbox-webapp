@@ -292,15 +292,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const setOrg = (id: string) => {
-    setOrgId(id);
-    setUserState((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, orgId: id, currentOrgId: id } as AuthUser;
-      persistUser(next);
-      return next;
-    });
-  };
+  const setOrg = useCallback(
+    (id: string) => {
+      setOrgId(id);
+      setUserState((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, orgId: id, currentOrgId: id } as AuthUser;
+        persistUser(next);
+        return next;
+      });
+    },
+    [setUserState]
+  );
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, setOrg, refreshAuth, acceptInvite }}>{children}</AuthContext.Provider>
