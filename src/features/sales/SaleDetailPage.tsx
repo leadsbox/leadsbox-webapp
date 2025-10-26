@@ -223,7 +223,7 @@ const SaleDetailPage: React.FC = () => {
         <CardDescription>This sale may have been removed or reassigned.</CardDescription>
       </CardHeader>
       <CardContent className='flex flex-col gap-3'>
-        <Button variant='default' onClick={() => navigate('/dashboard/pipeline')}>
+        <Button variant='default' onClick={() => navigate('/dashboard/sales')}>
           Return to Sales
         </Button>
         <Button variant='ghost' onClick={() => loadSale()}>
@@ -236,7 +236,7 @@ const SaleDetailPage: React.FC = () => {
   return (
     <div className='p-4 sm:p-6 space-y-4'>
       <div className='flex flex-wrap items-center gap-3'>
-        <Button variant='ghost' size='sm' onClick={() => navigate('/dashboard/pipeline')}>
+        <Button variant='ghost' size='sm' onClick={() => navigate('/dashboard/sales')}>
           <ArrowLeft className='h-4 w-4 mr-1.5' />
           Back to Sales
         </Button>

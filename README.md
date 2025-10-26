@@ -84,7 +84,7 @@ Ensure the backend is running (`PUBLIC_APP_URL=http://localhost:5173`) so auth r
 ## Feature Modules
 - **Billing (`features/billing/PaymentPlansPage.tsx`)** – Displays plans fetched from `/api/billing/plans`, handles choose/change/cancel workflows via new endpoints. Uses dropdown for managing current plan and surfaces plan status (pending, active, canceled, past due).
 - **Inbox (`features/inbox/InboxPage.tsx`)** – Channels aggregated via API & Socket.IO, allows thread selection and message streaming.
-- **Pipeline (`features/pipeline/PipelinePage.tsx`)** – Drag/drop leads across stages using `@dnd-kit`, integrates with backend move endpoints and real-time updates.
+- **Sales (`features/sales/SalesPage.tsx`)** – Group conversations into sales/inquiries/pending states and navigate to per-sale detail pages.
 - **Analytics (`features/analytics/AnalyticsPage.tsx`)** – Subscribes to Socket.IO analytics events; fallback to HTTP fetch for dashboards.
 - **Automations (`features/automations/AutomationsPage.tsx`)** – Compose templates/follow-ups, schedule jobs via API, and manage local builder flows.
 - **Settings (`features/settings/`)** – Profile management, integrations tab, org plan summary.

@@ -69,7 +69,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     title: 'Sales',
-    href: '/dashboard/pipeline',
+    href: '/dashboard/sales',
     icon: ShoppingBag,
     description: 'Sales grouped from conversations',
   },

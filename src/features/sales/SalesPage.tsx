@@ -328,11 +328,11 @@ const SalesPage: React.FC = () => {
           key={lead.id}
           className='cursor-pointer transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2'
           tabIndex={0}
-          onClick={() => navigate(`/dashboard/pipeline/${lead.id}`)}
+          onClick={() => navigate(`/dashboard/sales/${lead.id}`)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
-              navigate(`/dashboard/pipeline/${lead.id}`);
+              navigate(`/dashboard/sales/${lead.id}`);
             }
           }}
         >

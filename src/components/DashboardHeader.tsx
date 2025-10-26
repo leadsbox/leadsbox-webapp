@@ -98,7 +98,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     { path: '/dashboard/home', label: 'Home', icon: Home },
     { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: 12 },
     { path: '/dashboard/leads', label: 'Leads', icon: Users },
-    { path: '/dashboard/pipeline', label: 'Sales', icon: ShoppingBag },
+    { path: '/dashboard/sales', label: 'Sales', icon: ShoppingBag },
     { path: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, badge: 3 },
     { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/dashboard/automations', label: 'Automations', icon: Sparkles },
