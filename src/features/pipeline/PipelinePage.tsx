@@ -1,79 +1,21 @@
-// Pipeline Page Component for LeadsBox Dashboard
-
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useDroppable, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Plus, DollarSign, Calendar, User, Building, MoreHorizontal, Target, TrendingUp } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DollarSign, Filter, MessageSquare, Search, ShoppingBag, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
-import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
-import { Skeleton } from '@/components/ui/skeleton';
-
-const PIPELINE_COLUMNS: Array<{ key: LeadLabel; title: string; color: string }> = [
-  { key: 'NEW_LEAD', title: 'New Leads', color: 'bg-blue-500' },
-  { key: 'ENGAGED', title: 'Engaged', color: 'bg-indigo-500' },
-  { key: 'FOLLOW_UP_REQUIRED', title: 'Follow Up', color: 'bg-amber-500' },
-  { key: 'TRANSACTION_IN_PROGRESS', title: 'In Progress', color: 'bg-purple-500' },
-  { key: 'PAYMENT_PENDING', title: 'Payment Pending', color: 'bg-orange-500' },
-  { key: 'TRANSACTION_SUCCESSFUL', title: 'Won', color: 'bg-green-500' },
-  { key: 'CLOSED_LOST_TRANSACTION', title: 'Closed Lost', color: 'bg-red-500' },
-];
-
-const LEGACY_STAGE_MAP: Record<string, LeadLabel> = {
-  NEW: 'NEW_LEAD',
-  QUALIFIED: 'ENGAGED',
-  IN_PROGRESS: 'TRANSACTION_IN_PROGRESS',
-  WON: 'TRANSACTION_SUCCESSFUL',
-  LOST: 'CLOSED_LOST_TRANSACTION',
-};
-
-const normalizeLabelToPipeline = (label?: string): LeadLabel => {
-  if (!label) return 'NEW_LEAD';
-  const normalized = label.toUpperCase();
-  if (PIPELINE_COLUMNS.some((column) => column.key === normalized)) {
-    return normalized as LeadLabel;
-  }
-  if (normalized in LEGACY_STAGE_MAP) {
-    return LEGACY_STAGE_MAP[normalized];
-  }
-  return 'NEW_LEAD';
-};
-
-const mapStageToPipelineColumn = (stage: Stage): LeadLabel =>
-  normalizeLabelToPipeline(stage);
-
-const labelToPriority = (label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
-  const labelUpper = (label || '').toUpperCase();
-
-  if (
-    labelUpper.includes('PAYMENT_PENDING') ||
-    labelUpper.includes('FOLLOW_UP_REQUIRED') ||
-    labelUpper.includes('DEMO_REQUEST') ||
-    labelUpper.includes('TECHNICAL_SUPPORT')
-  ) {
-    return 'HIGH';
-  }
-
-  if (
-    labelUpper.includes('FEEDBACK') ||
-    labelUpper.includes('NOT_A_LEAD') ||
-    labelUpper.includes('CLOSED_LOST_TRANSACTION')
-  ) {
-    return 'LOW';
-  }
-
-  return 'MEDIUM';
-};
+import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { useNavigate } from 'react-router-dom';
 
 interface BackendLead {
   id: string;
@@ -115,187 +57,98 @@ interface PipelineAssignedUser {
   avatar?: string | null;
 }
 
-interface SortableLeadCardProps {
-  lead: Lead;
-  assignedUser?: PipelineAssignedUser;
-}
+type SalesBucketKey = 'SALES' | 'INQUIRIES' | 'PENDING' | 'CLOSED';
 
-const SortableLeadCard: React.FC<SortableLeadCardProps> = ({ lead, assignedUser }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, data: { stage: lead.stage } });
+const PIPELINE_LABELS: LeadLabel[] = [
+  'NEW_LEAD',
+  'ENGAGED',
+  'FOLLOW_UP_REQUIRED',
+  'TRANSACTION_IN_PROGRESS',
+  'PAYMENT_PENDING',
+  'TRANSACTION_SUCCESSFUL',
+  'CLOSED_LOST_TRANSACTION',
+  'PRICING_INQUIRY',
+];
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-  const getPriorityColor = (priority: Lead['priority']) => {
-    switch (priority) {
-      case 'HIGH':
-        return 'bg-red-500/10 text-red-400';
-      case 'MEDIUM':
-        return 'bg-amber-500/10 text-amber-400';
-      case 'LOW':
-        return 'bg-blue-500/10 text-blue-400';
-      default:
-        return 'bg-gray-500/10 text-gray-400';
-    }
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className='cursor-grab active:cursor-grabbing'>
-      <Card className='mb-3 hover:shadow-md transition-shadow'>
-        <CardContent className='p-4'>
-          <div className='flex items-start justify-between mb-3'>
-            <h3 className='font-medium text-sm leading-tight'>{lead.name}</h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant='ghost' size='icon' className='h-6 w-6'>
-                  <MoreHorizontal className='h-3 w-3' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end'>
-                <DropdownMenuItem>View Details</DropdownMenuItem>
-                <DropdownMenuItem>Edit Lead</DropdownMenuItem>
-                <DropdownMenuItem>Send Message</DropdownMenuItem>
-                <DropdownMenuItem className='text-destructive'>Delete</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <div className='space-y-2 text-xs text-muted-foreground'>
-            <div className='flex items-center'>
-              <User className='h-3 w-3 mr-1' />
-              <span>{lead.email}</span>
-            </div>
-
-            {lead.company && (
-              <div className='flex items-center'>
-                <Building className='h-3 w-3 mr-1' />
-                <span>{lead.company}</span>
-              </div>
-            )}
-
-            {lead.value && (
-              <div className='flex items-center font-medium text-foreground'>
-                <DollarSign className='h-3 w-3 mr-1' />
-                <span>${lead.value.toLocaleString()}</span>
-              </div>
-            )}
-
-            <div className='flex items-center'>
-              <Calendar className='h-3 w-3 mr-1' />
-              <span>{formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}</span>
-            </div>
-          </div>
-
-          <div className='flex items-center justify-between mt-3'>
-            <Badge variant='outline' className={getPriorityColor(lead.priority)}>
-              {lead.priority}
-            </Badge>
-
-            {assignedUser ? (
-              <Avatar className='h-6 w-6'>
-                {assignedUser.avatar ? (
-                  <AvatarImage src={assignedUser.avatar} />
-                ) : (
-                  <AvatarFallback className='text-xs'>
-                    {assignedUser.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-            ) : null}
-          </div>
-
-          {lead.tags.length > 0 && (
-            <div className='flex flex-wrap gap-1 mt-2'>
-              {lead.tags.slice(0, 2).map((tag) => (
-                <Badge key={tag} variant='outline' className={`text-xs px-1 py-0 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
-                  {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
-                </Badge>
-              ))}
-              {lead.tags.length > 2 && (
-                <Badge variant='outline' className='text-xs px-1 py-0 bg-slate-50 text-slate-700 border border-slate-200'>
-                  +{lead.tags.length - 2}
-                </Badge>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+const LEGACY_STAGE_MAP: Record<string, LeadLabel> = {
+  NEW: 'NEW_LEAD',
+  QUALIFIED: 'ENGAGED',
+  IN_PROGRESS: 'TRANSACTION_IN_PROGRESS',
+  WON: 'TRANSACTION_SUCCESSFUL',
+  LOST: 'CLOSED_LOST_TRANSACTION',
 };
 
-interface PipelineStageProps {
-  stage: LeadLabel;
-  title: string;
-  leads: Lead[];
-  color: string;
-  resolveAssignedUser: (userId?: string | null) => PipelineAssignedUser | undefined;
-}
-
-const PipelineStage: React.FC<PipelineStageProps> = ({ stage, title, leads, color, resolveAssignedUser }) => {
-  const droppableId = `column-${stage}`;
-  const { setNodeRef, isOver } = useDroppable({ id: droppableId });
-  const totalValue = leads.reduce((sum, lead) => sum + (lead.value || 0), 0);
-
-  return (
-    <div ref={setNodeRef} className={`flex-1 min-w-80 transition-colors ${isOver ? 'bg-muted/40 rounded-lg' : ''}`}>
-      <Card className='h-full'>
-        <CardHeader className='pb-3'>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center space-x-2'>
-              <div className={`w-3 h-3 rounded-full ${color}`}></div>
-              <CardTitle className='text-sm font-medium'>{title}</CardTitle>
-              <Badge variant='secondary' className='text-xs'>
-                {leads.length}
-              </Badge>
-            </div>
-            <Button variant='ghost' size='icon' className='h-6 w-6'>
-              <Plus className='h-3 w-3' />
-            </Button>
-          </div>
-          {totalValue > 0 && <div className='text-xs text-muted-foreground'>Total: ${totalValue.toLocaleString()}</div>}
-        </CardHeader>
-        <CardContent className='pt-0'>
-          <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-            <div className='space-y-3 max-h-[calc(100vh-300px)] overflow-auto'>
-              {leads.map((lead) => (
-                <SortableLeadCard
-                  key={lead.id}
-                  lead={lead}
-                  assignedUser={resolveAssignedUser(lead.assignedTo)}
-                />
-              ))}
-              {leads.length === 0 && (
-                <div className='text-center py-8 text-muted-foreground'>
-                  <Target className='h-8 w-8 mx-auto mb-2 opacity-50' />
-                  <p className='text-sm'>No leads in this stage</p>
-                  <Button variant='ghost' size='sm' className='mt-2'>
-                    <Plus className='h-3 w-3 mr-1' />
-                    Add Lead
-                  </Button>
-                </div>
-              )}
-            </div>
-          </SortableContext>
-        </CardContent>
-      </Card>
-    </div>
-  );
+const SALES_BUCKETS: Record<
+  SalesBucketKey,
+  {
+    title: string;
+    description: string;
+    accent: string;
+    matches: (lead: Lead) => boolean;
+  }
+> = {
+  SALES: {
+    title: 'Sales made',
+    description: 'Closed conversations where you recorded a win.',
+    accent: 'text-emerald-500',
+    matches: (lead) => lead.stage === 'TRANSACTION_SUCCESSFUL',
+  },
+  INQUIRIES: {
+    title: 'Inquiries',
+    description: 'People still chatting, asking for pricing, or reviewing offers.',
+    accent: 'text-sky-500',
+    matches: (lead) => ['NEW_LEAD', 'ENGAGED', 'FOLLOW_UP_REQUIRED', 'PRICING_INQUIRY'].includes(lead.stage),
+  },
+  PENDING: {
+    title: 'Payment pending',
+    description: 'Deals in progress that need an invoice or confirmation.',
+    accent: 'text-amber-500',
+    matches: (lead) => ['TRANSACTION_IN_PROGRESS', 'PAYMENT_PENDING'].includes(lead.stage),
+  },
+  CLOSED: {
+    title: 'Closed or lost',
+    description: 'Conversations marked as lost or archived.',
+    accent: 'text-rose-500',
+    matches: (lead) => lead.stage === 'CLOSED_LOST_TRANSACTION',
+  },
 };
 
-const PipelinePage: React.FC = () => {
+const normalizeLabelToStage = (label?: string): LeadLabel => {
+  if (!label) return 'NEW_LEAD';
+  const normalized = label.toUpperCase();
+  if (PIPELINE_LABELS.includes(normalized as LeadLabel)) {
+    return normalized as LeadLabel;
+  }
+  if (normalized in LEGACY_STAGE_MAP) {
+    return LEGACY_STAGE_MAP[normalized];
+  }
+  return 'NEW_LEAD';
+};
+
+const channelOptions: Array<{ value: 'ALL' | Lead['source']; label: string }> = [
+  { value: 'ALL', label: 'All channels' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'website', label: 'Website' },
+  { value: 'manual', label: 'Manual' },
+];
+
+const statusOptions: Array<{ value: SalesBucketKey; label: string }> = [
+  { value: 'SALES', label: 'Sales made' },
+  { value: 'INQUIRIES', label: 'Inquiries' },
+  { value: 'PENDING', label: 'Payment pending' },
+  { value: 'CLOSED', label: 'Closed or lost' },
+];
+
+const SalesPage: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { members, getMemberByUserId } = useOrgMembers();
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<SalesBucketKey>('SALES');
+  const [channelFilter, setChannelFilter] = useState<'ALL' | Lead['source']>('ALL');
+  const { getMemberByUserId } = useOrgMembers();
+  const navigate = useNavigate();
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -304,7 +157,7 @@ const PipelinePage: React.FC = () => {
       const list: BackendLead[] = response?.data?.data?.leads || response?.data || [];
 
       const mapped: Lead[] = list.map((l) => {
-        const normalizedLabel = normalizeLabelToPipeline(l.label);
+        const normalizedLabel = normalizeLabelToStage(l.label);
         return {
           id: l.id,
           name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
@@ -313,7 +166,7 @@ const PipelinePage: React.FC = () => {
           company: undefined,
           source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
           stage: normalizedLabel,
-          priority: labelToPriority(l.label),
+          priority: 'MEDIUM',
           tags: normalizedLabel ? [normalizedLabel] : [],
           assignedTo: l.user?.id || l.userId || '',
           value: undefined,
@@ -345,29 +198,13 @@ const PipelinePage: React.FC = () => {
       });
 
       setLeads(mapped);
-    } catch (error: unknown) {
-      console.error('Failed to load pipeline leads', error);
+    } catch (error) {
+      console.error('Failed to load sales data', error);
       setLeads([]);
-
-      const getErrorMessage = (err: unknown): string => {
-        if (!err) return 'Try refreshing the page.';
-        if (typeof err === 'string') return err;
-        if (err instanceof Error && err.message) return err.message;
-
-        if (typeof err === 'object' && err !== null) {
-          const response = (err as Record<string, unknown>)['response'] as Record<string, unknown> | undefined;
-          const data = response?.['data'] as Record<string, unknown> | undefined;
-          const respMessage = data?.['message'] as string | undefined;
-          if (respMessage) return respMessage;
-        }
-
-        return 'Try refreshing the page.';
-      };
-
       notify.error({
-        key: 'pipeline:load:error',
-        title: 'Unable to load pipeline',
-        description: getErrorMessage(error),
+        key: 'sales:load:error',
+        title: 'Unable to load sales',
+        description: 'Try refreshing the page to pull conversations again.',
       });
     } finally {
       setIsLoading(false);
@@ -383,14 +220,9 @@ const PipelinePage: React.FC = () => {
       if (!userId) return undefined;
       const member = getMemberByUserId(userId);
       if (!member) return undefined;
-
       const { user } = member;
-      const fullName = [user?.firstName, user?.lastName]
-        .filter(Boolean)
-        .join(' ');
-      const name =
-        fullName || user?.username || user?.email || 'Team member';
-
+      const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+      const name = fullName || user?.username || user?.email || 'Team member';
       return {
         id: member.userId,
         name,
@@ -400,240 +232,311 @@ const PipelinePage: React.FC = () => {
     [getMemberByUserId]
   );
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const activeId = String(active.id);
-    const overId = String(over.id);
-
-    const draggedLead = leads.find((lead) => lead.id === activeId);
-    if (!draggedLead) return;
-
-    const currentColumn = mapStageToPipelineColumn(draggedLead.stage);
-
-    let targetColumn: LeadLabel | null = null;
-
-    if (overId.startsWith('column-')) {
-      targetColumn = normalizeLabelToPipeline(overId.replace('column-', ''));
-    } else {
-      const overStage = over?.data?.current?.stage as Stage | undefined;
-      if (overStage) {
-        targetColumn = mapStageToPipelineColumn(overStage);
-      } else {
-        const overLead = leads.find((lead) => lead.id === overId);
-        if (overLead) {
-          targetColumn = mapStageToPipelineColumn(overLead.stage);
-        }
-      }
-    }
-
-    if (!targetColumn) {
-      return;
-    }
-
-    if (targetColumn === currentColumn) {
-      const overLead = leads.find((lead) => lead.id === overId);
-      if (overLead && overLead.id !== draggedLead.id) {
-        const activeIndex = leads.findIndex((lead) => lead.id === draggedLead.id);
-        const overIndex = leads.findIndex((lead) => lead.id === overLead.id);
-        if (activeIndex !== -1 && overIndex !== -1) {
-          setLeads((prevLeads) => arrayMove(prevLeads, activeIndex, overIndex));
-        }
-      }
-      return;
-    }
-
-    const note =
-      typeof window !== 'undefined'
-        ? window.prompt('Add an optional note for this move', '')
-        : '';
-
-    const previousState = leads;
-    const updatedAt = new Date().toISOString();
-
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) =>
-        lead.id === activeId
-          ? {
-              ...lead,
-              stage: targetColumn!,
-              label: targetColumn!,
-              tags: [targetColumn!],
-              updatedAt,
-            }
-          : lead
-      )
-    );
-
-    try {
-      await client.post(endpoints.moveLead(activeId), {
-        label: targetColumn,
-        note: note && note.trim().length > 0 ? note.trim() : undefined,
-      });
-
-      notify.success({
-        key: `pipeline:lead:${draggedLead.id}:moved`,
-        title: 'Lead updated',
-        description: `Moved ${draggedLead.name} to ${leadLabelUtils.getDisplayName(targetColumn)}`,
-      });
-
-      await fetchLeads();
-    } catch (error: unknown) {
-      console.error('Failed to move lead', error);
-      setLeads(previousState);
-
-      let errorMessage = 'Please try again.';
-
-      if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error instanceof Error && error.message) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        const errObj = error as Record<string, unknown>;
-        const response = errObj['response'] as Record<string, unknown> | undefined;
-        const data = response?.['data'] as Record<string, unknown> | undefined;
-        const respMessage = data?.['message'] as string | undefined;
-        const topMessage = errObj['message'] as string | undefined;
-        errorMessage = respMessage || topMessage || errorMessage;
-      }
-
-      notify.error({
-        key: `pipeline:lead:${draggedLead.id}:move-error`,
-        title: 'Failed to move lead',
-        description: errorMessage,
-      });
-    }
-  };
-
-  // Calculate pipeline stats
-  const pipelineStats = useMemo(() => {
-    const totalValue = leads.reduce((sum, lead) => sum + (lead.value || 0), 0);
-    const totalLeads = leads.length;
-    const wonCount = leads.filter((lead) => lead.stage === 'TRANSACTION_SUCCESSFUL').length;
-    const avgDealSize = totalLeads > 0 ? totalValue / totalLeads : 0;
-    const conversionRate = totalLeads > 0 ? (wonCount / totalLeads) * 100 : 0;
-
-    return {
-      totalValue,
-      totalLeads,
-      conversionRate,
-      avgDealSize,
+  const groupedLeads = useMemo(() => {
+    const initial: Record<SalesBucketKey, Lead[]> = {
+      SALES: [],
+      INQUIRIES: [],
+      PENDING: [],
+      CLOSED: [],
     };
+    leads.forEach((lead) => {
+      (Object.keys(SALES_BUCKETS) as SalesBucketKey[]).forEach((bucketKey) => {
+        if (SALES_BUCKETS[bucketKey].matches(lead)) {
+          initial[bucketKey].push(lead);
+        }
+      });
+    });
+    return initial;
   }, [leads]);
 
+  const filteredLeads = useMemo(() => {
+    const dataset = groupedLeads[statusFilter];
+    const search = searchQuery.trim().toLowerCase();
+    return dataset
+      .filter((lead) => (channelFilter === 'ALL' ? true : lead.source === channelFilter))
+      .filter((lead) => {
+        if (!search) return true;
+        return (
+          lead.name.toLowerCase().includes(search) ||
+          lead.email.toLowerCase().includes(search) ||
+          lead.label?.toLowerCase().includes(search) ||
+          lead.notes?.toLowerCase().includes(search)
+        );
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [groupedLeads, statusFilter, channelFilter, searchQuery]);
+
+  const stats = useMemo(() => {
+    const totalSales = groupedLeads.SALES.length;
+    const inquiries = groupedLeads.INQUIRIES.length;
+    const pending = groupedLeads.PENDING.length;
+    const closed = groupedLeads.CLOSED.length;
+    return [
+      {
+        label: 'Recorded sales',
+        value: totalSales,
+        change: groupedLeads.SALES.filter((lead) => new Date(lead.updatedAt).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7).length,
+        helper: 'Last 7 days',
+        icon: ShoppingBag,
+      },
+      {
+        label: 'Active inquiries',
+        value: inquiries,
+        helper: 'Monitor new chats',
+        icon: MessageSquare,
+      },
+      {
+        label: 'Payments pending',
+        value: pending,
+        helper: 'Needs invoice',
+        icon: DollarSign,
+      },
+      {
+        label: 'Closed or lost',
+        value: closed,
+        helper: 'Keep learnings',
+        icon: User,
+      },
+    ];
+  }, [groupedLeads]);
+
+  const renderTableBody = () => {
+    if (isLoading) {
+      return Array.from({ length: 4 }).map((_, index) => (
+        <TableRow key={index}>
+          <TableCell colSpan={6}>
+            <Skeleton className='h-12 w-full' />
+          </TableCell>
+        </TableRow>
+      ));
+    }
+
+    if (!filteredLeads.length) {
+      return (
+        <TableRow>
+          <TableCell colSpan={6} className='text-center py-6 text-muted-foreground'>
+            No records found in this view.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return filteredLeads.map((lead) => {
+      const assigned = resolveAssignedUser(lead.assignedTo);
+      return (
+        <TableRow
+          key={lead.id}
+          className='cursor-pointer transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2'
+          tabIndex={0}
+          onClick={() => navigate(`/dashboard/pipeline/${lead.id}`)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              navigate(`/dashboard/pipeline/${lead.id}`);
+            }
+          }}
+        >
+          <TableCell className='whitespace-nowrap'>
+            <div>
+              <p className='font-medium'>{lead.name}</p>
+              <p className='text-xs text-muted-foreground'>{lead.email || '—'}</p>
+            </div>
+          </TableCell>
+          <TableCell className='hidden md:table-cell'>
+            <Badge variant='outline'>{leadLabelUtils.getDisplayName(lead.stage)}</Badge>
+          </TableCell>
+          <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>
+            {lead.source === 'manual' ? 'Manual entry' : lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
+          </TableCell>
+          <TableCell className='hidden md:table-cell text-sm'>{lead.value ? `$${lead.value.toLocaleString()}` : '—'}</TableCell>
+          <TableCell className='text-sm text-muted-foreground whitespace-nowrap'>
+            {formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}
+          </TableCell>
+          <TableCell className='w-[180px]'>
+            {assigned ? (
+              <div className='flex items-center gap-2'>
+                <Avatar className='h-7 w-7'>
+                  {assigned.avatar ? (
+                    <AvatarImage src={assigned.avatar} alt={assigned.name} />
+                  ) : (
+                    <AvatarFallback>
+                      {assigned.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <span className='text-sm'>{assigned.name}</span>
+              </div>
+            ) : (
+              <span className='text-sm text-muted-foreground'>Unassigned</span>
+            )}
+          </TableCell>
+        </TableRow>
+      );
+    });
+  };
+
   return (
-    <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
-      {/* Header */}
+    <div className='p-4 sm:p-6 space-y-6'>
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div>
-          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Sales Pipeline</h1>
-          <p className='text-sm sm:text-base text-muted-foreground'>Track deals through your sales process</p>
+          <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Sales from Conversations</h1>
+          <p className='text-sm text-muted-foreground'>
+            Sort WhatsApp and Telegram chats into sales made, inquiries, and deals that still need your attention.
+          </p>
         </div>
-        <Button>
-          <Plus className='h-4 w-4 mr-2' />
-          Add Lead
+        <Button variant='outline' onClick={fetchLeads} disabled={isLoading && leads.length === 0}>
+          <Filter className='h-4 w-4 mr-2' />
+          Refresh data
         </Button>
       </div>
 
-      {/* Pipeline Stats */}
-      <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium flex items-center'>
-              <DollarSign className='h-4 w-4 mr-2' />
-              Total Pipeline Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>${pipelineStats.totalValue.toLocaleString()}</div>
-            <p className='text-xs text-muted-foreground'>+12% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium flex items-center'>
-              <Target className='h-4 w-4 mr-2' />
-              Total Deals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{pipelineStats.totalLeads}</div>
-            <p className='text-xs text-muted-foreground'>+8% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium flex items-center'>
-              <TrendingUp className='h-4 w-4 mr-2' />
-              Conversion Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{pipelineStats.conversionRate.toFixed(1)}%</div>
-            <p className='text-xs text-muted-foreground'>+2.1% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm font-medium flex items-center'>
-              <DollarSign className='h-4 w-4 mr-2' />
-              Avg Deal Size
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>${pipelineStats.avgDealSize.toLocaleString()}</div>
-            <p className='text-xs text-muted-foreground'>+5% from last month</p>
-          </CardContent>
-        </Card>
+      <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.label}>
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <CardTitle className='text-sm font-medium'>{stat.label}</CardTitle>
+                <Icon className='h-4 w-4 text-muted-foreground' />
+              </CardHeader>
+              <CardContent>
+                <div className='text-2xl font-bold'>{stat.value}</div>
+                {stat.change !== undefined ? (
+                  <p className='text-xs text-muted-foreground'>{stat.change} updated this week</p>
+                ) : (
+                  <p className='text-xs text-muted-foreground'>{stat.helper}</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Pipeline Board */}
-      <div className='min-h-[540px] sm:min-h-[600px]'>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          {isLoading ? (
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Card key={`pipeline-skeleton-${index}`} className='h-[360px]'>
-                  <CardHeader className='pb-2'>
-                    <Skeleton className='h-4 w-32' />
-                  </CardHeader>
-                  <CardContent className='space-y-3'>
-                    {Array.from({ length: 4 }).map((__, cardIndex) => (
-                      <Skeleton key={`pipeline-card-skeleton-${index}-${cardIndex}`} className='h-24 w-full rounded-md' />
-                    ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className='flex gap-6 overflow-x-auto pb-6'>
-              {PIPELINE_COLUMNS.map((column) => {
-                const stageLeads = leads.filter(
-                  (lead) => mapStageToPipelineColumn(lead.stage) === column.key
-                );
+      <Card>
+        <CardHeader>
+          <CardTitle>Conversation buckets</CardTitle>
+          <CardDescription>
+            LeadsBox reads the conversation labels so you can see what’s a sale vs an inquiry without leaving the page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+          {(Object.keys(SALES_BUCKETS) as SalesBucketKey[]).map((key) => {
+            const bucket = SALES_BUCKETS[key];
+            const isActive = statusFilter === key;
+            return (
+              <button
+                key={key}
+                type='button'
+                onClick={() => setStatusFilter(key)}
+                aria-pressed={isActive}
+                className={cn(
+                  'group relative w-full rounded-2xl border border-border border-solid p-4 text-left transition-all duration-300 shadow-sm hover:-translate-y-0.5 hover:border-dashed hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2',
+                  isActive ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'hover:border-primary/50 hover:bg-primary/5',
+                  isActive && 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                )}
+              >
+                <div className='flex items-center justify-between'>
+                  <p className='text-sm font-medium'>{bucket.title}</p>
+                  <Badge
+                    variant={isActive ? 'default' : 'outline'}
+                    className={cn(
+                      'transition-colors duration-300',
+                      isActive ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground group-hover:text-foreground'
+                    )}
+                  >
+                    {groupedLeads[key].length}
+                  </Badge>
+                </div>
+                <p className='text-xs text-muted-foreground mt-1 group-hover:text-foreground/80'>{bucket.description}</p>
+                <span
+                  className={cn(
+                    'mt-3 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors duration-300',
+                    isActive ? 'text-primary' : 'group-hover:text-foreground'
+                  )}
+                >
+                  View {bucket.title.toLowerCase()}
+                  <svg
+                    className='h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5'
+                    viewBox='0 0 16 16'
+                    fill='none'
+                    xmlns='http://www.w3.org/2000/svg'
+                  >
+                    <path d='M6 4l4 4-4 4' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+                  </svg>
+                </span>
+              </button>
+            );
+          })}
+        </CardContent>
+      </Card>
 
-                return (
-                  <PipelineStage
-                    key={column.key}
-                    stage={column.key}
-                    title={column.title}
-                    leads={stageLeads}
-                    color={column.color}
-                    resolveAssignedUser={resolveAssignedUser}
-                  />
-                );
-              })}
+      <Card>
+        <CardHeader className='space-y-3'>
+          <div className='flex items-center justify-between'>
+            <div>
+              <CardTitle>Sales list</CardTitle>
+              <CardDescription>Click any sale to open a dedicated detail page, just like templates.</CardDescription>
             </div>
-          )}
-        </DndContext>
-      </div>
+          </div>
+          <div className='flex flex-wrap gap-3'>
+            <div className='relative flex-1 min-w-[200px]'>
+              <Search className='h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder='Search people, labels, or notes'
+                className='pl-9'
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(value: SalesBucketKey) => setStatusFilter(value)}>
+              <SelectTrigger className='w-[180px]'>
+                <SelectValue placeholder='Bucket' />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={channelFilter} onValueChange={(value) => setChannelFilter(value as 'ALL' | Lead['source'])}>
+              <SelectTrigger className='w-[160px]'>
+                <SelectValue placeholder='Channel' />
+              </SelectTrigger>
+              <SelectContent>
+                {channelOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className='p-0'>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead className='hidden md:table-cell'>Stage</TableHead>
+                <TableHead className='hidden lg:table-cell'>Channel</TableHead>
+                <TableHead className='hidden md:table-cell'>Value</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead>Owner</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>{renderTableBody()}</TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default PipelinePage;
+export default SalesPage;

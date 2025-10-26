@@ -5,13 +5,12 @@ import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Users,
-  Zap,
+  ShoppingBag,
   CheckSquare,
   BarChart3,
   Settings,
   ChevronLeft,
   Inbox,
-  Target,
   Calendar,
   FileText,
   Sparkles,
@@ -69,10 +68,10 @@ const sidebarItems: SidebarItem[] = [
     description: 'Manage your leads',
   },
   {
-    title: 'Pipeline',
+    title: 'Sales',
     href: '/dashboard/pipeline',
-    icon: Target,
-    description: 'Sales pipeline stages',
+    icon: ShoppingBag,
+    description: 'Sales grouped from conversations',
   },
   {
     title: 'Templates',

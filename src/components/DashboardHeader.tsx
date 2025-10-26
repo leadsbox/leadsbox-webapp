@@ -13,7 +13,7 @@ import {
   Users,
   BarChart3,
   CheckSquare,
-  Zap,
+  ShoppingBag,
   ChevronDown,
   Check,
   PlusCircle,
@@ -98,7 +98,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     { path: '/dashboard/home', label: 'Home', icon: Home },
     { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: 12 },
     { path: '/dashboard/leads', label: 'Leads', icon: Users },
-    { path: '/dashboard/pipeline', label: 'Pipeline', icon: Zap },
+    { path: '/dashboard/pipeline', label: 'Sales', icon: ShoppingBag },
     { path: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, badge: 3 },
     { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/dashboard/automations', label: 'Automations', icon: Sparkles },
@@ -253,10 +253,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
                 </DropdownMenuItem>
                 <DropdownMenuItem className='flex-col items-start space-y-1 py-3'>
                   <div className='flex w-full justify-between'>
-                    <span className='font-medium'>Pipeline update</span>
+                    <span className='font-medium'>Sales update</span>
                     <span className='text-xs text-muted-foreground'>1h ago</span>
                   </div>
-                  <span className='text-sm text-muted-foreground'>3 leads moved to qualified stage</span>
+                  <span className='text-sm text-muted-foreground'>3 conversations were tagged as sales</span>
                 </DropdownMenuItem>
               </div>
               <DropdownMenuSeparator />

@@ -22,6 +22,7 @@ const InboxPage = lazy(() => import('./features/inbox/InboxPage'));
 const LeadsPage = lazy(() => import('./features/leads/LeadsPage'));
 const LeadDetailPage = lazy(() => import('./features/leads/LeadDetailPage'));
 const PipelinePage = lazy(() => import('./features/pipeline/PipelinePage'));
+const SaleDetailPage = lazy(() => import('./features/pipeline/SaleDetailPage'));
 const TasksPage = lazy(() => import('./features/tasks/TasksPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
@@ -77,6 +78,7 @@ const App = () => {
               <Route path='leads' element={<LeadsPage />} />
               <Route path='leads/:leadId' element={<LeadDetailPage />} />
               <Route path='pipeline' element={<PipelinePage />} />
+              <Route path='pipeline/:saleId' element={<SaleDetailPage />} />
               <Route path='tasks' element={<TasksPage />} />
               <Route path='analytics' element={<AnalyticsPage />} />
               <Route path='templates' element={<TemplatesHomePage />} />
