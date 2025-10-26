@@ -20,7 +20,7 @@ import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';
 import { notify } from '@/lib/toast';
 import { FacebookIcon, InstagramIcon, TelegramIcon, WhatsAppIcon } from '@/components/brand-icons';
-import { Globe } from 'lucide-react';
+import { Globe, Loader2 } from 'lucide-react';
 
 export const IntegrationsTab: React.FC = () => {
   const { user, refreshAuth } = useAuth();
@@ -293,274 +293,291 @@ export const IntegrationsTab: React.FC = () => {
     }
   };
 
+  const globalLoading = businessLoading || wabaLoading || phoneLoading || ctaLoading || disconnectLoading || orgCreateLoading;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className='flex items-center'>
-          <Globe className='h-5 w-5 mr-2' />
-          Integrations
-        </CardTitle>
-      </CardHeader>
-      <CardContent className='space-y-6'>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-          <Card className='border-muted'>
-            <CardHeader className='pb-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center space-x-3'>
-                  <div className='w-10 h-10 flex items-center justify-center'>
-                    <WhatsAppIcon className='h-6 w-6' />
-                  </div>
-                  <div>
-                    <h3 className='font-medium'>WhatsApp Business</h3>
-                    <p className='text-sm text-muted-foreground'>Connect your WhatsApp account</p>
-                  </div>
-                </div>
-                {waConnected ? (
-                  <Badge variant='outline' className='bg-green-500/10 text-green-400'>
-                    Connected
-                  </Badge>
-                ) : (
-                  <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                    Not Connected
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-3'>
-                {!waConnected && waToken ? (
-                  <div className='space-y-4'>
-                    <div>
-                      <Label>Business</Label>
-                      <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>
-                        <SelectTrigger>
-                          <SelectValue placeholder='Select business' />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {businesses.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={businessLoading || !selectedBusiness} loading={businessLoading}>
-                        Next
-                      </Button>
+    <>
+      {globalLoading ? (
+        <div className='fixed inset-0 z-40 flex flex-col items-center justify-center bg-background/70 backdrop-blur-sm'>
+          <Loader2 className='h-8 w-8 animate-spin text-primary' />
+          <p className='mt-2 text-sm text-muted-foreground'>Processing...</p>
+        </div>
+      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle className='flex items-center'>
+            <Globe className='h-5 w-5 mr-2' />
+            Integrations
+          </CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-6'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <Card className='border-muted'>
+              <CardHeader className='pb-4'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center space-x-3'>
+                    <div className='w-10 h-10 flex items-center justify-center'>
+                      <WhatsAppIcon className='h-6 w-6' />
                     </div>
-                    {wabas.length > 0 && (
+                    <div>
+                      <h3 className='font-medium'>WhatsApp Business</h3>
+                      <p className='text-sm text-muted-foreground'>Connect your WhatsApp account</p>
+                    </div>
+                  </div>
+                  {waConnected ? (
+                    <Badge variant='outline' className='bg-green-500/10 text-green-400'>
+                      Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                      Not Connected
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-3'>
+                  {!waConnected && waToken ? (
+                    <div className='space-y-4'>
                       <div>
-                        <Label>WABA</Label>
-                        <Select value={selectedWaba} onValueChange={setSelectedWaba}>
+                        <Label>Business</Label>
+                        <Select value={selectedBusiness} onValueChange={setSelectedBusiness}>
                           <SelectTrigger>
-                            <SelectValue placeholder='Select WABA' />
+                            <SelectValue placeholder='Select business' />
                           </SelectTrigger>
                           <SelectContent>
-                            {wabas.map((w) => (
-                              <SelectItem key={w.id} value={w.id}>
-                                {w.name}
+                            {businesses.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={wabaLoading || !selectedWaba} loading={wabaLoading}>
+                        <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={businessLoading || !selectedBusiness} loading={businessLoading}>
                           Next
                         </Button>
                       </div>
-                    )}
-                    {phones.length > 0 && (
-                      <div>
-                        <Label>Phone</Label>
-                        <Select value={selectedPhone} onValueChange={setSelectedPhone}>
-                          <SelectTrigger>
-                            <SelectValue placeholder='Select phone number' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {phones.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.display}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={phoneLoading || !selectedPhone} loading={phoneLoading}>
-                          Connect
+                      {wabas.length > 0 && (
+                        <div>
+                          <Label>WABA</Label>
+                          <Select value={selectedWaba} onValueChange={setSelectedWaba}>
+                            <SelectTrigger>
+                              <SelectValue placeholder='Select WABA' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {wabas.map((w) => (
+                                <SelectItem key={w.id} value={w.id}>
+                                  {w.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={wabaLoading || !selectedWaba} loading={wabaLoading}>
+                            Next
+                          </Button>
+                        </div>
+                      )}
+                      {phones.length > 0 && (
+                        <div>
+                          <Label>Phone</Label>
+                          <Select value={selectedPhone} onValueChange={setSelectedPhone}>
+                            <SelectTrigger>
+                              <SelectValue placeholder='Select phone number' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {phones.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.display}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={phoneLoading || !selectedPhone} loading={phoneLoading}>
+                            Connect
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {waConnected && connections.length > 0 && (
+                        <div className='space-y-2'>
+                          <Label>Select connection to disconnect</Label>
+                          <Select value={disconnectKey} onValueChange={setDisconnectKey}>
+                            <SelectTrigger>
+                              <SelectValue placeholder='Choose a connection' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {connections.map((c) => (
+                                <SelectItem key={c.id} value={`${c.wabaId}|${c.phoneNumberId}`}>
+                                  WABA: {c.wabaId} — Phone: {c.display || c.phoneNumberId}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div className='flex space-x-2'>
+                        <Button onClick={startWhatsAppConnect} className='flex-1' disabled={ctaLoading} loading={ctaLoading}>
+                          {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
+                        </Button>
+                        <Button
+                          variant='outline'
+                          className='text-destructive'
+                          disabled={!waConnected || disconnectLoading}
+                          loading={disconnectLoading}
+                          onClick={disconnectWhatsApp}
+                        >
+                          Disconnect
                         </Button>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {waConnected && connections.length > 0 && (
-                      <div className='space-y-2'>
-                        <Label>Select connection to disconnect</Label>
-                        <Select value={disconnectKey} onValueChange={setDisconnectKey}>
-                          <SelectTrigger>
-                            <SelectValue placeholder='Choose a connection' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {connections.map((c) => (
-                              <SelectItem key={c.id} value={`${c.wabaId}|${c.phoneNumberId}`}>
-                                WABA: {c.wabaId} — Phone: {c.display || c.phoneNumberId}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    <div className='flex space-x-2'>
-                      <Button onClick={startWhatsAppConnect} className='flex-1' disabled={ctaLoading} loading={ctaLoading}>
-                        {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
-                      </Button>
-                      <Button
-                        variant='outline'
-                        className='text-destructive'
-                        disabled={!waConnected || disconnectLoading}
-                        loading={disconnectLoading}
-                        onClick={disconnectWhatsApp}
-                      >
-                        Disconnect
-                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className='border-muted'>
+              <CardHeader className='pb-4'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center space-x-3'>
+                    <div className='w-10 h-10 flex items-center justify-center'>
+                      <TelegramIcon className='h-6 w-6' />
                     </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className='border-muted'>
-            <CardHeader className='pb-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center space-x-3'>
-                  <div className='w-10 h-10 flex items-center justify-center'>
-                    <TelegramIcon className='h-6 w-6' />
+                    <div>
+                      <h3 className='font-medium'>Telegram</h3>
+                      <p className='text-sm text-muted-foreground'>Connect your Telegram account</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className='font-medium'>Telegram</h3>
-                    <p className='text-sm text-muted-foreground'>Connect your Telegram account</p>
-                  </div>
-                </div>
-                {/* Telegram connection status badge */}
-                {/* TODO: Add real connection state if available */}
-                <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                  Not Connected
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-3'>
-                <Button
-                  className='w-full'
-                  onClick={() => {
-                    window.location.href = `${apiRoot}/api/provider/telegram/sign-in`;
-                  }}
-                >
-                  Connect Telegram
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className='border-muted'>
-            <CardHeader className='pb-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center space-x-3'>
-                  <div className='w-10 h-10 flex items-center justify-center'>
-                    <InstagramIcon className='h-6 w-6 text-pink-500' />
-                  </div>
-                  <div>
-                    <h3 className='font-medium'>Instagram</h3>
-                    <p className='text-sm text-muted-foreground'>Connect your Instagram account</p>
-                  </div>
-                </div>
-                {igConnected ? (
-                  <Badge variant='outline' className='bg-pink-500/10 text-pink-500'>
-                    Connected
-                  </Badge>
-                ) : (
+                  {/* Telegram connection status badge */}
+                  {/* TODO: Add real connection state if available */}
                   <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
                     Not Connected
                   </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-3'>
-                <Button
-                  className='w-full'
-                  disabled={igConnected}
-                  onClick={() => {
-                    window.location.href = `${apiRoot}/api/provider/instagram`;
-                  }}
-                >
-                  {igConnected ? 'Connected' : 'Connect Instagram'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className='border-muted'>
-            <CardHeader className='pb-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center space-x-3'>
-                  <div className='w-10 h-10 flex items-center justify-center'>
-                    <FacebookIcon className='h-6 w-6 text-blue-600' />
-                  </div>
-                  <div>
-                    <h3 className='font-medium'>Facebook</h3>
-                    <p className='text-sm text-muted-foreground'>Connect your Facebook account</p>
-                  </div>
                 </div>
-                <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
-                  Not Connected
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-3'>
-                <Button
-                  className='w-full'
-                  onClick={() =>
-                    notify.info({
-                      key: 'integrations:facebook:coming-soon',
-                      title: 'Coming soon',
-                      description: 'Facebook integration is almost ready.',
-                    })
-                  }
-                >
-                  Connect Facebook
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </CardContent>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-3'>
+                  <Button
+                    className='w-full'
+                    onClick={() => {
+                      window.location.href = `${apiRoot}/api/provider/telegram/sign-in`;
+                    }}
+                  >
+                    Connect Telegram
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-      <AlertDialog open={orgDialogOpen} onOpenChange={setOrgDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Create an Organization</AlertDialogTitle>
-            <AlertDialogDescription>You need an organization before connecting WhatsApp. Create one to proceed.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className='space-y-2'>
-            <Label htmlFor='org-create-name'>Organization Name</Label>
-            <input
-              id='org-create-name'
-              className='w-full rounded-md border px-3 py-2 text-sm bg-background border-input'
-              value={newOrgName}
-              onChange={(e) => setNewOrgName(e.target.value)}
-              placeholder='Your Company'
-            />
+            <Card className='border-muted'>
+              <CardHeader className='pb-4'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center space-x-3'>
+                    <div className='w-10 h-10 flex items-center justify-center'>
+                      <InstagramIcon className='h-6 w-6 text-pink-500' />
+                    </div>
+                    <div>
+                      <h3 className='font-medium'>Instagram</h3>
+                      <p className='text-sm text-muted-foreground'>Connect your Instagram account</p>
+                    </div>
+                  </div>
+                  {igConnected ? (
+                    <Badge variant='outline' className='bg-pink-500/10 text-pink-500'>
+                      Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                      Not Connected
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-3'>
+                  <Button
+                    className='w-full'
+                    disabled={igConnected}
+                    onClick={() => {
+                      window.location.href = `${apiRoot}/api/provider/instagram`;
+                    }}
+                  >
+                    {igConnected ? 'Connected' : 'Connect Instagram'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className='border-muted'>
+              <CardHeader className='pb-4'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center space-x-3'>
+                    <div className='w-10 h-10 flex items-center justify-center'>
+                      <FacebookIcon className='h-6 w-6 text-blue-600' />
+                    </div>
+                    <div>
+                      <h3 className='font-medium'>Facebook</h3>
+                      <p className='text-sm text-muted-foreground'>Connect your Facebook account</p>
+                    </div>
+                  </div>
+                  <Badge variant='outline' className='bg-gray-500/10 text-gray-400'>
+                    Not Connected
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-3'>
+                  <Button
+                    className='w-full'
+                    onClick={() =>
+                      notify.info({
+                        key: 'integrations:facebook:coming-soon',
+                        title: 'Coming soon',
+                        description: 'Facebook integration is almost ready.',
+                      })
+                    }
+                  >
+                    Connect Facebook
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={createOrgAndStart} disabled={orgCreateLoading}>
-              {orgCreateLoading ? 'Creating...' : 'Create & Continue'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Card>
+        </CardContent>
+
+        <AlertDialog open={orgDialogOpen} onOpenChange={setOrgDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Create an Organization</AlertDialogTitle>
+              <AlertDialogDescription>You need an organization before connecting WhatsApp. Create one to proceed.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className='space-y-2'>
+              <Label htmlFor='org-create-name'>Organization Name</Label>
+              <input
+                id='org-create-name'
+                className='w-full rounded-md border px-3 py-2 text-sm bg-background border-input'
+                value={newOrgName}
+                onChange={(e) => setNewOrgName(e.target.value)}
+                placeholder='Your Company'
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={createOrgAndStart} disabled={orgCreateLoading}>
+                {orgCreateLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create & Continue'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Card>
+    </>
   );
 };
 
