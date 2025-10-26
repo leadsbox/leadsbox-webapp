@@ -1,4 +1,5 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { Loader2 } from "lucide-react"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -95,6 +96,7 @@ const Button = React.forwardRef<ButtonRef, ButtonProps>(
     ref
   ) => {
     const isDisabled = disabled || loading
+    const spinnerOverlay = useGlobalSpinnerOverlay(loading, spinnerLabel)
 
     const renderInner = (content: React.ReactNode) => (
       <span className="relative flex w-full items-center justify-center">
@@ -138,36 +140,64 @@ const Button = React.forwardRef<ButtonRef, ButtonProps>(
         onClick?.(event as unknown as React.MouseEvent<HTMLButtonElement>)
       }
 
-      return React.cloneElement(child, {
-        className: mergedClassName,
-        ref: ref as React.Ref<any>,
-        "data-state": loading ? "loading" : undefined,
-        "data-disabled": isDisabled || undefined,
-        "aria-disabled": isDisabled || undefined,
-        "aria-busy": loading || undefined,
-        children: renderInner(child.props.children),
-        onClick: handleClick,
-        ...props,
-      })
+      return (
+        <>
+          {spinnerOverlay}
+          {React.cloneElement(child, {
+            className: mergedClassName,
+            ref: ref as React.Ref<any>,
+            "data-state": loading ? "loading" : undefined,
+            "data-disabled": isDisabled || undefined,
+            "aria-disabled": isDisabled || undefined,
+            "aria-busy": loading || undefined,
+            children: renderInner(child.props.children),
+            onClick: handleClick,
+            ...props,
+          })}
+        </>
+      )
     }
 
     return (
-      <button
-        className={cn(buttonVariants({ variant, size, align, className }))}
-        ref={ref as React.Ref<HTMLButtonElement>}
-        data-state={loading ? "loading" : undefined}
-        data-disabled={isDisabled || undefined}
-        aria-disabled={isDisabled || undefined}
-        aria-busy={loading || undefined}
-        disabled={isDisabled}
-        onClick={onClick}
-        {...props}
-      >
-        {renderInner(children)}
-      </button>
+      <>
+        {spinnerOverlay}
+        <button
+          className={cn(buttonVariants({ variant, size, align, className }))}
+          ref={ref as React.Ref<HTMLButtonElement>}
+          data-state={loading ? "loading" : undefined}
+          data-disabled={isDisabled || undefined}
+          aria-disabled={isDisabled || undefined}
+          aria-busy={loading || undefined}
+          disabled={isDisabled}
+          onClick={onClick}
+          {...props}
+        >
+          {renderInner(children)}
+        </button>
+      </>
     )
   }
 )
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+
+const useGlobalSpinnerOverlay = (loading: boolean, label: string) => {
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || !loading || typeof document === "undefined") {
+    return null
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background/70 backdrop-blur-sm">
+      <Loader2 aria-hidden className="mb-2 size-8 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">{label || "Processing..."}</p>
+    </div>,
+    document.body
+  )
+}
