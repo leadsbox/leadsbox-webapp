@@ -20,7 +20,6 @@ import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';
 import { notify } from '@/lib/toast';
 import { FacebookIcon, InstagramIcon, TelegramIcon, WhatsAppIcon } from '@/components/brand-icons';
-import { Loader2 } from 'lucide-react';
 import { Globe } from 'lucide-react';
 
 export const IntegrationsTab: React.FC = () => {
@@ -33,7 +32,12 @@ export const IntegrationsTab: React.FC = () => {
   const [selectedWaba, setSelectedWaba] = useState('');
   const [phones, setPhones] = useState<Array<{ id: string; display: string }>>([]);
   const [selectedPhone, setSelectedPhone] = useState('');
-  const [waLoading, setWaLoading] = useState(false);
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [wabaLoading, setWabaLoading] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [ctaLoading, setCtaLoading] = useState(false);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
+  const [orgCreateLoading, setOrgCreateLoading] = useState(false);
   const [connections, setConnections] = useState<Array<{ id: string; wabaId: string; phoneNumberId: string; display?: string }>>([]);
   const [disconnectKey, setDisconnectKey] = useState('');
   const [orgDialogOpen, setOrgDialogOpen] = useState(false);
@@ -137,7 +141,7 @@ export const IntegrationsTab: React.FC = () => {
 
   const confirmBusiness = async () => {
     if (!waToken || !selectedBusiness) return;
-    setWaLoading(true);
+    setBusinessLoading(true);
     try {
       const resp = await client.post(`${apiRoot}/api/provider/whatsapp/select-business`, { accessToken: waToken, businessId: selectedBusiness });
       const list = resp?.data?.data?.wabas || [];
@@ -149,13 +153,13 @@ export const IntegrationsTab: React.FC = () => {
         description: 'Try selecting the business again.',
       });
     } finally {
-      setWaLoading(false);
+      setBusinessLoading(false);
     }
   };
 
   const confirmWaba = async () => {
     if (!waToken || !selectedWaba) return;
-    setWaLoading(true);
+    setWabaLoading(true);
     try {
       const resp = await client.post(`${apiRoot}/api/provider/whatsapp/select-waba`, { accessToken: waToken, wabaId: selectedWaba });
       const list = resp?.data?.data?.phoneNumbers || [];
@@ -167,7 +171,7 @@ export const IntegrationsTab: React.FC = () => {
         description: 'Try selecting the WABA again.',
       });
     } finally {
-      setWaLoading(false);
+      setWabaLoading(false);
     }
   };
 
@@ -182,7 +186,7 @@ export const IntegrationsTab: React.FC = () => {
       });
       return;
     }
-    setWaLoading(true);
+    setPhoneLoading(true);
     try {
       await client.post(`${apiRoot}/api/provider/whatsapp/connect`, {
         accessToken: waToken,
@@ -203,11 +207,12 @@ export const IntegrationsTab: React.FC = () => {
         description: 'Please try again.',
       });
     } finally {
-      setWaLoading(false);
+      setPhoneLoading(false);
     }
   };
 
   const disconnectWhatsApp = async () => {
+    setDisconnectLoading(true);
     try {
       let url = `${apiRoot}/api/provider/whatsapp/disconnect`;
       if (disconnectKey) {
@@ -235,10 +240,13 @@ export const IntegrationsTab: React.FC = () => {
         title: 'Unable to disconnect WhatsApp',
         description: 'Please try again.',
       });
+    } finally {
+      setDisconnectLoading(false);
     }
   };
 
   const startWhatsAppConnect = async () => {
+    setCtaLoading(true);
     try {
       const resp = await client.get('/orgs');
       const orgs = resp?.data?.data?.orgs || [];
@@ -253,6 +261,8 @@ export const IntegrationsTab: React.FC = () => {
         title: 'Unable to check organizations',
         description: 'Please refresh and try again.',
       });
+    } finally {
+      setCtaLoading(false);
     }
   };
 
@@ -265,6 +275,7 @@ export const IntegrationsTab: React.FC = () => {
       });
       return;
     }
+    setOrgCreateLoading(true);
     try {
       await client.post('/orgs', { name: newOrgName.trim() });
       await refreshAuth();
@@ -277,6 +288,8 @@ export const IntegrationsTab: React.FC = () => {
         title: 'Unable to create organization',
         description: 'Please try again.',
       });
+    } finally {
+      setOrgCreateLoading(false);
     }
   };
 
@@ -331,8 +344,7 @@ export const IntegrationsTab: React.FC = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={waLoading || !selectedBusiness}>
-                        {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
+                      <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={businessLoading || !selectedBusiness} loading={businessLoading}>
                         Next
                       </Button>
                     </div>
@@ -351,8 +363,7 @@ export const IntegrationsTab: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={waLoading || !selectedWaba}>
-                          {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
+                        <Button className='mt-2' size='sm' onClick={confirmWaba} disabled={wabaLoading || !selectedWaba} loading={wabaLoading}>
                           Next
                         </Button>
                       </div>
@@ -372,8 +383,7 @@ export const IntegrationsTab: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={waLoading || !selectedPhone}>
-                          {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
+                        <Button className='mt-2' size='sm' onClick={finalizeConnect} disabled={phoneLoading || !selectedPhone} loading={phoneLoading}>
                           Connect
                         </Button>
                       </div>
@@ -399,12 +409,16 @@ export const IntegrationsTab: React.FC = () => {
                       </div>
                     )}
                     <div className='flex space-x-2'>
-                      <Button onClick={startWhatsAppConnect} className='flex-1' disabled={waLoading}>
-                        {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
+                      <Button onClick={startWhatsAppConnect} className='flex-1' disabled={ctaLoading} loading={ctaLoading}>
                         {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
                       </Button>
-                      <Button variant='outline' className='text-destructive' disabled={!waConnected || waLoading} onClick={disconnectWhatsApp}>
-                        {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
+                      <Button
+                        variant='outline'
+                        className='text-destructive'
+                        disabled={!waConnected || disconnectLoading}
+                        loading={disconnectLoading}
+                        onClick={disconnectWhatsApp}
+                      >
                         Disconnect
                       </Button>
                     </div>
@@ -440,9 +454,7 @@ export const IntegrationsTab: React.FC = () => {
                   onClick={() => {
                     window.location.href = `${apiRoot}/api/provider/telegram/sign-in`;
                   }}
-                  disabled={waLoading}
                 >
-                  {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   Connect Telegram
                 </Button>
               </div>
@@ -476,12 +488,11 @@ export const IntegrationsTab: React.FC = () => {
               <div className='space-y-3'>
                 <Button
                   className='w-full'
-                  disabled={igConnected || waLoading}
+                  disabled={igConnected}
                   onClick={() => {
                     window.location.href = `${apiRoot}/api/provider/instagram`;
                   }}
                 >
-                  {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   {igConnected ? 'Connected' : 'Connect Instagram'}
                 </Button>
               </div>
@@ -516,9 +527,7 @@ export const IntegrationsTab: React.FC = () => {
                       description: 'Facebook integration is almost ready.',
                     })
                   }
-                  disabled={waLoading}
                 >
-                  {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
                   Connect Facebook
                 </Button>
               </div>
@@ -545,9 +554,8 @@ export const IntegrationsTab: React.FC = () => {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={createOrgAndStart} disabled={waLoading}>
-              {waLoading ? <Loader2 className='animate-spin mr-2 h-4 w-4' /> : null}
-              Create & Continue
+            <AlertDialogAction onClick={createOrgAndStart} disabled={orgCreateLoading}>
+              {orgCreateLoading ? 'Creating...' : 'Create & Continue'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
