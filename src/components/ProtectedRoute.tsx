@@ -3,6 +3,7 @@
 import React, { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/useAuth';
+import { getOrgId } from '@/api/client';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -10,9 +11,18 @@ interface ProtectedRouteProps {
   requireAuth?: boolean;
   requiredRole?: 'OWNER' | 'MANAGER' | 'AGENT';
   redirectTo?: string;
+  requireOrganization?: boolean;
+  organizationRedirectTo?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAuth = true, requiredRole, redirectTo = '/login' }) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requireAuth = true,
+  requiredRole,
+  redirectTo = '/login',
+  requireOrganization = true,
+  organizationRedirectTo = '/onboarding/organization',
+}) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -31,6 +41,27 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
   // Check authentication requirement
   if (requireAuth && !user) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
+  const hasOrganization = (() => {
+    if (!user) return false;
+    const userHasOrg =
+      Boolean(user.orgId) ||
+      Boolean(user.currentOrgId) ||
+      (Array.isArray(user.organizations) && user.organizations.length > 0);
+    if (userHasOrg) return true;
+    if (typeof window === 'undefined') return false;
+    try {
+      return Boolean(getOrgId());
+    } catch {
+      return false;
+    }
+  })();
+
+  if (requireAuth && requireOrganization && user && !hasOrganization) {
+    if (location.pathname !== organizationRedirectTo) {
+      return <Navigate to={organizationRedirectTo} state={{ from: location }} replace />;
+    }
   }
 
   // Check role requirement

@@ -36,6 +36,7 @@ const TemplatesHomePage = lazy(() => import('./features/templates/TemplatesHomeP
 const CreateTemplateWizardPage = lazy(() => import('./features/templates/CreateTemplateWizardPage'));
 const TemplateDetailPage = lazy(() => import('./features/templates/TemplateDetailPage'));
 const PaymentPlansPage = lazy(() => import('./features/billing/PaymentPlansPage'));
+const OrganizationOnboarding = lazy(() => import('./pages/OrganizationOnboarding'));
 
 const RouteLoader = () => (
   <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>
@@ -56,6 +57,16 @@ const App = () => {
             <Route path='/terms' element={<Terms />} />
             <Route path='/forgot-password' element={<ForgotPassword />} />
             <Route path='/reset-password' element={<ResetPassword />} />
+            <Route
+              path='/onboarding/organization'
+              element={
+                <ProtectedRoute requireOrganization={false}>
+                  <Suspense fallback={<RouteLoader />}>
+                    <OrganizationOnboarding />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Protected Dashboard Routes */}
             <Route
