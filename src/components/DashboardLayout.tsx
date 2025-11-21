@@ -153,7 +153,8 @@ export const DashboardLayout: React.FC = () => {
         setInboxLoading(true);
         const threadsResp = await client.get('/threads');
         const threadsList = threadsResp?.data?.data?.threads || threadsResp?.data || [];
-        setInboxCount(threadsList.length);
+        // Ensure threadsList is an array before accessing .length
+        setInboxCount(Array.isArray(threadsList) ? threadsList.length : 0);
       } catch (error) {
         console.error('Failed to fetch inbox count:', error);
         setInboxCount(0);
