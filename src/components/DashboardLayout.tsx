@@ -250,7 +250,7 @@ export const DashboardLayout: React.FC = () => {
     ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
   const bannerTitle =
-    subscription?.status === 'ACTIVE' && subscription.plan ? `${subscription.plan.name} plan active` : 'Manage your leads efficiently';
+    subscription?.status === 'ACTIVE' && subscription?.plan?.name ? `${subscription.plan.name} plan active` : 'Manage your leads efficiently';
   const bannerSubtitle = subscriptionLoading
     ? 'Checking subscription status…'
     : subscription?.status === 'ACTIVE'
@@ -260,7 +260,7 @@ export const DashboardLayout: React.FC = () => {
     : trialDaysLeft > 0
     ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial`
     : 'Trial ended — choose a plan to stay connected.';
-  const collapsedSubtitle = subscription?.status === 'ACTIVE' && subscription.plan ? subscription.plan.name : bannerSubtitle;
+  const collapsedSubtitle = subscription?.status === 'ACTIVE' && subscription?.plan?.name ? subscription.plan.name : bannerSubtitle;
   const handleGoToBilling = () => navigate('/dashboard/billing');
   const billingButtonText = subscription?.status === 'ACTIVE' ? 'Manage billing' : 'View payment plans';
 
