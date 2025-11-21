@@ -305,7 +305,7 @@ export const DashboardLayout: React.FC = () => {
         {/* Navigation */}
         <nav className='flex-1 overflow-auto py-4'>
           <div className='space-y-1'>
-            {sidebarItems.map((item) => {
+            {(sidebarItems || []).map((item) => {
               const isActive = location.pathname.startsWith(item.href);
 
               return (
@@ -451,7 +451,7 @@ export const DashboardLayout: React.FC = () => {
           {/* Navigation */}
           <nav className='flex-1 overflow-auto py-4'>
             <div className='space-y-1 px-3'>
-              {sidebarItems.map((item) => {
+              {(sidebarItems || []).map((item) => {
                 const isActive = location.pathname.startsWith(item.href);
                 return (
                   <NavLink
