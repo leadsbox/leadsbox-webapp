@@ -19,6 +19,7 @@ import {
   UploadCloud,
   PenSquare,
   Zap,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -243,6 +244,16 @@ export default function DashboardHomePage() {
         icon: Zap,
         completed: hasAutomations,
         helperText: hasAutomations ? undefined : 'Automations work in the background when you are busy.',
+      },
+      {
+        id: 'referral',
+        title: 'Invite a Friend',
+        description: 'Get $50 in credits by inviting another business.',
+        href: '/dashboard/referrals',
+        ctaLabel: 'Invite & Earn',
+        icon: Gift,
+        completed: false, // We don't track this yet, but it's a good nudge
+        helperText: 'Share the love and get rewarded.',
       },
     ];
   }, [

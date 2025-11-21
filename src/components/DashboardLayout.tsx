@@ -23,6 +23,7 @@ import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import DashboardHeader from './DashboardHeader';
+import SupportWidget from './SupportWidget';
 import client from '../api/client';
 import { endpoints } from '../api/config';
 
@@ -508,6 +509,7 @@ export const DashboardLayout: React.FC = () => {
           </Suspense>
         </section>
       </div>
+      <SupportWidget />
     </div>
   );
 };

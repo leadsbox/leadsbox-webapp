@@ -37,6 +37,8 @@ const CreateTemplateWizardPage = lazy(() => import('./features/templates/CreateT
 const TemplateDetailPage = lazy(() => import('./features/templates/TemplateDetailPage'));
 const PaymentPlansPage = lazy(() => import('./features/billing/PaymentPlansPage'));
 const OrganizationOnboarding = lazy(() => import('./pages/OrganizationOnboarding'));
+const NotificationsPage = lazy(() => import('./features/notifications/NotificationsPage'));
+const ReferralsPage = lazy(() => import('./features/referrals/ReferralsPage'));
 
 const RouteLoader = () => (
   <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>
@@ -97,6 +99,8 @@ const App = () => {
               <Route path='templates/:id' element={<TemplateDetailPage />} />
               <Route path='automations' element={<AutomationsPage />} />
               <Route path='billing' element={<PaymentPlansPage />} />
+              <Route path='notifications' element={<NotificationsPage />} />
+              <Route path='referrals' element={<ReferralsPage />} />
               <Route
                 path='settings'
                 element={

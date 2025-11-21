@@ -19,6 +19,7 @@ import {
   PlusCircle,
   Sparkles,
   Home,
+  Gift,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -31,8 +32,9 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { CustomAvatar } from './ui/custom-avatar';
-import { Badge } from './ui/badge';
 import { useAuth } from '@/context/useAuth';
+import { Badge } from './ui/badge';
+import NotificationDropdown from './NotificationDropdown';
 import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { notify } from '@/lib/toast';
@@ -223,46 +225,16 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
             <Search className='h-5 w-5' />
           </Button>
 
+          <Link
+            to="/dashboard/referrals"
+            className="hidden sm:flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors mr-2"
+          >
+            <Gift className="h-3.5 w-3.5" />
+            Invite & Earn
+          </Link>
+
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant='ghost' size='icon' className='relative'>
-                <Bell className='h-5 w-5' />
-                <Badge variant='destructive' className='absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0'>
-                  3
-                </Badge>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align='end' className='w-80'>
-              <DropdownMenuLabel className='text-base'>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className='max-h-96 overflow-auto'>
-                <DropdownMenuItem className='flex-col items-start space-y-1 py-3'>
-                  <div className='flex w-full justify-between'>
-                    <span className='font-medium'>New lead from WhatsApp</span>
-                    <span className='text-xs text-muted-foreground'>2m ago</span>
-                  </div>
-                  <span className='text-sm text-muted-foreground'>John Doe is interested in your services</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className='flex-col items-start space-y-1 py-3'>
-                  <div className='flex w-full justify-between'>
-                    <span className='font-medium'>Task reminder</span>
-                    <span className='text-xs text-muted-foreground'>15m ago</span>
-                  </div>
-                  <span className='text-sm text-muted-foreground'>Follow up call with Sarah Johnson is due</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className='flex-col items-start space-y-1 py-3'>
-                  <div className='flex w-full justify-between'>
-                    <span className='font-medium'>Sales update</span>
-                    <span className='text-xs text-muted-foreground'>1h ago</span>
-                  </div>
-                  <span className='text-sm text-muted-foreground'>3 conversations were tagged as sales</span>
-                </DropdownMenuItem>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className='text-center justify-center'>View all notifications</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationDropdown />
 
           {/* User menu */}
           <DropdownMenu>

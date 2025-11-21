@@ -123,6 +123,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   emailVerified?: boolean;
+  referralCode?: string;
 }
 
 export interface Lead {
