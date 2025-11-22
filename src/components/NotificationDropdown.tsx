@@ -24,10 +24,12 @@ const NotificationDropdown: React.FC = () => {
     setLoading(true);
     try {
       const data = await notificationApi.list(1, 10);
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      setNotifications(data?.notifications ?? []);
+      setUnreadCount(data?.unreadCount ?? 0);
     } catch (error) {
       console.error('Failed to fetch notifications', error);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }

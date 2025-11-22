@@ -9,7 +9,7 @@ export interface Notification {
   type: NotificationType;
   isRead: boolean;
   createdAt: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface NotificationListResponse {
@@ -36,7 +36,20 @@ export const notificationApi = {
     const response = await client.get<NotificationListResponse>(
       `/notifications?${params.toString()}`
     );
-    return response.data;
+    // Handle nested response structure (response.data.data)
+    const responseData = response.data as unknown as Record<string, unknown>;
+    const data = (responseData.data ?? responseData) as Partial<NotificationListResponse>;
+    
+    return {
+      notifications: Array.isArray(data.notifications) ? data.notifications : [],
+      pagination: data.pagination ?? {
+        page,
+        limit,
+        total: 0,
+        totalPages: 0,
+      },
+      unreadCount: typeof data.unreadCount === 'number' ? data.unreadCount : 0,
+    };
   },
 
   markAsRead: async (id: string) => {
