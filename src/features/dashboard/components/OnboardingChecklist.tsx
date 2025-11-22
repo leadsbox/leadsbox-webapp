@@ -103,9 +103,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
         <div className='flex items-start justify-between gap-3'>
           <div>
             <CardTitle className='text-lg sm:text-xl font-semibold'>Get set up in minutes</CardTitle>
-            <p className='text-sm text-muted-foreground mt-1'>
-              Follow these quick actions so your workspace is ready when new leads arrive.
-            </p>
+            <p className='text-sm text-muted-foreground mt-1'>Follow these quick actions so your workspace is ready when new leads arrive.</p>
           </div>
           <Badge variant={completedSteps === totalSteps ? 'default' : 'outline'}>
             {completedSteps}/{totalSteps} done
@@ -118,18 +116,11 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
             <span
               className={cn(
                 'flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110 group-hover:shadow-md',
-                collapsed
-                  ? 'border border-primary/50 bg-primary/10 backdrop-blur-sm'
-                  : 'border border-primary/60 bg-primary/15 backdrop-blur-sm'
+                collapsed ? 'border border-primary/50 bg-primary/10 backdrop-blur-sm' : 'border border-primary/60 bg-primary/15 backdrop-blur-sm'
               )}
               aria-hidden='true'
             >
-              <ChevronDown
-                className={cn(
-                  'h-5 w-5 transition-transform duration-300 text-primary',
-                  collapsed ? 'rotate-0' : 'rotate-180'
-                )}
-              />
+              <ChevronDown className={cn('h-5 w-5 transition-transform duration-300 text-primary', collapsed ? 'rotate-0' : 'rotate-180')} />
             </span>
           </div>
         </div>
@@ -146,9 +137,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
                 >
                   <div className='flex items-start gap-3'>
                     <div className='mt-0.5'>
-                      <StatusIcon
-                        className={`h-5 w-5 ${step.completed ? 'text-emerald-500' : 'text-muted-foreground'}`}
-                      />
+                      <StatusIcon className={`h-5 w-5 ${step.completed ? 'text-emerald-500' : 'text-muted-foreground'}`} />
                     </div>
                     <div className='space-y-1'>
                       <div className='flex items-center gap-2'>
@@ -156,9 +145,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
                         <p className='text-sm font-medium leading-none'>{step.title}</p>
                       </div>
                       <p className='text-xs sm:text-sm text-muted-foreground'>{step.description}</p>
-                      {step.helperText ? (
-                        <p className='text-xs text-muted-foreground/80'>{step.helperText}</p>
-                      ) : null}
+                      {step.helperText ? <p className='text-xs text-muted-foreground/80'>{step.helperText}</p> : null}
                     </div>
                   </div>
                   <div className='sm:self-start'>

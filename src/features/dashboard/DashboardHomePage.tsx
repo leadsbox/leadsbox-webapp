@@ -189,10 +189,7 @@ export default function DashboardHomePage() {
   const hasAutomations = tasks.length > 0;
 
   const onboardingSteps = useMemo<OnboardingStep[]>(() => {
-    const profileHelper =
-      !organizationProfileComplete && missingProfileFields.length
-        ? `Missing: ${missingProfileFields.join(', ')}.`
-        : undefined;
+    const profileHelper = !organizationProfileComplete && missingProfileFields.length ? `Missing: ${missingProfileFields.join(', ')}.` : undefined;
 
     return [
       {
@@ -256,21 +253,9 @@ export default function DashboardHomePage() {
         helperText: 'Share the love and get rewarded.',
       },
     ];
-  }, [
-    organizationProfileComplete,
-    missingProfileFields,
-    hasMessagingIntegration,
-    hasLeads,
-    hasTemplates,
-    hasAutomations,
-  ]);
+  }, [organizationProfileComplete, missingProfileFields, hasMessagingIntegration, hasLeads, hasTemplates, hasAutomations]);
 
-  const coreDataReady =
-    !countsLoading &&
-    !analyticsLoading &&
-    !templatesLoading &&
-    !integrationLoading &&
-    !tasksLoading;
+  const coreDataReady = !countsLoading && !analyticsLoading && !templatesLoading && !integrationLoading && !tasksLoading;
   const hasIncompleteSteps = onboardingSteps?.some((step) => !step.completed) ?? false;
   const showOnboardingChecklist = coreDataReady && hasIncompleteSteps && onboardingSteps;
 
@@ -284,8 +269,7 @@ export default function DashboardHomePage() {
 
       const leadsResp = await client.get(endpoints.leads);
 
-      const leadsList: BackendLead[] =
-        leadsResp?.data?.data?.leads || leadsResp?.data || [];
+      const leadsList: BackendLead[] = leadsResp?.data?.data?.leads || leadsResp?.data || [];
 
       const leadsOverTime = processLeadsOverTime(leadsList);
       setLeadsOverTimeData(leadsOverTime);
@@ -293,21 +277,13 @@ export default function DashboardHomePage() {
       const pipelineDistribution = processPipelineData(leadsList);
       setPipelineData(pipelineDistribution);
 
-      const recentLeads = leadsList
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() -
-            new Date(a.createdAt).getTime()
-        )
-        .slice(0, 5);
+      const recentLeads = leadsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
       setRecentLeadsData(recentLeads);
       setActualLeadsCount(leadsList.length);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       const apiError = error as ApiError;
-      setAnalyticsError(
-        apiError.response?.data?.message || 'Unable to load dashboard data.'
-      );
+      setAnalyticsError(apiError.response?.data?.message || 'Unable to load dashboard data.');
       setLeadsOverTimeData([]);
       setPipelineData([]);
       setRecentLeadsData([]);
@@ -357,9 +333,7 @@ export default function DashboardHomePage() {
       } catch (error) {
         console.error('Failed to fetch analytics overview:', error);
         const apiError = error as ApiError;
-        setAnalyticsError(
-          apiError.response?.data?.message || 'Unable to load analytics overview.'
-        );
+        setAnalyticsError(apiError.response?.data?.message || 'Unable to load analytics overview.');
         setAnalyticsOverview(DEFAULT_ANALYTICS_OVERVIEW);
       } finally {
         if (!background) {
@@ -573,7 +547,6 @@ export default function DashboardHomePage() {
     fetchDashboardData();
   }, [fetchDashboardData, timeRange]);
 
-
   const overviewSkeleton = (
     <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
       {Array.from({ length: 4 }).map((_, index) => (
@@ -641,11 +614,11 @@ export default function DashboardHomePage() {
             />
             <div className='flex items-center gap-2 px-2 py-1 rounded-full text-xs border'>
               <div
-                className={`w-2 h-2 rounded-full ${analyticsError ? 'bg-red-500' : analyticsLoading ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`}
+                className={`w-2 h-2 rounded-full ${
+                  analyticsError ? 'bg-red-500' : analyticsLoading ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500 animate-pulse'
+                }`}
               ></div>
-              <span
-                className={analyticsError ? 'text-red-600' : analyticsLoading ? 'text-blue-600' : 'text-emerald-700'}
-              >
+              <span className={analyticsError ? 'text-red-600' : analyticsLoading ? 'text-blue-600' : 'text-emerald-700'}>
                 {analyticsError ? ' Not Connected' : analyticsLoading ? 'Refreshing…' : 'Connected'}
               </span>
             </div>
@@ -671,10 +644,7 @@ export default function DashboardHomePage() {
       </div>
 
       {showOnboardingChecklist ? (
-        <OnboardingChecklist
-          steps={onboardingSteps}
-          className='transition-all duration-200 hover:shadow-md border-primary/20'
-        />
+        <OnboardingChecklist steps={onboardingSteps} className='transition-all duration-200 hover:shadow-md border-primary/20' />
       ) : null}
 
       {/* Overview Cards */}
@@ -735,11 +705,7 @@ export default function DashboardHomePage() {
               <Calendar className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
-              {analyticsLoading ? (
-                <Skeleton className='h-7 w-16' />
-              ) : (
-                <div className='text-2xl font-bold'>{analyticsOverview.avgResponseTime}h</div>
-              )}
+              {analyticsLoading ? <Skeleton className='h-7 w-16' /> : <div className='text-2xl font-bold'>{analyticsOverview.avgResponseTime}h</div>}
               <div className='flex items-center gap-1 text-xs text-muted-foreground'>
                 <TrendingUp className='h-3 w-3 text-green-500 rotate-180' />
                 <span className='text-green-500'>-0.3h</span>
@@ -750,9 +716,7 @@ export default function DashboardHomePage() {
         </div>
       )}
 
-      {analyticsError && (
-        <p className='text-sm text-destructive'>{analyticsError}</p>
-      )}
+      {analyticsError && <p className='text-sm text-destructive'>{analyticsError}</p>}
 
       {/* Charts and Recent Activity */}
       <div className='grid gap-4 sm:gap-6 lg:grid-cols-2'>
