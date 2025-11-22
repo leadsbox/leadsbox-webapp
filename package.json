@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "analyze:bundle": "vite build && npx source-map-explorer 'dist/assets/*.js' --html dist/bundle-report.html"
+    "analyze:bundle": "vite build && npx source-map-explorer 'dist/assets/*.js' --html dist/bundle-report.html",
+    "push": "git push personal main"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

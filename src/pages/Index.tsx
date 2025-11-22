@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Moon, Sun, ArrowRight, Check, Star, Zap, MessageCircle, Users, BarChart3, Shield, Globe, Smartphone, CreditCard, Activity, Lock, Clock } from 'lucide-react';
+import { Moon, Sun, ArrowRight, Check, Star, Zap, MessageCircle, Users, BarChart3, Shield, Globe, Smartphone, CreditCard, Activity, Lock, Clock, Play, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * LeadsBox — World-class Homepage Redesign
+ * LeadsBox — Hybrid Homepage
+ * Hero: Crisp-Inspired (New)
+ * Rest: Feature-Rich (Original)
  */
 
 const META = {
@@ -98,11 +100,11 @@ const Index = () => {
   };
 
   return (
-    <div className='min-h-screen w-full bg-background text-foreground overflow-x-hidden selection:bg-primary/20 selection:text-primary'>
-      {/* Background Gradients */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/5 blur-[120px]" />
+    <div className='min-h-screen w-full bg-background text-foreground overflow-x-hidden selection:bg-primary/20 selection:text-primary font-sans'>
+      {/* Crisp-style Background: Clean with subtle blobs */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-background">
+        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-blue-500/5 blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] rounded-full bg-purple-500/5 blur-[100px]" />
       </div>
 
       {waitlistOpen && (
@@ -128,21 +130,21 @@ const Index = () => {
       )}
 
       {/* Navigation */}
-      <header className='sticky top-0 z-50 border-b border-white/10 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60'>
+      <header className='sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl'>
         <div className='container mx-auto flex h-16 items-center justify-between px-4'>
           <a href='/' className='flex items-center gap-3 group'>
-            <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:scale-105'>
-              <LogoImage className='w-full h-full object-contain' />
+            <div className='w-8 h-8 bg-primary text-primary-foreground p-1 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:scale-105'>
+              <LogoImage className='w-full h-full object-contain invert brightness-0' />
             </div>
             <span className='text-xl font-bold tracking-tight'>LeadsBox</span>
           </a>
 
           <nav className='hidden md:flex items-center gap-8'>
-            {['Product', 'How it Works', 'Pricing', 'For Creators'].map((item) => (
+            {['Features', 'Pricing', 'Integrations', 'Blog'].map((item) => (
               <a 
                 key={item} 
-                href={`#${item.toLowerCase().replace(/ /g, '-')}`} 
-                className='text-sm font-medium text-muted-foreground hover:text-primary transition-colors'
+                href={`#${item.toLowerCase()}`} 
+                className='text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
               >
                 {item}
               </a>
@@ -154,156 +156,242 @@ const Index = () => {
               variant='ghost'
               size='icon'
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className='rounded-full hover:bg-primary/10'
+              className='rounded-full hover:bg-muted'
             >
               <ThemeIcon className='h-4 w-4' />
             </Button>
             <div className="hidden sm:flex gap-3">
-              <Button variant='ghost' onClick={() => window.location.href = '/login'}>
-                Login
+              <Button variant='ghost' onClick={() => window.location.href = '/login'} className="font-medium">
+                Sign in
               </Button>
               <Button 
                 onClick={() => setWaitlistOpen(true)}
-                className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+                className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-full px-6"
               >
-                Join Waitlist
+                Get Started — It's Free
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className='relative pt-24 pb-32 overflow-hidden'>
+      {/* Hero Section: Crisp Style (Bold, Centered, Floating Elements) */}
+      <section className='relative pt-20 pb-32 overflow-hidden'>
         <div className='container mx-auto px-4 relative z-10'>
-          <div className='grid lg:grid-cols-12 gap-16 items-center'>
+          <div className='text-center max-w-4xl mx-auto mb-16 space-y-8'>
             <motion.div 
-              className='lg:col-span-7 space-y-8'
-              initial="hidden"
-              animate="visible"
-              variants={staggerContainer}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
             >
-              <motion.div variants={fadeInUp}>
-                <Badge variant='outline' className='bg-primary/5 border-primary/20 text-primary px-4 py-1.5 rounded-full mb-6 backdrop-blur-sm'>
-                  <span className="relative flex h-2 w-2 mr-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                  </span>
-                  New: WhatsApp & Instagram Integration Live
-                </Badge>
-                <h1 className='text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6'>
-                  Turn Social DMs <br/>
-                  <span className='text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-pink-500 animate-gradient-x'>
-                    Into Revenue
-                  </span>
-                </h1>
-                <p className='text-xl text-muted-foreground max-w-xl leading-relaxed'>
-                  The unified inbox for modern businesses. AI that tags leads, automates follow-ups, and closes deals while you sleep.
-                </p>
-              </motion.div>
+              <Badge variant='secondary' className='bg-primary/10 text-primary hover:bg-primary/20 px-4 py-1.5 rounded-full mb-6 transition-colors cursor-pointer'>
+                <span className="mr-2">🎉</span> New: WhatsApp & Instagram Integration
+              </Badge>
+              <h1 className='text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6 text-foreground'>
+                The business messaging platform for <span className="text-primary">startups</span>.
+              </h1>
+              <p className='text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed'>
+                Centralize your WhatsApp, Instagram, and Telegram chats. Automate support with AI, and turn every conversation into a customer.
+              </p>
+            </motion.div>
 
-              <motion.div variants={fadeInUp} className='flex flex-col sm:flex-row gap-4'>
-                <Button 
-                  size='lg' 
-                  onClick={() => setWaitlistOpen(true)} 
-                  className='h-12 px-8 text-base rounded-full bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all hover:scale-105'
-                >
-                  Get Early Access <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button 
-                  variant='outline' 
-                  size='lg' 
-                  onClick={() => setDemoOpen(true)}
-                  className='h-12 px-8 text-base rounded-full border-2 hover:bg-muted/50 backdrop-blur-sm'
-                >
-                  Watch Demo (60s)
-                </Button>
-              </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className='flex flex-col sm:flex-row gap-4 justify-center items-center'
+            >
+              <Button 
+                size='lg' 
+                onClick={() => setWaitlistOpen(true)} 
+                className='h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all hover:scale-105'
+              >
+                Use LeadsBox for Free
+              </Button>
+              <Button 
+                variant='outline' 
+                size='lg' 
+                onClick={() => setDemoOpen(true)}
+                className='h-14 px-8 text-lg rounded-full border-2 hover:bg-muted/50 gap-2'
+              >
+                <Play className="w-4 h-4 fill-current" /> Watch Video
+              </Button>
+            </motion.div>
+            
+            <p className="text-sm text-muted-foreground">
+              No credit card required • 14-day free trial • Cancel anytime
+            </p>
+          </div>
 
-              <motion.div variants={fadeInUp} className='pt-8 flex items-center gap-6 text-sm text-muted-foreground'>
-                <div className='flex -space-x-3'>
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className={`w-10 h-10 rounded-full border-2 border-background bg-gradient-to-br from-gray-100 to-gray-300 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center text-xs font-bold shadow-sm z-${10-i}`}>
-                      <Users className="h-4 w-4 opacity-50" />
+          {/* Hero Visual: Floating Cards "Connected" */}
+          <motion.div 
+            className='relative max-w-5xl mx-auto'
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            {/* Main Dashboard Preview */}
+            <div className="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-background">
+              <div className="absolute top-0 left-0 right-0 h-12 bg-muted/50 border-b border-border flex items-center px-4 gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                </div>
+                <div className="ml-4 flex gap-4 text-xs font-medium text-muted-foreground">
+                  <span className="text-foreground bg-background px-2 py-1 rounded shadow-sm">Inbox</span>
+                  <span>Analytics</span>
+                  <span>Settings</span>
+                </div>
+              </div>
+              
+              <div className="pt-12 p-1 bg-muted/20 min-h-[400px] md:min-h-[500px] grid grid-cols-12 gap-1">
+                {/* Sidebar */}
+                <div className="hidden md:block col-span-3 bg-background border-r border-border p-4 space-y-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="font-bold text-sm">Messages</span>
+                    <Badge variant="secondary" className="text-[10px]">12 New</Badge>
+                  </div>
+                  {[
+                    { name: "Sarah Miller", msg: "Hey, about the pricing...", time: "2m", active: true, icon: WhatsAppIcon, color: "text-green-500" },
+                    { name: "TechCorp Inc.", msg: "Can we schedule a demo?", time: "15m", active: false, icon: InstagramIcon, color: "text-pink-500" },
+                    { name: "John Doe", msg: "Thanks for the help!", time: "1h", active: false, icon: TelegramIcon, color: "text-blue-500" },
+                  ].map((chat, i) => (
+                    <div key={i} className={`p-3 rounded-xl flex gap-3 cursor-pointer transition-colors ${chat.active ? 'bg-primary/5 border border-primary/10' : 'hover:bg-muted'}`}>
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center text-xs font-bold">
+                          {chat.name[0]}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+                          <chat.icon className={`w-3 h-3 ${chat.color}`} />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-0.5">
+                          <span className="font-medium text-sm truncate">{chat.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{chat.time}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{chat.msg}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1 text-foreground font-medium">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+
+                {/* Chat Area */}
+                <div className="col-span-12 md:col-span-6 bg-background flex flex-col">
+                  <div className="p-4 border-b border-border flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">SM</div>
+                      <div>
+                        <div className="font-medium text-sm">Sarah Miller</div>
+                        <div className="text-xs text-muted-foreground">via WhatsApp</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0"><Check className="w-4 h-4" /></Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0"><Star className="w-4 h-4" /></Button>
+                    </div>
                   </div>
-                  <span>Trusted by 2,000+ creators</span>
+                  <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-dots">
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex-shrink-0" />
+                      <div className="bg-muted p-3 rounded-2xl rounded-tl-none max-w-[80%] text-sm">
+                        Hi there! I saw your pricing page but I have a question about the Enterprise plan.
+                      </div>
+                    </div>
+                    <div className="flex gap-3 flex-row-reverse">
+                      <div className="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center">
+                        <LogoImage className="w-4 h-4 invert brightness-0" />
+                      </div>
+                      <div className="bg-primary text-primary-foreground p-3 rounded-2xl rounded-tr-none max-w-[80%] text-sm shadow-md">
+                        Hello Sarah! 👋 I'd be happy to help with that. What specific features are you looking for?
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <Badge variant="outline" className="bg-background/50 backdrop-blur text-xs text-muted-foreground">
+                        AI Agent is typing...
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-4 border-t border-border">
+                    <div className="bg-muted/30 rounded-xl p-2 flex gap-2 items-center">
+                      <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <input className="bg-transparent flex-1 text-sm outline-none" placeholder="Type a message or / for templates..." />
+                      <Button size="sm" className="rounded-lg h-8 w-8 p-0"><ArrowRight className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
-            </motion.div>
 
-            {/* Hero Visual */}
+                {/* Right Panel (Details) */}
+                <div className="hidden md:block col-span-3 bg-background border-l border-border p-4 space-y-6">
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Lead Details</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Globe className="w-4 h-4 text-muted-foreground" />
+                        <span>London, UK</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <span>10:42 AM (Local)</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tags</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20">Hot Lead</Badge>
+                      <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20">Enterprise</Badge>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="w-3 h-3 text-primary" />
+                      <span className="text-xs font-medium text-primary">AI Insight</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      High intent detected. Suggest scheduling a demo call immediately.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating Elements (Decorations) */}
             <motion.div 
-              className='lg:col-span-5 relative'
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -left-12 top-1/4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl border border-border hidden lg:block"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-purple-500/20 rounded-[2rem] blur-3xl -z-10" />
-              <Card className="bg-background/40 backdrop-blur-xl border-white/10 shadow-2xl rounded-[2rem] overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-white/5">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                      <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                      <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                    </div>
-                    <div className="mx-auto text-xs font-medium text-muted-foreground bg-black/20 px-3 py-1 rounded-full">
-                      leadsbox.app
-                    </div>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    {/* Chat Interface Mockup */}
-                    <div className="space-y-4">
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs">JD</div>
-                        <div className="bg-white/10 p-3 rounded-2xl rounded-tl-none max-w-[80%] text-sm">
-                          Hi! I'm interested in the Pro plan. Do you offer team training?
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2 justify-center my-4">
-                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors">
-                          <Zap className="w-3 h-3 mr-1" /> High Intent Detected
-                        </Badge>
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-500 hover:bg-green-500/20 cursor-pointer transition-colors">
-                          <Check className="w-3 h-3 mr-1" /> Auto-reply Ready
-                        </Badge>
-                      </div>
-
-                      <div className="flex gap-3 flex-row-reverse">
-                        <div className="w-8 h-8 rounded-full bg-primary p-1.5">
-                          <LogoImage className="w-full h-full object-contain" />
-                        </div>
-                        <div className="bg-primary p-3 rounded-2xl rounded-tr-none max-w-[80%] text-sm text-primary-foreground shadow-lg shadow-primary/20">
-                          Absolutely! The Pro plan includes 2 hours of dedicated team onboarding. Would you like to book a slot?
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Action Bar */}
-                    <div className="pt-4 mt-4 border-t border-white/10 flex gap-2">
-                      <div className="h-10 flex-1 bg-white/5 rounded-full px-4 flex items-center text-sm text-muted-foreground">
-                        Type a message...
-                      </div>
-                      <Button size="icon" className="rounded-full h-10 w-10">
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+                  <WhatsAppIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm">New Order</div>
+                  <div className="text-xs text-muted-foreground">+$129.00</div>
+                </div>
+              </div>
             </motion.div>
-          </div>
+
+            <motion.div 
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              className="absolute -right-8 bottom-1/4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl border border-border hidden lg:block"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center text-white">
+                  <InstagramIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm">@design_studio</div>
+                  <div className="text-xs text-muted-foreground">Sent a DM</div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
