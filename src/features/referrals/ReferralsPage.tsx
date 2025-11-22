@@ -3,10 +3,14 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useAuth } from '../../context/useAuth';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Card, CardContent } from '../../components/ui/card';
-import { Copy, Check, ArrowRight, Sparkles, Zap, TrendingUp, Gift, Twitter, Linkedin, Facebook, MessageCircle, Share2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Copy, Check, ArrowRight, Sparkles, Zap, TrendingUp, Gift, Twitter, Linkedin, Facebook, MessageCircle, Share2, Crown, Award, Trophy } from 'lucide-react';
 import { notify } from '../../lib/toast';
 import { cn } from '../../lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import client from '../../api/client';
+import { Progress } from '../../components/ui/progress';
+import { Badge } from '../../components/ui/badge';
 
 const ReferralsPage: React.FC = () => {
   const { user } = useAuth();
@@ -19,6 +23,24 @@ const ReferralsPage: React.FC = () => {
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
+  // Fetch referral stats
+  const { data: referralStats } = useQuery({
+    queryKey: ['referralStats'],
+    queryFn: async () => {
+      const res = await client.get('/api/referrals/stats');
+      return res.data.data;
+    },
+  });
+
+  // Fetch free months balance
+  const { data: freeMonths } = useQuery({
+    queryKey: ['freeMonths'],
+    queryFn: async () => {
+      const res = await client.get('/api/referrals/free-months');
+      return res.data.data;
+    },
+  });
 
   const referralLink = `${window.location.origin}/register?ref=${user?.referralCode || ''}`;
 
@@ -34,7 +56,7 @@ const ReferralsPage: React.FC = () => {
   };
 
   const shareToSocial = (platform: string) => {
-    const text = encodeURIComponent('Join me on LeadsBox and get $50 in credits! 🎉');
+    const text = encodeURIComponent('Join me on LeadsBox and get 1 free month! 🎉');
     const url = encodeURIComponent(referralLink);
 
     const urls: Record<string, string> = {
@@ -50,9 +72,14 @@ const ReferralsPage: React.FC = () => {
   };
 
   const stats = [
-    { value: '$50', label: 'For you', icon: TrendingUp, color: 'from-violet-500 to-purple-500' },
-    { value: '$50', label: 'For friend', icon: Gift, color: 'from-emerald-500 to-teal-500' },
-    { value: '∞', label: 'Unlimited', icon: Zap, color: 'from-blue-500 to-cyan-500' },
+    { 
+      value: referralStats?.currentTier === 1 ? '1 mo' : '0.5 mo', 
+      label: 'You earn', 
+      icon: TrendingUp, 
+      color: 'from-violet-500 to-purple-500' 
+    },
+    { value: '1 mo', label: 'Friend gets', icon: Gift, color: 'from-emerald-500 to-teal-500' },
+    { value: freeMonths?.balance?.toFixed(1) || '0', label: 'Your balance', icon: Award, color: 'from-blue-500 to-cyan-500' },
   ];
 
   return (
@@ -94,7 +121,7 @@ const ReferralsPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className='text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto'
           >
-            Give your friends $50 in credits and get $50 when they subscribe. It's a win-win for everyone.
+            Give your friends 1 free month and get 1 free month when they subscribe. It's a win-win for everyone.
           </motion.p>
 
           {/* Stats Cards */}
@@ -221,6 +248,82 @@ const ReferralsPage: React.FC = () => {
           </Card>
         </motion.div>
 
+        {/* Referral Stats Widget */}
+        {(referralStats?.totalReferred > 0 || freeMonths?.balance > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay:  0.5 }}
+            className='max-w-4xl mx-auto'
+          >
+            <Card className='border-border/50 bg-card/50 backdrop-blur-sm'>
+              <CardHeader>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <CardTitle className='text-2xl'>Your Referral Impact</CardTitle>
+                    <CardDescription className='mt-2'>
+                      {referralStats?.currentTier === 1 ? (
+                        <>Earn 1 full month per referral • First 12 referrals</>
+                      ) : (
+                        <>
+                          <Badge variant='secondary' className='gap-1 mr-2'>
+                            <Crown className='h-3 w-3' />
+                            Elite Tier
+                          </Badge>
+                          You now earn 0.5 months per referral
+                        </>
+                      )}
+                    </CardDescription>
+                  </div>
+                  {referralStats?.currentTier === 2 && (
+                    <div className='hidden sm:block'>
+                      <div className='bg-gradient-to-r from-violet-500 to-purple-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2'>
+                        <Trophy className='h-4 w-4' />
+                        Tier 2 Unlocked
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className='space-y-6'>
+                <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+                  <div className='space-y-1'>
+                    <p className='text-sm text-muted-foreground'>Friends invited</p>
+                    <p className='text-3xl font-bold'>{referralStats?.totalReferred || 0}</p>
+                  </div>
+                  <div className='space-y-1'>
+                    <p className='text-sm text-muted-foreground'>Subscribed</p>
+                    <p className='text-3xl font-bold text-green-600'>{referralStats?.subscribedReferred || 0}</p>
+                  </div>
+                  <div className='space-y-1'>
+                    <p className='text-sm text-muted-foreground'>Total earned</p>
+                    <p className='text-3xl font-bold text-primary'>{referralStats?.totalMonthsEarned?.toFixed(1) || 0} mo</p>
+                  </div>
+                  <div className='space-y-1'>
+                    <p className='text-sm text-muted-foreground'>Balance</p>
+                    <p className='text-3xl font-bold text-blue-600'>{freeMonths?.balance?.toFixed(1) || 0} mo</p>
+                  </div>
+                </div>
+
+                {referralStats?.currentTier === 1 && referralStats.nextTierAt && (
+                  <div className='space-y-2'>
+                    <div className='flex items-center justify-between text-sm'>
+                      <span className='text-muted-foreground'>Progress to Elite Tier</span>
+                      <span className='font-semibold'>
+                        {referralStats.subscribedReferred} / {referralStats.nextTierAt}
+                      </span>
+                    </div>
+                    <Progress value={(referralStats.subscribedReferred / referralStats.nextTierAt) * 100} className='h-2' />
+                    <p className='text-xs text-muted-foreground'>
+                      {referralStats.nextTierAt - referralStats.subscribedReferred} more {referralStats.nextTierAt - referralStats.subscribedReferred === 1 ? 'referral' : 'referrals'} to unlock Elite Tier
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* How it works - Timeline Style */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.6 }} className='space-y-8'>
           <div className='text-center'>
@@ -247,7 +350,7 @@ const ReferralsPage: React.FC = () => {
               {
                 step: '03',
                 title: 'You both get rewarded',
-                description: '$50 in credits instantly added to both accounts. Rinse and repeat!',
+                description: '1 free month instantly added to both accounts. Rinse and repeat!',
                 icon: Gift,
                 gradient: 'from-emerald-500 to-teal-500',
               },

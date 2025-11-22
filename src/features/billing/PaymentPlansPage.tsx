@@ -309,22 +309,62 @@ const PaymentPlansPage: React.FC = () => {
           </div>
           <div>
             <h1 className='text-2xl sm:text-3xl font-bold'>Choose the perfect plan</h1>
-          {Array.isArray(heroSubtitle) ? (
-            <div className='text-muted-foreground mt-1 space-y-1 text-sm'>
-              <p>{heroSubtitle[0]}</p>
-              <p className='inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700'>
-                {heroSubtitle[1]}
-              </p>
-            </div>
-          ) : (
-            <p className='text-muted-foreground mt-1'>{heroSubtitle}</p>
-          )}
+            {Array.isArray(heroSubtitle) ? (
+              <div className='text-muted-foreground mt-1 space-y-1 text-sm'>
+                <p>{heroSubtitle[0]}</p>
+                <p className='inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700'>{heroSubtitle[1]}</p>
+              </div>
+            ) : (
+              <p className='text-muted-foreground mt-1'>{heroSubtitle}</p>
+            )}
           </div>
         </div>
         <div className='flex items-center gap-3 text-sm text-muted-foreground'>
           <ShieldCheck className='h-5 w-5 text-primary' />
           <span>Secure Paystack checkout • Cancel anytime</span>
         </div>
+      </motion.div>
+
+      {/* Referral Program Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <Card className='border-l-4 border-l-green-500 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/20'>
+          <CardContent className='p-4 flex items-center justify-between gap-4 flex-wrap'>
+            <div className='flex items-center gap-3 flex-1'>
+              <div className='w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0'>
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  strokeWidth={2}
+                  stroke='currentColor'
+                  className='w-5 h-5 text-green-600 dark:text-green-400'
+                >
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M12 4.5v15m7.5-7.5h-15' />
+                </svg>
+              </div>
+              <div className='flex-1'>
+                <p className='font-semibold text-sm text-foreground'>
+                  Get a free month when you refer a friend!
+                </p>
+                <p className='text-xs text-muted-foreground mt-0.5'>
+                  Invite friends to join LeadsBox. When they sign up and subscribe, you both get 1 free month.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant='outline'
+              size='sm'
+              className='border-green-600 text-green-600 hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-950/30 flex-shrink-0'
+              onClick={() => (window.location.href = '/dashboard/referrals')}
+            >
+              Invite & Earn
+            </Button>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {loading ? (
@@ -383,7 +423,8 @@ const PaymentPlansPage: React.FC = () => {
               actionLabel = `Switch to ${plan.name}`;
             } else if (!hasActiveSubscription) {
               // No active subscription - show appropriate label based on trial availability
-              if (plan.trialPeriodDays && !subscription) {
+              // Don't show "Start trial" if user is already in a trial period
+              if (plan.trialPeriodDays && !subscription && trialDaysRemaining <= 0) {
                 actionLabel = `Start ${plan.trialPeriodDays}-day trial`;
               } else {
                 actionLabel = 'Get started';
