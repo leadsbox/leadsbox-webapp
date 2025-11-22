@@ -2,11 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LeadsBox UI foundations */
+/* LeadsBox UI foundations (Tasklyn Redesign) */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 
 @layer base {
   :root {
-    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    font-family: "Manrope", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
     font-feature-settings: "liga", "kern", "calt";
     font-synthesis: none;
     --lb-type-xs: clamp(0.72rem, 0.68rem + 0.2vw, 0.82rem);
@@ -16,27 +18,30 @@
     --lb-type-xl: clamp(1.34rem, 1.16rem + 0.85vw, 1.78rem);
     line-height: 1.5;
 
-    /* Color tokens */
-    --background: 220 16% 92%;
+    /* Color tokens - Tasklyn Inspired */
+    --background: 0 0% 100%;
     --foreground: 220 15% 15%;
-    --surface: 210 16% 96%;
+    --surface: 210 20% 98%;
     --surface-foreground: 220 18% 22%;
 
-    --card: var(--surface);
-    --card-foreground: var(--surface-foreground);
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
 
-    --popover: 210 16% 96%;
-    --popover-foreground: 220 18% 22%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 98%;
-    --primary-hover: 221 83% 48%;
+    /* Tasklyn Blue */
+    --primary: 216 100% 50%;
+    /* #0066FF */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 216 100% 45%;
 
-    --secondary: 220 12% 90%;
-    --secondary-foreground: 220 18% 28%;
+    --secondary: 216 100% 95%;
+    /* Light Blue Background */
+    --secondary-foreground: 216 100% 40%;
 
-    --muted: 220 14% 86%;
-    --muted-foreground: 220 12% 36%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 12% 46%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
@@ -47,17 +52,17 @@
     --success: 142 76% 36%;
     --success-foreground: 0 0% 98%;
 
-    --border: 220 16% 82%;
-    --input: 220 16% 82%;
-    --ring: 221 83% 53%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 216 100% 50%;
 
-    /* Radius scale (px → rem) */
+    /* Radius scale */
     --radius-sm: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
-    --radius-xl: 1.25rem;
-    --radius-2xl: 1.5rem;
-    --radius: var(--radius-md);
+    --radius-xl: 1.5rem;
+    --radius-2xl: 2rem;
+    --radius: var(--radius-lg);
 
     /* Spacing scale */
     --space-1: 0.25rem;
@@ -72,45 +77,15 @@
     /* Motion */
     --duration-fast: 150ms;
     --duration-base: 200ms;
-    --duration-slow: 240ms;
-    --ease-standard: cubic-bezier(.2, .7, .2, 1);
+    --duration-slow: 300ms;
+    --ease-standard: cubic-bezier(.2, .8, .2, 1);
 
     /* Elevation */
     --shadow-color: 220 40% 20%;
-    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.12);
-    --shadow-md: 0 6px 12px -4px hsl(var(--shadow-color) / 0.14);
-    --shadow-lg: 0 16px 32px -12px hsl(var(--shadow-color) / 0.18);
-    --shadow-brand: 0 16px 40px -16px hsl(var(--brand) / 0.35);
-
-    /* Contextual tokens */
-    --brand: 221 83% 53%;
-    --brand-foreground: 0 0% 98%;
-    --brand-subtle: 221 83% 96%;
-
-    --nav-active: 221 83% 53%;
-    --nav-hover: 221 15% 92%;
-
-    --table-header: 220 15% 96%;
-    --table-row-hover: 220 15% 98%;
-
-    --status-new: 199 89% 48%;
-    --status-qualified: 38 92% 50%;
-    --status-progress: 221 83% 53%;
-    --status-won: 142 76% 36%;
-    --status-lost: 0 84% 60%;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 15% 22%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 18% 90%;
-    --sidebar-accent-foreground: 220 15% 25%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 221 83% 53%;
-
-    --gradient-brand: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--primary-hover)));
-    --gradient-status: linear-gradient(90deg, hsl(var(--status-new)), hsl(var(--status-progress)));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.05), 0 2px 4px -1px hsl(var(--shadow-color) / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.05), 0 4px 6px -2px hsl(var(--shadow-color) / 0.025);
+    --shadow-brand: 0 20px 40px -12px hsl(var(--primary) / 0.25);
   }
 
   .dark {
@@ -119,15 +94,15 @@
     --surface: 224 15% 8%;
     --surface-foreground: 220 15% 92%;
 
-    --card: var(--surface);
-    --card-foreground: var(--surface-foreground);
+    --card: 224 15% 8%;
+    --card-foreground: 220 15% 92%;
 
     --popover: 224 15% 9%;
     --popover-foreground: 220 15% 92%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 98%;
-    --primary-hover: 221 83% 58%;
+    --primary: 216 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 216 100% 60%;
 
     --secondary: 224 15% 12%;
     --secondary-foreground: 220 15% 75%;
@@ -146,38 +121,9 @@
 
     --border: 224 15% 15%;
     --input: 224 15% 12%;
-    --ring: 221 83% 53%;
+    --ring: 216 100% 50%;
 
-    --shadow-color: 220 56% 8%;
-    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.35);
-    --shadow-md: 0 12px 24px -12px hsl(var(--shadow-color) / 0.45);
-    --shadow-lg: 0 24px 36px -18px hsl(var(--shadow-color) / 0.55);
-    --shadow-brand: 0 18px 46px -20px hsl(var(--brand) / 0.45);
-
-    --brand: 221 83% 53%;
-    --brand-foreground: 0 0% 98%;
-    --brand-subtle: 224 15% 12%;
-
-    --nav-active: 221 83% 53%;
-    --nav-hover: 224 15% 12%;
-
-    --table-header: 224 15% 9%;
-    --table-row-hover: 224 15% 10%;
-
-    --status-new: 199 89% 48%;
-    --status-qualified: 38 92% 50%;
-    --status-progress: 221 83% 53%;
-    --status-won: 142 76% 36%;
-    --status-lost: 0 84% 60%;
-
-    --sidebar-background: 224 15% 7%;
-    --sidebar-foreground: 220 15% 80%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 224 15% 11%;
-    --sidebar-accent-foreground: 220 15% 80%;
-    --sidebar-border: 224 15% 12%;
-    --sidebar-ring: 221 83% 53%;
+    --shadow-color: 0 0% 0%;
   }
 
   * {
@@ -186,55 +132,21 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    font-family: "Manrope", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
-    background-image: none;
-    background-color: hsl(var(--background));
-  }
-
-  .dark body {
-    position: relative;
-    background-color: #05070f;
-    background-image:
-      radial-gradient(320px circle at 12% -10%, rgba(76, 150, 255, 0.35), transparent 60%),
-      radial-gradient(420px circle at 82% 0%, rgba(132, 196, 255, 0.18), transparent 65%),
-      linear-gradient(180deg, rgba(7, 11, 20, 0.92) 0%, rgba(5, 7, 15, 1) 88%);
-    background-attachment: fixed;
-    overflow-x: hidden;
-  }
-
-  .dark body::before,
-  .dark body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: -1;
-  }
-
-  .dark body::before {
-    background: radial-gradient(circle at top, rgba(80, 120, 255, 0.28), transparent 55%);
-    mix-blend-mode: screen;
-    filter: blur(80px);
-    opacity: 0.7;
-  }
-
-  .dark body::after {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 65%);
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
-    mask: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
-    -webkit-mask: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
-    opacity: 0.4;
   }
 
   h1,
   h2,
   h3,
-  h4 {
-    letter-spacing: -0.015em;
-    line-height: 1.2;
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+    /* Manrope Bold */
+    letter-spacing: -0.02em;
+    line-height: 1.1;
   }
 
   ::-webkit-scrollbar {
@@ -257,18 +169,6 @@
 
   ::selection {
     @apply bg-primary/20 text-foreground;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
   }
 }
 
