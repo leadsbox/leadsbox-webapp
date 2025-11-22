@@ -2,6 +2,7 @@ import { ThemeProvider, type Theme } from './context/ThemeContext';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const applyInitialThemePreference = () => {
   if (typeof window === 'undefined') return;
@@ -50,7 +51,9 @@ const applyInitialThemePreference = () => {
 applyInitialThemePreference();
 
 createRoot(document.getElementById('root')!).render(
-  <ThemeProvider>
-    <App />
-  </ThemeProvider>
+  <ErrorBoundary>
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  </ErrorBoundary>
 );

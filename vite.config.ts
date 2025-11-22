@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  envPrefix: ['VITE_', 'REACT_APP_'],
   plugins: [
     react(),
     optimizeLandingHtml(),
