@@ -218,6 +218,20 @@ client.interceptors.response.use(
         },
       });
     } else if (status === 403) {
+      const errorData = error.response?.data as any;
+      const errorMessage = errorData?.message || '';
+
+      // Handle invalid organization access by clearing the stale ID
+      if (
+        errorMessage.includes('no access to organization') ||
+        errorMessage.includes('Organization not found')
+      ) {
+        setOrgId('');
+        // Force a reload to trigger the org selection flow
+        window.location.href = '/';
+        return Promise.reject(error);
+      }
+
       showBanner(AUTH_BANNER_ID, {
         title: 'Permission denied',
         description: 'Your current role cannot complete this action.',
