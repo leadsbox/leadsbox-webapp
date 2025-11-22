@@ -125,6 +125,7 @@ export default function DashboardHomePage() {
   const [timeRange, setTimeRange] = useState('7d');
   const [whatsappConnected, setWhatsappConnected] = useState(false);
   const [telegramConnected, setTelegramConnected] = useState(false);
+  const [paymentConnected, setPaymentConnected] = useState(false);
   const [integrationLoading, setIntegrationLoading] = useState(true);
   const [actualLeadsCount, setActualLeadsCount] = useState(0);
   const [actualThreadsCount, setActualThreadsCount] = useState(0);
@@ -241,6 +242,16 @@ export default function DashboardHomePage() {
         icon: Zap,
         completed: hasAutomations,
         helperText: hasAutomations ? undefined : 'Automations work in the background when you are busy.',
+      },
+      {
+        id: 'payments',
+        title: 'Enable Online Payments',
+        description: 'Connect Paystack to accept payments directly from your invoices.',
+        href: '/dashboard/settings?tab=integrations', // Assuming payments are in integrations tab
+        ctaLabel: 'Connect Payments',
+        icon: DollarSign,
+        completed: paymentConnected,
+        helperText: paymentConnected ? undefined : 'Get paid 3x faster with online payments.',
       },
       {
         id: 'referral',
@@ -462,6 +473,7 @@ export default function DashboardHomePage() {
       setIntegrationLoading(true);
       let nextWhatsappConnected = false;
       let nextTelegramConnected = false;
+      let nextPaymentConnected = false;
 
       try {
         const [whatsappResult, orgResult] = await Promise.allSettled([
@@ -490,6 +502,10 @@ export default function DashboardHomePage() {
             if (telegramSettings) {
               nextTelegramConnected = parseIntegrationFlag(telegramSettings);
             }
+            const paystackSettings = (integrations as Record<string, unknown>).paystack;
+            if (paystackSettings) {
+              nextPaymentConnected = parseIntegrationFlag(paystackSettings);
+            }
           }
         } else if (orgResult.status === 'rejected') {
           console.error('Failed to load organization settings:', orgResult.reason);
@@ -500,6 +516,7 @@ export default function DashboardHomePage() {
       } finally {
         setWhatsappConnected(nextWhatsappConnected);
         setTelegramConnected(nextTelegramConnected);
+        setPaymentConnected(nextPaymentConnected);
         setIntegrationLoading(false);
       }
     };
