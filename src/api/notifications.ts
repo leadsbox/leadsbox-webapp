@@ -33,13 +33,11 @@ export const notificationApi = {
       params.append('isRead', isRead.toString());
     }
 
-    const response = await client.get<NotificationListResponse>(
-      `/notifications?${params.toString()}`
-    );
+    const response = await client.get<NotificationListResponse>(`/notifications?${params.toString()}`);
     // Handle nested response structure (response.data.data)
     const responseData = response.data as unknown as Record<string, unknown>;
     const data = (responseData.data ?? responseData) as Partial<NotificationListResponse>;
-    
+
     return {
       notifications: Array.isArray(data.notifications) ? data.notifications : [],
       pagination: data.pagination ?? {
@@ -53,16 +51,12 @@ export const notificationApi = {
   },
 
   markAsRead: async (id: string) => {
-    const response = await client.patch(
-      `/notifications/${id}/read`
-    );
+    const response = await client.patch(`/notifications/${id}/read`);
     return response.data;
   },
 
   markAllAsRead: async () => {
-    const response = await client.patch(
-      `/notifications/read-all`
-    );
+    const response = await client.patch(`/notifications/read-all`);
     return response.data;
   },
 };
