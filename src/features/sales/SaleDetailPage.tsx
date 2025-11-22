@@ -6,6 +6,8 @@ import {
   Loader2,
   MessageSquare,
   RefreshCcw,
+  Save,
+  Send,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +16,14 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { Lead, LeadLabel, leadLabelUtils } from '@/types';
@@ -132,11 +142,13 @@ const mapBackendLead = (payload: BackendLead): Lead => {
 const SaleDetailPage: React.FC = () => {
   const { saleId } = useParams<{ saleId: string }>();
   const navigate = useNavigate();
-  const { getMemberByUserId } = useOrgMembers();
+  const { members, getMemberByUserId } = useOrgMembers();
 
   const [sale, setSale] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [silentLoading, setSilentLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [newNote, setNewNote] = useState('');
 
   const loadSale = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -177,20 +189,78 @@ const SaleDetailPage: React.FC = () => {
     loadSale();
   }, [loadSale]);
 
-  const assignedMember = useMemo(() => {
-    if (!sale?.assignedTo) return null;
-    const member = getMemberByUserId(sale.assignedTo);
-    if (!member) return null;
-    const { user } = member;
-    const fullName = [user?.firstName, user?.lastName]
-      .filter(Boolean)
-      .join(' ');
-    const name = fullName || user?.username || user?.email || 'Team member';
-    return {
-      name,
-      avatar: user?.profileImage ?? null,
-    };
-  }, [getMemberByUserId, sale?.assignedTo]);
+  const handleStatusChange = async (newStage: string) => {
+    if (!sale) return;
+    try {
+      setIsSaving(true);
+      await client.put(endpoints.lead(sale.id), { label: newStage });
+      setSale((prev) => (prev ? { ...prev, stage: newStage as LeadLabel } : null));
+      notify.success({
+        key: 'sale-status-update',
+        title: 'Status updated',
+        description: `Sale moved to ${leadLabelUtils.getDisplayName(newStage as LeadLabel)}`,
+      });
+    } catch (error) {
+      console.error('Failed to update status', error);
+      notify.error({
+        key: 'sale-status-error',
+        title: 'Update failed',
+        description: 'Could not update sale status.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAssigneeChange = async (userId: string) => {
+    if (!sale) return;
+    try {
+      setIsSaving(true);
+      await client.put(endpoints.lead(sale.id), { assignedUserId: userId });
+      setSale((prev) => (prev ? { ...prev, assignedTo: userId } : null));
+      notify.success({
+        key: 'sale-assign-update',
+        title: 'Owner updated',
+        description: 'Sale reassigned successfully.',
+      });
+    } catch (error) {
+      console.error('Failed to update assignee', error);
+      notify.error({
+        key: 'sale-assign-error',
+        title: 'Update failed',
+        description: 'Could not reassign sale.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!sale || !newNote.trim()) return;
+    try {
+      setIsSaving(true);
+      await client.post(`${endpoints.leads}/${sale.id}/move`, {
+        label: sale.stage,
+        note: newNote,
+      });
+      setNewNote('');
+      notify.success({
+        key: 'sale-note-added',
+        title: 'Note added',
+        description: 'Your note has been saved.',
+      });
+      loadSale({ silent: true });
+    } catch (error) {
+      console.error('Failed to add note', error);
+      notify.error({
+        key: 'sale-note-error',
+        title: 'Failed to add note',
+        description: 'Please try again.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleOpenConversation = useCallback(() => {
     if (!sale) return;
@@ -234,7 +304,7 @@ const SaleDetailPage: React.FC = () => {
   );
 
   return (
-    <div className='p-4 sm:p-6 space-y-4'>
+    <div className='p-4 sm:p-6 space-y-6 max-w-5xl mx-auto'>
       <div className='flex flex-wrap items-center gap-3'>
         <Button variant='ghost' size='sm' onClick={() => navigate('/dashboard/sales')}>
           <ArrowLeft className='h-4 w-4 mr-1.5' />
@@ -252,126 +322,188 @@ const SaleDetailPage: React.FC = () => {
       ) : !sale ? (
         renderEmpty()
       ) : (
-        <>
-          <Card>
-            <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
-              <div>
-                <CardTitle className='text-2xl'>{sale.name}</CardTitle>
-                <CardDescription>{sale.email || 'No email on record'}</CardDescription>
-              </div>
-              <div className='flex flex-wrap gap-2'>
-                <Badge variant='secondary' className='text-sm'>
-                  {leadLabelUtils.getDisplayName(sale.stage)}
-                </Badge>
-                <Button variant='outline' size='sm' onClick={handleOpenConversation}>
-                  <MessageSquare className='h-4 w-4 mr-1.5' />
-                  Open chat
+        <div className='grid gap-6 lg:grid-cols-3'>
+          {/* Main Content */}
+          <div className='lg:col-span-2 space-y-6'>
+            <Card>
+              <CardHeader className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+                <div>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <Badge variant='outline' className='uppercase text-[10px] tracking-wider'>
+                      {sale.source}
+                    </Badge>
+                    {sale.updatedAt && (
+                      <span className='text-xs text-muted-foreground'>
+                        Updated {formatDistanceToNow(new Date(sale.updatedAt), { addSuffix: true })}
+                      </span>
+                    )}
+                  </div>
+                  <CardTitle className='text-2xl'>{sale.name}</CardTitle>
+                  <CardDescription className='mt-1'>{sale.email || 'No email on record'}</CardDescription>
+                </div>
+                <Button onClick={handleOpenConversation}>
+                  <MessageSquare className='h-4 w-4 mr-2' />
+                  Open Chat
                 </Button>
-              </div>
-            </CardHeader>
-            <CardContent className='space-y-6'>
-              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                <div className='rounded-lg border p-3'>
-                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Channel</p>
-                  <p className='text-sm font-medium capitalize mt-1'>{sale.source}</p>
-                </div>
-                <div className='rounded-lg border p-3'>
-                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Last activity</p>
-                  <p className='text-sm font-medium mt-1'>
-                    {sale.updatedAt
-                      ? formatDistanceToNow(new Date(sale.updatedAt), { addSuffix: true })
-                      : 'Unknown'}
-                  </p>
-                </div>
-                <div className='rounded-lg border p-3'>
-                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Value recorded</p>
-                  <p className='text-sm font-medium mt-1'>
-                    {sale.value ? `$${sale.value.toLocaleString()}` : 'Not captured'}
-                  </p>
-                </div>
-                <div className='rounded-lg border p-3 flex items-center gap-3 sm:col-span-2 lg:col-span-1'>
-                  {assignedMember ? (
-                    <>
-                      <Avatar className='h-9 w-9'>
-                        {assignedMember.avatar ? (
-                          <AvatarImage src={assignedMember.avatar} alt={assignedMember.name} />
-                        ) : (
-                          <AvatarFallback>
-                            {assignedMember.name
-                              .split(' ')
-                              .map((n) => n[0])
-                              .slice(0, 2)
-                              .join('')
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div>
-                        <p className='text-xs text-muted-foreground uppercase tracking-wide'>Owner</p>
-                        <p className='text-sm font-medium'>{assignedMember.name}</p>
-                      </div>
-                    </>
-                  ) : (
-                    <div>
-                      <p className='text-xs text-muted-foreground uppercase tracking-wide'>Owner</p>
-                      <p className='text-sm font-medium'>Unassigned</p>
-                    </div>
-                  )}
-                </div>
-                <div className='rounded-lg border p-3 sm:col-span-2 lg:col-span-3'>
-                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Created</p>
-                  <p className='text-sm font-medium mt-1'>
-                    {sale.createdAt
-                      ? new Date(sale.createdAt).toLocaleString()
-                      : 'Unknown'}
-                  </p>
-                </div>
-              </div>
-
-              <Alert>
-                <AlertTitle>Manual sale details</AlertTitle>
-                <AlertDescription>
-                  We don’t auto-detect the sale description, quantity, or amount from the chat.
-                  Add the specifics to your notes or invoices to keep everyone aligned.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Internal notes</CardTitle>
-              <CardDescription>Summaries you captured directly from the conversation.</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              {sale.notes ? (
-                <p className='rounded-md border border-border bg-muted/60 p-4 text-sm'>{sale.notes}</p>
-              ) : (
-                <p className='text-sm text-muted-foreground'>
-                  No note added yet. Head back to the conversation to jot down what was purchased, for how much, and any delivery details.
-                </p>
-              )}
-
-              {sale.noteHistory && sale.noteHistory.length > 0 ? (
-                <div className='space-y-2'>
-                  <Label>Recent history</Label>
-                  <div className='space-y-3 max-h-60 overflow-y-auto pr-1'>
-                    {sale.noteHistory.map((note) => (
-                      <div key={note.id} className='rounded-lg border p-3 text-sm'>
-                        <p className='text-muted-foreground text-xs mb-1'>
-                          {formatDistanceToNow(new Date(note.createdAt), {
-                            addSuffix: true,
-                          })}
-                        </p>
-                        <p>{note.note}</p>
-                      </div>
-                    ))}
+              </CardHeader>
+              <CardContent className='space-y-6'>
+                <div className='grid gap-4 sm:grid-cols-2'>
+                  <div className='space-y-2'>
+                    <Label>Status</Label>
+                    <Select value={sale.stage} onValueChange={handleStatusChange} disabled={isSaving}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PIPELINE_LABELS.map((label) => (
+                          <SelectItem key={label} value={label}>
+                            {leadLabelUtils.getDisplayName(label)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className='space-y-2'>
+                    <Label>Assigned Owner</Label>
+                    <Select value={sale.assignedTo} onValueChange={handleAssigneeChange} disabled={isSaving}>
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select owner' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {members.map((member) => (
+                          <SelectItem key={member.userId} value={member.userId}>
+                            <div className='flex items-center gap-2'>
+                              <Avatar className='h-5 w-5'>
+                                <AvatarImage src={member.user?.profileImage || undefined} />
+                                <AvatarFallback className='text-[10px]'>
+                                  {member.user?.firstName?.[0]}
+                                  {member.user?.lastName?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>
+                                {member.user?.firstName} {member.user?.lastName}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </>
+
+                <div className='rounded-lg border p-4 bg-muted/30'>
+                  <div className='flex items-center justify-between mb-2'>
+                    <p className='text-sm font-medium'>Sale Value</p>
+                    <Badge variant='secondary'>{sale.value ? `$${sale.value.toLocaleString()}` : 'Not set'}</Badge>
+                  </div>
+                  <p className='text-xs text-muted-foreground'>
+                    Value is currently tracked automatically from invoice generation. Manual value editing coming soon.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Notes & Activity</CardTitle>
+                <CardDescription>Keep track of important details and updates.</CardDescription>
+              </CardHeader>
+              <CardContent className='space-y-6'>
+                <div className='space-y-3'>
+                  <Label>Add a note</Label>
+                  <div className='flex gap-3'>
+                    <Textarea
+                      placeholder='Type your note here...'
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className='min-h-[80px]'
+                    />
+                  </div>
+                  <div className='flex justify-end'>
+                    <Button size='sm' onClick={handleAddNote} disabled={!newNote.trim() || isSaving}>
+                      {isSaving ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : <Send className='h-4 w-4 mr-2' />}
+                      Save Note
+                    </Button>
+                  </div>
+                </div>
+
+                <div className='space-y-4 pt-4 border-t'>
+                  <h4 className='text-sm font-medium text-muted-foreground'>History</h4>
+                  {sale.noteHistory && sale.noteHistory.length > 0 ? (
+                    <div className='space-y-4'>
+                      {sale.noteHistory.map((note) => (
+                        <div key={note.id} className='flex gap-3'>
+                          <Avatar className='h-8 w-8 mt-1'>
+                            <AvatarImage src={note.author?.profileImage || undefined} />
+                            <AvatarFallback>
+                              {note.author?.firstName?.[0]}
+                              {note.author?.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className='flex-1 space-y-1'>
+                            <div className='flex items-center justify-between'>
+                              <p className='text-sm font-medium'>
+                                {note.author?.firstName} {note.author?.lastName}
+                              </p>
+                              <span className='text-xs text-muted-foreground'>
+                                {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
+                            <div className='rounded-lg border p-3 bg-muted/30 text-sm'>
+                              {note.note}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className='text-sm text-muted-foreground text-center py-4'>No notes yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className='space-y-6'>
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-sm font-medium'>Lead Details</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div>
+                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Created</p>
+                  <p className='text-sm font-medium mt-1'>
+                    {sale.createdAt ? new Date(sale.createdAt).toLocaleString() : 'Unknown'}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Last Activity</p>
+                  <p className='text-sm font-medium mt-1'>
+                    {sale.lastActivity ? new Date(sale.lastActivity).toLocaleString() : 'Unknown'}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Source</p>
+                  <p className='text-sm font-medium mt-1 capitalize'>{sale.source}</p>
+                </div>
+                <div>
+                  <p className='text-xs text-muted-foreground uppercase tracking-wide'>Provider ID</p>
+                  <p className='text-sm font-medium mt-1 font-mono text-xs truncate'>
+                    {sale.providerId || sale.conversationId}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Alert>
+              <AlertTitle>Pro Tip</AlertTitle>
+              <AlertDescription className='mt-2 text-xs'>
+                Use notes to track specific product details, delivery addresses, or special requests for this sale.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
       )}
     </div>
   );

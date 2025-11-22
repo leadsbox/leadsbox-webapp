@@ -28,7 +28,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
   const totalSteps = steps?.length ?? 0;
   const completedSteps = steps?.filter((step) => step.completed).length ?? 0;
   const progress = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
-  const [collapsed, setCollapsed] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(true);
 
   const toggleCollapse = React.useCallback(() => {
     setCollapsed((prev) => !prev);
@@ -78,8 +78,10 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
   return (
     <Card
       className={cn(
-        'group border border-border border-solid transition-all duration-300 hover:-translate-y-0.5 hover:border-dashed hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-        collapsed ? 'cursor-pointer' : 'cursor-default',
+        'group border border-border border-solid transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+        collapsed 
+          ? 'cursor-pointer border-l-4 border-l-primary bg-gradient-to-r from-primary/5 to-transparent dark:from-primary/10 hover:border-dashed hover:border-primary/50 hover:bg-primary/10' 
+          : 'cursor-default hover:border-dashed hover:border-primary/50 hover:bg-primary/5',
         className
       )}
       role={collapsed ? 'button' : 'region'}

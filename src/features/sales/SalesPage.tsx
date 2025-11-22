@@ -215,6 +215,40 @@ const SalesPage: React.FC = () => {
     fetchLeads();
   }, [fetchLeads]);
 
+  const handleUpdateStatus = useCallback(
+    async (leadId: string, newLabel: LeadLabel) => {
+      try {
+        // Optimistic update
+        setLeads((prevLeads) =>
+          prevLeads.map((lead) =>
+            lead.id === leadId ? { ...lead, stage: newLabel, label: newLabel } : lead
+          )
+        );
+
+        await client.put(`${endpoints.leads}/${leadId}`, { label: newLabel });
+        
+        notify.success({
+          key: `lead-update-${leadId}`,
+          title: 'Status updated',
+          description: `Lead moved to ${leadLabelUtils.getDisplayName(newLabel)}`,
+        });
+
+        // Refresh to get latest data
+        await fetchLeads();
+      } catch (error) {
+        console.error('Failed to update lead status:', error);
+        notify.error({
+          key: `lead-update-error-${leadId}`,
+          title: 'Update failed',
+          description: 'Unable to change status. Please try again.',
+        });
+        // Revert optimistic update
+        await fetchLeads();
+      }
+    },
+    [fetchLeads]
+  );
+
   const resolveAssignedUser = useCallback(
     (userId?: string | null): PipelineAssignedUser | undefined => {
       if (!userId) return undefined;
@@ -342,8 +376,25 @@ const SalesPage: React.FC = () => {
               <p className='text-xs text-muted-foreground'>{lead.email || '—'}</p>
             </div>
           </TableCell>
-          <TableCell className='hidden md:table-cell'>
-            <Badge variant='outline'>{leadLabelUtils.getDisplayName(lead.stage)}</Badge>
+          <TableCell className='hidden md:table-cell' onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={lead.stage}
+              onValueChange={(value) => handleUpdateStatus(lead.id, value as LeadLabel)}
+            >
+              <SelectTrigger className='w-[200px] h-8'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='NEW_LEAD'>New Lead</SelectItem>
+                <SelectItem value='ENGAGED'>Engaged</SelectItem>
+                <SelectItem value='FOLLOW_UP_REQUIRED'>Follow Up Required</SelectItem>
+                <SelectItem value='PRICING_INQUIRY'>Pricing Inquiry</SelectItem>
+                <SelectItem value='TRANSACTION_IN_PROGRESS'>Transaction In Progress</SelectItem>
+                <SelectItem value='PAYMENT_PENDING'>Payment Pending</SelectItem>
+                <SelectItem value='TRANSACTION_SUCCESSFUL'>✅ Sale Successful</SelectItem>
+                <SelectItem value='CLOSED_LOST_TRANSACTION'>❌ Lost</SelectItem>
+              </SelectContent>
+            </Select>
           </TableCell>
           <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>
             {lead.source === 'manual' ? 'Manual entry' : lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
@@ -416,64 +467,6 @@ const SalesPage: React.FC = () => {
           );
         })}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Conversation buckets</CardTitle>
-          <CardDescription>
-            LeadsBox reads the conversation labels so you can see what’s a sale vs an inquiry without leaving the page.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
-          {(Object.keys(SALES_BUCKETS) as SalesBucketKey[]).map((key) => {
-            const bucket = SALES_BUCKETS[key];
-            const isActive = statusFilter === key;
-            return (
-              <button
-                key={key}
-                type='button'
-                onClick={() => setStatusFilter(key)}
-                aria-pressed={isActive}
-                className={cn(
-                  'group relative w-full rounded-2xl border border-border border-solid p-4 text-left transition-all duration-300 shadow-sm hover:-translate-y-0.5 hover:border-dashed hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2',
-                  isActive ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'hover:border-primary/50 hover:bg-primary/5',
-                  isActive && 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                )}
-              >
-                <div className='flex items-center justify-between'>
-                  <p className='text-sm font-medium'>{bucket.title}</p>
-                  <Badge
-                    variant={isActive ? 'default' : 'outline'}
-                    className={cn(
-                      'transition-colors duration-300',
-                      isActive ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground group-hover:text-foreground'
-                    )}
-                  >
-                    {groupedLeads[key].length}
-                  </Badge>
-                </div>
-                <p className='text-xs text-muted-foreground mt-1 group-hover:text-foreground/80'>{bucket.description}</p>
-                <span
-                  className={cn(
-                    'mt-3 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors duration-300',
-                    isActive ? 'text-primary' : 'group-hover:text-foreground'
-                  )}
-                >
-                  View {bucket.title.toLowerCase()}
-                  <svg
-                    className='h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5'
-                    viewBox='0 0 16 16'
-                    fill='none'
-                    xmlns='http://www.w3.org/2000/svg'
-                  >
-                    <path d='M6 4l4 4-4 4' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
-                  </svg>
-                </span>
-              </button>
-            );
-          })}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className='space-y-3'>

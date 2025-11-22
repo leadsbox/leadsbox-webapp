@@ -24,6 +24,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import DashboardHeader from './DashboardHeader';
 import SupportWidget from './SupportWidget';
+import { FeedbackDialog } from './FeedbackDialog';
 import client from '../api/client';
 import { endpoints } from '../api/config';
 
@@ -368,7 +369,10 @@ export const DashboardLayout: React.FC = () => {
         </nav>
 
         {/* Sidebar footer */}
-        <div className='border-t border-sidebar-border p-4'>
+        <div className='border-t border-sidebar-border p-4 space-y-2'>
+          <div className={cn("flex justify-center", !sidebarCollapsed && "w-full")}>
+             <FeedbackDialog collapsed={sidebarCollapsed} />
+          </div>
           {sidebarCollapsed ? (
             <motion.div whileHover={{ scale: 1.05 }} className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'>
               {/* Show only an icon button when collapsed to avoid any text */}
@@ -481,7 +485,8 @@ export const DashboardLayout: React.FC = () => {
             </div>
           </nav>
           {/* Sidebar footer */}
-          <div className='border-t border-sidebar-border p-4'>
+          <div className='border-t border-sidebar-border p-4 space-y-2'>
+            <FeedbackDialog />
             <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
               <div className='flex items-center justify-between gap-2'>
                 <div>
