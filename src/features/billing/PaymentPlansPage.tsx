@@ -381,9 +381,13 @@ const PaymentPlansPage: React.FC = () => {
             let actionLabel = 'Choose plan';
             if (canSwitch) {
               actionLabel = `Switch to ${plan.name}`;
-            }
-            if (!hasActiveSubscription && plan.trialPeriodDays && !subscription) {
-              actionLabel = 'Start free trial';
+            } else if (!hasActiveSubscription) {
+              // No active subscription - show appropriate label based on trial availability
+              if (plan.trialPeriodDays && !subscription) {
+                actionLabel = `Start ${plan.trialPeriodDays}-day trial`;
+              } else {
+                actionLabel = 'Get started';
+              }
             }
             if (isPlanLoading) {
               actionLabel = 'Opening Paystack…';
