@@ -20,13 +20,13 @@ export type OnboardingStep = {
 };
 
 type OnboardingChecklistProps = {
-  steps: OnboardingStep[];
+  steps?: OnboardingStep[];
   className?: string;
 };
 
 const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, className }) => {
-  const totalSteps = steps.length;
-  const completedSteps = steps.filter((step) => step.completed).length;
+  const totalSteps = steps?.length ?? 0;
+  const completedSteps = steps?.filter((step) => step.completed).length ?? 0;
   const progress = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -69,6 +69,11 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ steps, classN
     },
     [toggleCollapse]
   );
+
+  // Safety check: if steps is undefined or empty, don't render
+  if (!steps || steps.length === 0) {
+    return null;
+  }
 
   return (
     <Card

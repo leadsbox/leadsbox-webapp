@@ -271,8 +271,8 @@ export default function DashboardHomePage() {
     !templatesLoading &&
     !integrationLoading &&
     !tasksLoading;
-  const hasIncompleteSteps = onboardingSteps.some((step) => !step.completed);
-  const showOnboardingChecklist = coreDataReady && hasIncompleteSteps;
+  const hasIncompleteSteps = onboardingSteps?.some((step) => !step.completed) ?? false;
+  const showOnboardingChecklist = coreDataReady && hasIncompleteSteps && onboardingSteps;
 
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
