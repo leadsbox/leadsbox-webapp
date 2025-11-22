@@ -2,7 +2,6 @@ import posthog from 'posthog-js';
 import * as Sentry from '@sentry/react';
 
 export const initAnalytics = () => {
-  /*
   try {
     // Initialize PostHog
     const posthogKey = import.meta.env.VITE_POSTHOG_KEY || import.meta.env.REACT_APP_POSTHOG_KEY;
@@ -38,11 +37,9 @@ export const initAnalytics = () => {
   } catch (error) {
     console.error('Failed to initialize analytics:', error);
   }
-  */
 };
 
 export const identifyUser = (userId: string, traits?: Record<string, any>) => {
-  /*
   try {
     if (import.meta.env.VITE_POSTHOG_KEY || import.meta.env.REACT_APP_POSTHOG_KEY) {
       posthog.identify(userId, traits);
@@ -53,11 +50,9 @@ export const identifyUser = (userId: string, traits?: Record<string, any>) => {
   } catch (error) {
     console.error('Failed to identify user in analytics:', error);
   }
-  */
 };
 
 export const resetAnalytics = () => {
-  /*
   try {
     if (import.meta.env.VITE_POSTHOG_KEY || import.meta.env.REACT_APP_POSTHOG_KEY) {
       posthog.reset();
@@ -68,11 +63,9 @@ export const resetAnalytics = () => {
   } catch (error) {
     console.error('Failed to reset analytics:', error);
   }
-  */
 };
 
 export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
-  /*
   try {
     if (import.meta.env.VITE_POSTHOG_KEY || import.meta.env.REACT_APP_POSTHOG_KEY) {
       posthog.capture(eventName, properties);
@@ -80,5 +73,4 @@ export const trackEvent = (eventName: string, properties?: Record<string, any>) 
   } catch (error) {
     console.error('Failed to track event:', error);
   }
-  */
 };

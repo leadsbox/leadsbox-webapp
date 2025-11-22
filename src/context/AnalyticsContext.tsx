@@ -16,13 +16,11 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   // Track Page Views on route change
   useEffect(() => {
     if (import.meta.env.VITE_POSTHOG_KEY || import.meta.env.REACT_APP_POSTHOG_KEY) {
-      /*
       try {
         posthog.capture('$pageview');
       } catch (e) {
         console.error('Failed to capture pageview:', e);
       }
-      */
     }
   }, [location]);
 
