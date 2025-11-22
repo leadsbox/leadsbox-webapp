@@ -280,7 +280,8 @@ export default function DashboardHomePage() {
 
       const leadsResp = await client.get(endpoints.leads);
 
-      const leadsList: BackendLead[] = leadsResp?.data?.data?.leads || leadsResp?.data || [];
+      const rawLeads = leadsResp?.data?.data?.leads || leadsResp?.data;
+      const leadsList: BackendLead[] = Array.isArray(rawLeads) ? rawLeads : [];
 
       const leadsOverTime = processLeadsOverTime(leadsList);
       setLeadsOverTimeData(leadsOverTime);

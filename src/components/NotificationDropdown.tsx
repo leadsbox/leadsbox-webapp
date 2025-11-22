@@ -100,9 +100,9 @@ const NotificationDropdown: React.FC = () => {
         </div>
         <DropdownMenuSeparator />
         <div className='max-h-96 overflow-auto'>
-          {loading && notifications?.length === 0 ? (
+          {loading && (!notifications || notifications.length === 0) ? (
             <div className='p-4 text-center text-sm text-muted-foreground'>Loading...</div>
-          ) : notifications?.length === 0 ? (
+          ) : !notifications || notifications.length === 0 ? (
             <div className='p-8 text-center text-sm text-muted-foreground'>No notifications yet</div>
           ) : (
             notifications.map((notification) => (
