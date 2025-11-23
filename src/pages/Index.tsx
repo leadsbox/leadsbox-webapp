@@ -115,8 +115,8 @@ const Index = () => {
         <div className='container mx-auto max-w-6xl'>
           <nav className='bg-background/80 backdrop-blur-xl border border-border/50 rounded-full px-6 h-16 flex items-center justify-between shadow-sm'>
             <a href='/' className='flex items-center gap-2 font-bold text-xl tracking-tight'>
-               <div className='w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center'>
-                  <LogoImage className='w-5 h-5 invert brightness-0' />
+               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center shadow-sm border border-border/10'>
+                  <LogoImage className='w-full h-full object-contain' />
                </div>
                LeadsBox
             </a>
@@ -216,10 +216,10 @@ const Index = () => {
             </h1>
             
             <p className='text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed'>
-              Centralize WhatsApp, Instagram, and Telegram chats. Automate support with AI, and track every deal from "hello" to "paid".
+              Whether you’re just starting out or scaling fast, LeadsBox helps your team work smarter on what truly matters, Sales.
             </p>
 
-            <div className='flex flex-col sm:flex-row gap-4 justify-center items-center mb-16'>
+            <div className='flex flex-col sm:flex-row gap-4 justify-center items-center mb-8'>
               <Button 
                 size='lg' 
                 onClick={() => setWaitlistOpen(true)} 
@@ -235,6 +235,21 @@ const Index = () => {
               >
                 <Play className="w-4 h-4 fill-current" /> Watch Demo
               </Button>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground mb-16 font-medium">
+              <div className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-primary" />
+                <span>No credit card required</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-primary" />
+                <span>14-day free trial</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-primary" />
+                <span>Cancel anytime</span>
+              </div>
             </div>
 
             {/* Hero Visual: Floating Cards "Connected" */}
@@ -410,45 +425,77 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Seamless Integrations (Marquee) */}
-      <section className="py-16 bg-background border-y border-border/40 overflow-hidden">
-        <div className="container mx-auto px-4 mb-12 text-center">
-          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Trusted by 2,000+ modern teams</p>
-        </div>
+      {/* Trusted Brands (Static Grid) */}
+      <section className="py-20 bg-background border-y border-border">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="text-center mb-12">
+            <h3 className="text-xl font-medium text-foreground">Brands That Put Trust In Us</h3>
+          </div>
 
-        <div className="relative w-full">
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10" />
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10" />
-          
-          <div className="flex overflow-hidden">
-            <motion.div 
-              className="flex gap-16 items-center min-w-full pr-16"
-              animate={{ x: ["0%", "-50%"] }}
-              transition={{ 
-                duration: 40, 
-                ease: "linear", 
-                repeat: Infinity 
-              }}
-            >
-              {[...Array(2)].map((_, i) => (
-                <React.Fragment key={i}>
-                  {[
-                    { name: 'Slack', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e405a396e06191c429402_slack.svg' },
-                    { name: 'Google Drive', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e4059d09e51c110197491_google-drive.svg' },
-                    { name: 'Figma', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e405988d1066c61f711f1_figma.svg' },
-                    { name: 'Notion', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e405a201c137456d98d89_notion.svg' },
-                    { name: 'Miro', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e4059e99c1e793a105022_miro.svg' },
-                    { name: 'Jira', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e4059107127921312f400_jira.svg' },
-                    { name: 'Zoom', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e405a765792d4d271295f_zoom.svg' },
-                    { name: 'Asana', url: 'https://assets-global.website-files.com/661a461d3618a776114a3211/661e405988d1066c61f711e8_asana.svg' }
-                  ].map((logo, idx) => (
-                    <div key={idx} className="flex items-center justify-center w-[120px] h-[60px] grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
-                      <img src={logo.url} alt={logo.name} className="max-w-full max-h-full object-contain" />
-                    </div>
-                  ))}
-                </React.Fragment>
-              ))}
-            </motion.div>
+          <div className="grid grid-cols-2 md:grid-cols-4 border-t border-l border-border">
+            {[
+              { name: 'Partner 1', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2d5bcccfcae2e34dfce13_30ad823d9fe87fd63c72198887a68bce_partner-logo-1.svg' },
+              { name: 'Partner 2', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2d5bcccfcae2e34dfce16_8400bd188f97d212628b3ef62349192b_partner-logo-2.svg' },
+              { name: 'Partner 3', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2d5bcccfcae2e34dfce14_d80fbf6ac51503d81301cd47d47dc3c4_partner-logo-3.svg' },
+              { name: 'Partner 4', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2d5bcccfcae2e34dfce15_f0bf5458ea5bd05b4e1c508a9302dc27_partner-logo-4.svg' },
+              { name: 'Company 8', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a58fed4ebe82f3801dafd5_company-logo-8.svg' },
+              { name: 'Company 7', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a58fed107533572d97a23e_company-logo-7.svg' },
+              { name: 'Company 1', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a3187467a414c0209f58dd_company-logo-1.svg' },
+              { name: 'Partner 1', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2d5bcccfcae2e34dfce13_30ad823d9fe87fd63c72198887a68bce_partner-logo-1.svg' }
+            ].map((logo, idx) => (
+              <div key={idx} className="flex items-center justify-center h-32 border-r border-b border-border p-8 hover:bg-muted/30 transition-colors group">
+                <img 
+                  src={logo.url} 
+                  alt={logo.name} 
+                  className="max-w-full max-h-full object-contain grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" 
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Simplify Process Section */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
+              Simplify complex process with LeadsBox
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Card 1: Create Account */}
+            <div className="bg-muted/30 rounded-3xl p-8 md:p-12 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
+              <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+              <div className="mb-8 relative h-64 md:h-72 w-full flex items-center justify-center">
+                <img 
+                  src="https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b82916e7b0f46d246b15c6_a3a534b8e7bc746ab85606267e009d9c_process-card-1.svg" 
+                  alt="Sign Up Process" 
+                  className="w-full h-full object-contain relative z-10"
+                />
+              </div>
+              <h3 className="text-2xl font-bold mb-4 relative z-10">Create Account</h3>
+              <p className="text-muted-foreground leading-relaxed max-w-md mx-auto relative z-10">
+                Kick things off in seconds. Just sign up, set up your workspace, and you're ready to go.
+              </p>
+            </div>
+
+            {/* Card 2: Invite Team */}
+            <div className="bg-muted/30 rounded-3xl p-8 md:p-12 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
+              <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+              <div className="mb-8 relative h-64 md:h-72 w-full flex items-center justify-center">
+                <img 
+                  src="https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2bea9a30c0622e7efb85d_5a9c5e0f33c2dd63fc417f6e977dbcbd_card-2.svg" 
+                  alt="Invite Team Process" 
+                  className="w-full h-full object-contain relative z-10"
+                />
+              </div>
+              <h3 className="text-2xl font-bold mb-4 relative z-10">Invite Team</h3>
+              <p className="text-muted-foreground leading-relaxed max-w-md mx-auto relative z-10">
+                Bring your teammates on board instantly. Manage roles, track projects, and stay aligned without the chaos.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -625,8 +672,8 @@ const Index = () => {
           <div className='grid md:grid-cols-4 gap-12 mb-12'>
             <div className='col-span-1 md:col-span-1'>
               <div className='flex items-center gap-2 mb-6'>
-                <div className='w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center'>
-                  <LogoImage className="w-5 h-5 object-contain invert brightness-0" />
+                <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center shadow-sm border border-border/10'>
+                  <LogoImage className="w-full h-full object-contain" />
                 </div>
                 <span className='font-bold text-xl'>LeadsBox</span>
               </div>
