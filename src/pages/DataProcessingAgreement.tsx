@@ -56,9 +56,11 @@ const DataProcessingAgreement: React.FC = () => {
               </h1>
               <p className='text-muted-foreground'>Last updated: {new Date().toLocaleDateString()}</p>
             </div>
-            <Button variant='outline' size='sm' className='gap-2'>
-              <Download className='h-4 w-4' />
-              Download PDF
+            <Button variant='outline' size='sm' className='gap-2' asChild>
+              <a href='/api/legal/dpa/download' download>
+                <Download className='h-4 w-4' />
+                Download PDF
+              </a>
             </Button>
           </div>
 
