@@ -22,6 +22,7 @@ import RefundPolicy from './pages/RefundPolicy';
 import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
 const StatusPage = lazy(() => import('./pages/Status'));
+const ReferralProgram = lazy(() => import('./pages/ReferralProgram'));
 
 // Dashboard Pages (lazy-loaded so the marketing shell stays light)
 const InboxPage = lazy(() => import('./features/inbox/InboxPage'));
@@ -64,6 +65,7 @@ const App = () => {
           <Route path='/about' element={<AboutUs />} />
           <Route path='/contact' element={<Contact />} />
           <Route path='/status' element={<StatusPage />} />
+          <Route path='/referral-program' element={<ReferralProgram />} />
           
           <Route element={<AppProviders />}>
             <Route path='/login' element={<Login />} />
