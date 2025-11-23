@@ -758,6 +758,7 @@ const Index = () => {
                 links: [
                   { label: "About Us", href: "/about" },
                   { label: "Contact", href: "/contact" },
+                  { label: "System Status", href: "/status" },
                   { label: "Careers", href: "#" },
                   { label: "Blog", href: "#" }
                 ] 
