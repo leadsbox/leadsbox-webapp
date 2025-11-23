@@ -534,6 +534,17 @@ const Index = () => {
                   alt="Assign & Track Process" 
                   className="w-full h-full object-contain relative z-10"
                 />
+                {/* Floating Cursor: Sales Rep */}
+                <motion.div 
+                  className="absolute bottom-10 right-1/3 z-20 flex items-center gap-2"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400 drop-shadow-md">
+                    <path d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19841L11.7841 12.3673H5.65376Z" fill="currentColor" stroke="white"/>
+                  </svg>
+                  <span className="bg-blue-400 text-blue-950 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">Sales Rep</span>
+                </motion.div>
               </div>
             </div>
           </div>
