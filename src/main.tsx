@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import LeadsboxToaster from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { ConfirmProvider, NetworkBannerProvider, NetworkBannerSurface } from '@/ui/ux';
 
 const applyInitialThemePreference = () => {
   if (typeof window === 'undefined') return;
@@ -53,7 +56,17 @@ applyInitialThemePreference();
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <ThemeProvider>
-      <App />
+      <NetworkBannerProvider>
+        <ConfirmProvider>
+          <TooltipProvider>
+            <LeadsboxToaster />
+            <div className='pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-4'>
+              <NetworkBannerSurface className='max-w-3xl' />
+            </div>
+            <App />
+          </TooltipProvider>
+        </ConfirmProvider>
+      </NetworkBannerProvider>
     </ThemeProvider>
   </ErrorBoundary>
 );

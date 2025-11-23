@@ -16,6 +16,11 @@ import ResetPassword from './pages/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import AcceptInvitePage from './pages/AcceptInvite';
+import CookiePolicy from './pages/CookiePolicy';
+import DataProcessingAgreement from './pages/DataProcessingAgreement';
+import RefundPolicy from './pages/RefundPolicy';
+import AboutUs from './pages/AboutUs';
+import Contact from './pages/Contact';
 
 // Dashboard Pages (lazy-loaded so the marketing shell stays light)
 const InboxPage = lazy(() => import('./features/inbox/InboxPage'));
@@ -50,13 +55,19 @@ const App = () => {
       <Suspense fallback={<RouteLoader />}>
         <Routes>
           <Route path='/' element={<Index />} />
+          <Route path='/privacy' element={<PrivacyPolicy />} />
+          <Route path='/terms' element={<Terms />} />
+          <Route path='/cookies' element={<CookiePolicy />} />
+          <Route path='/dpa' element={<DataProcessingAgreement />} />
+          <Route path='/refund-policy' element={<RefundPolicy />} />
+          <Route path='/about' element={<AboutUs />} />
+          <Route path='/contact' element={<Contact />} />
+          
           <Route element={<AppProviders />}>
             <Route path='/login' element={<Login />} />
             <Route path='/register' element={<Register />} />
             <Route path='/invite/:token' element={<AcceptInvitePage />} />
             <Route path='/verify-email' element={<VerifyEmail />} />
-            <Route path='/privacy' element={<PrivacyPolicy />} />
-            <Route path='/terms' element={<Terms />} />
             <Route path='/forgot-password' element={<ForgotPassword />} />
             <Route path='/reset-password' element={<ResetPassword />} />
             <Route

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion, AnimatePresence, useInView, useMotionValue, useSpring } from 'framer-motion';
+import CookieConsent from '@/components/CookieConsent';
 
 /**
  * LeadsBox — LeadsBox Clone Redesign
@@ -743,16 +744,41 @@ const Index = () => {
             </div>
             
             {[
-              { title: "Product", links: ["Features", "Integrations", "Pricing", "Changelog"] },
-              { title: "Resources", links: ["Blog", "Community", "Help Center", "API Docs"] },
-              { title: "Company", links: ["About", "Careers", "Legal", "Contact"] },
+              { 
+                title: "Product", 
+                links: [
+                  { label: "Features", href: "/#features" },
+                  { label: "Integrations", href: "/#integrations" },
+                  { label: "Pricing", href: "/#pricing" },
+                  { label: "Changelog", href: "#" }
+                ] 
+              },
+              { 
+                title: "Company", 
+                links: [
+                  { label: "About Us", href: "/about" },
+                  { label: "Contact", href: "/contact" },
+                  { label: "Careers", href: "#" },
+                  { label: "Blog", href: "#" }
+                ] 
+              },
+              { 
+                title: "Legal", 
+                links: [
+                  { label: "Privacy Policy", href: "/privacy" },
+                  { label: "Terms of Service", href: "/terms" },
+                  { label: "Cookie Policy", href: "/cookies" },
+                  { label: "Refund Policy", href: "/refund-policy" },
+                  { label: "DPA", href: "/dpa" }
+                ] 
+              },
             ].map((col, i) => (
               <div key={i}>
                 <h4 className="font-bold mb-6 text-foreground">{col.title}</h4>
                 <ul className="space-y-3">
                   {col.links.map(link => (
-                    <li key={link}>
-                      <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">{link}</a>
+                    <li key={link.label}>
+                      <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">{link.label}</a>
                     </li>
                   ))}
                 </ul>
@@ -762,9 +788,19 @@ const Index = () => {
           
           <div className='border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4'>
             <p className='text-sm text-muted-foreground'>© {new Date().getFullYear()} LeadsBox Inc. All rights reserved.</p>
+            <div className='flex items-center gap-4 text-sm text-muted-foreground'>
+              <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
+              <span>•</span>
+              <a href="/terms" className="hover:text-primary transition-colors">Terms</a>
+              <span>•</span>
+              <a href="/cookies" className="hover:text-primary transition-colors">Cookies</a>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* Cookie Consent Banner */}
+      <CookieConsent />
     </div>
   );
 };
