@@ -554,6 +554,7 @@ const Index = () => {
       {/* Everything you need to succeed Section */}
       <SuccessSection />
       <WorkflowSection />
+      <IntegrationsSection />
 
       {/* Features (Bento Grid) */}
       <section id="features" className="py-32 bg-muted/30">
@@ -969,6 +970,80 @@ const WorkflowSection = () => {
             alt="LeadsBox Workflow Interface" 
             className="w-full h-auto object-cover"
           />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const IntegrationsSection = () => {
+  return (
+    <section className="py-24 bg-background border-b border-border">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="text-center mb-16">
+          <Badge variant="outline" className="mb-6 border-primary/20 text-primary bg-primary/5">
+            Integrations
+          </Badge>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6">
+            Seamless integrations,
+            <br />
+            zero friction
+          </h2>
+        </div>
+
+        {/* Integration Diagram */}
+        <div className="relative mb-12 flex items-center justify-center min-h-[400px]">
+          {/* Central Hub */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative z-20 w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center shadow-2xl ring-8 ring-blue-100 dark:ring-blue-950">
+              <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Integration Nodes - Top Row */}
+          <div className="absolute top-0 left-1/4 w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-md border border-border">
+            <div className="w-8 h-8 rounded-full bg-gray-400" />
+          </div>
+          <div className="absolute top-0 right-1/4 w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-md border border-border">
+            <div className="w-8 h-8 rounded-full bg-gray-400" />
+          </div>
+
+          {/* Integration Nodes - Middle Row */}
+          <div className="absolute top-1/2 -translate-y-1/2 left-8 w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-md border border-border">
+            <div className="w-8 h-8 rounded-full bg-gray-400" />
+          </div>
+          <div className="absolute top-1/2 -translate-y-1/2 right-8 w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-md border border-border">
+            <div className="w-8 h-8 rounded-full bg-gray-400" />
+          </div>
+
+          {/* Integration Nodes - Bottom Row */}
+          <div className="absolute bottom-0 left-1/3 w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-md border border-border">
+            <div className="w-8 h-8 rounded-full bg-gray-400" />
+          </div>
+          <div className="absolute bottom-0 right-1/3 w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-md border border-border">
+            <div className="w-8 h-8 rounded-full bg-gray-400" />
+          </div>
+
+          {/* Connection Lines (SVG) */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+            <path d="M 50% 50% L 25% 10%" stroke="currentColor" strokeWidth="2" className="text-border" fill="none" />
+            <path d="M 50% 50% L 75% 10%" stroke="currentColor" strokeWidth="2" className="text-border" fill="none" />
+            <path d="M 50% 50% L 8% 50%" stroke="currentColor" strokeWidth="2" className="text-border" fill="none" />
+            <path d="M 50% 50% L 92% 50%" stroke="currentColor" strokeWidth="2" className="text-border" fill="none" />
+            <path d="M 50% 50% L 33% 90%" stroke="currentColor" strokeWidth="2" className="text-border" fill="none" />
+            <path d="M 50% 50% L 67% 90%" stroke="currentColor" strokeWidth="2" className="text-border" fill="none" />
+          </svg>
+        </div>
+
+        <div className="text-center max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground leading-relaxed">
+            Plug LeadsBox into your workflow in just a click.
+          </p>
+          <p className="text-xl text-muted-foreground leading-relaxed">
+            No messy setups, no dev time needed—just instant productivity.
+          </p>
         </div>
       </div>
     </section>
