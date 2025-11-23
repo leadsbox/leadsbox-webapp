@@ -944,12 +944,22 @@ const WorkflowSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-24 border-y border-border/50 py-12">
-          <Counter value={45} suffix="K+" label="Teams worldwide" />
-          <div className="hidden md:block w-px bg-border/50 absolute left-1/3 top-12 bottom-12" />
-          <Counter value={20} suffix="M+" label="Tasks completed" />
-          <div className="hidden md:block w-px bg-border/50 absolute right-1/3 top-12 bottom-12" />
-          <Counter value={98} suffix="%" label="User satisfaction" />
+        <div className="relative grid grid-cols-1 md:grid-cols-5 gap-0 mb-24 border-y border-border/50 py-12">
+          <div className="md:col-span-1 flex items-center justify-center">
+            <Counter value={45} suffix="K+" label="Teams worldwide" />
+          </div>
+          <div className="hidden md:flex items-center justify-center">
+            <div className="w-px h-24 bg-border" />
+          </div>
+          <div className="md:col-span-1 flex items-center justify-center">
+            <Counter value={20} suffix="M+" label="Tasks completed" />
+          </div>
+          <div className="hidden md:flex items-center justify-center">
+            <div className="w-px h-24 bg-border" />
+          </div>
+          <div className="md:col-span-1 flex items-center justify-center">
+            <Counter value={98} suffix="%" label="User satisfaction" />
+          </div>
         </div>
 
         <div className="relative rounded-3xl overflow-hidden border border-border shadow-2xl bg-muted/20">
