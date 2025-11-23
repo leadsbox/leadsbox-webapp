@@ -443,11 +443,11 @@ const Index = () => {
               { name: 'Company 1', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a3187467a414c0209f58dd_company-logo-1.svg' },
               { name: 'Partner 1', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2d5bcccfcae2e34dfce13_30ad823d9fe87fd63c72198887a68bce_partner-logo-1.svg' }
             ].map((logo, idx) => (
-              <div key={idx} className="flex items-center justify-center h-32 border-r border-b border-border p-8 hover:bg-muted/30 transition-colors group">
+              <div key={idx} className="flex items-center justify-center h-32 border-r border-b border-border p-8 hover:bg-muted/30 dark:hover:bg-white/5 transition-colors group">
                 <img 
                   src={logo.url} 
                   alt={logo.name} 
-                  className="max-w-full max-h-full object-contain grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" 
+                  className="max-w-full max-h-full object-contain transition-all duration-300" 
                 />
               </div>
             ))}
@@ -466,35 +466,75 @@ const Index = () => {
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Card 1: Create Account */}
-            <div className="bg-muted/30 rounded-3xl p-8 md:p-12 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
+            <div className="bg-muted/30 rounded-3xl p-8 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
               <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-              <div className="mb-8 relative h-64 md:h-72 w-full flex items-center justify-center">
+              <div className="mb-8 relative h-56 w-full flex items-center justify-center">
                 <img 
                   src="https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b82916e7b0f46d246b15c6_a3a534b8e7bc746ab85606267e009d9c_process-card-1.svg" 
                   alt="Sign Up Process" 
                   className="w-full h-full object-contain relative z-10"
                 />
+                {/* Floating Cursor: Manager */}
+                <motion.div 
+                  className="absolute bottom-8 right-1/4 z-20 flex items-center gap-2"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-yellow-400 drop-shadow-md">
+                    <path d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19841L11.7841 12.3673H5.65376Z" fill="currentColor" stroke="white"/>
+                  </svg>
+                  <span className="bg-yellow-400 text-yellow-950 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">Manager</span>
+                </motion.div>
               </div>
-              <h3 className="text-2xl font-bold mb-4 relative z-10">Create Account</h3>
-              <p className="text-muted-foreground leading-relaxed max-w-md mx-auto relative z-10">
+              <h3 className="text-xl font-bold mb-3 relative z-10">Create Account</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed relative z-10">
                 Kick things off in seconds. Just sign up, set up your workspace, and you're ready to go.
               </p>
             </div>
 
             {/* Card 2: Invite Team */}
-            <div className="bg-muted/30 rounded-3xl p-8 md:p-12 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
+            <div className="bg-muted/30 rounded-3xl p-8 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
               <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-              <div className="mb-8 relative h-64 md:h-72 w-full flex items-center justify-center">
+              <div className="mb-8 relative h-56 w-full flex items-center justify-center">
                 <img 
                   src="https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2bea9a30c0622e7efb85d_5a9c5e0f33c2dd63fc417f6e977dbcbd_card-2.svg" 
                   alt="Invite Team Process" 
                   className="w-full h-full object-contain relative z-10"
                 />
+                {/* Floating Cursor: Team Lead */}
+                <motion.div 
+                  className="absolute bottom-12 right-1/3 z-20 flex items-center gap-2"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-emerald-400 drop-shadow-md">
+                    <path d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19841L11.7841 12.3673H5.65376Z" fill="currentColor" stroke="white"/>
+                  </svg>
+                  <span className="bg-emerald-400 text-emerald-950 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">Team Lead</span>
+                </motion.div>
               </div>
-              <h3 className="text-2xl font-bold mb-4 relative z-10">Invite Team</h3>
-              <p className="text-muted-foreground leading-relaxed max-w-md mx-auto relative z-10">
+              <h3 className="text-xl font-bold mb-3 relative z-10">Invite Team</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed relative z-10">
                 Bring your teammates on board instantly. Manage roles, track projects, and stay aligned without the chaos.
               </p>
+            </div>
+
+            {/* Card 3: Assign & Track */}
+            <div className="md:col-span-2 bg-muted/30 rounded-3xl p-8 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group">
+              <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-blue-500/10 via-cyan-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 mb-8">
+                <h3 className="text-xl font-bold mb-3">Assign & track</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-lg mx-auto">
+                  Assign tasks to the right people and track progress in real-time. Never let a lead slip through the cracks again.
+                </p>
+              </div>
+              <div className="relative h-64 w-full flex items-center justify-center">
+                <img 
+                  src="https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68ad6ef946ffe203b2c5979d_621ed14e4e2e7155b962f3308bae23a4_process-card-3.svg" 
+                  alt="Assign & Track Process" 
+                  className="w-full h-full object-contain relative z-10"
+                />
+              </div>
             </div>
           </div>
         </div>
