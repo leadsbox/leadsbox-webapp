@@ -221,7 +221,7 @@
   }
 
   .sidebar-item-inactive:hover {
-    background-color: hsl(var(--sidebar-accent) / 0.6);
+    background-color: hsl(var(--muted));
     color: hsl(var(--sidebar-foreground));
   }
 

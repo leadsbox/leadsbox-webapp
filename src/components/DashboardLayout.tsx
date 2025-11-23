@@ -273,7 +273,7 @@ export const DashboardLayout: React.FC = () => {
         aria-label='Sidebar'
       >
         {/* Sidebar header */}
-        <div className='flex h-16 items-center justify-between px-4 border-b border-sidebar-border'>
+        <div className='flex h-16 items-center justify-between px-4 border-b border-border'>
           {!sidebarCollapsed && (
             <div className='flex items-center space-x-2'>
               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
@@ -369,10 +369,7 @@ export const DashboardLayout: React.FC = () => {
         </nav>
 
         {/* Sidebar footer */}
-        <div className='border-t border-sidebar-border p-4 space-y-2'>
-          <div className={cn("flex justify-center", !sidebarCollapsed && "w-full")}>
-             <FeedbackDialog collapsed={sidebarCollapsed} />
-          </div>
+        <div className='border-t border-border p-4 space-y-2'>
           {sidebarCollapsed ? (
             <motion.div whileHover={{ scale: 1.05 }} className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'>
               {/* Show only an icon button when collapsed to avoid any text */}
@@ -427,7 +424,7 @@ export const DashboardLayout: React.FC = () => {
           aria-label='Mobile Sidebar'
         >
           {/* Sidebar header */}
-          <div className='flex h-16 items-center justify-between px-4 border-b border-sidebar-border'>
+          <div className='flex h-16 items-center justify-between px-4 border-b border-border'>
             <div className='flex items-center space-x-2'>
               <div className='w-8 h-8 bg-white p-1 rounded-sm flex items-center justify-center'>
                 <img
@@ -485,8 +482,7 @@ export const DashboardLayout: React.FC = () => {
             </div>
           </nav>
           {/* Sidebar footer */}
-          <div className='border-t border-sidebar-border p-4 space-y-2'>
-            <FeedbackDialog />
+          <div className='border-t border-border p-4 space-y-2'>
             <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
               <div className='flex items-center justify-between gap-2'>
                 <div>
@@ -516,6 +512,7 @@ export const DashboardLayout: React.FC = () => {
         </section>
       </div>
       <SupportWidget />
+      <FeedbackDialog />
     </div>
   );
 };
