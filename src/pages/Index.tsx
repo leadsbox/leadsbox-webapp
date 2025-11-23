@@ -686,13 +686,13 @@ const Index = () => {
       </section>
 
       {/* CTA Section (Centered, Minimal) */}
-      <section className="py-32 bg-primary text-primary-foreground relative overflow-hidden">
+      <section className="py-32 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 text-white relative overflow-hidden selection:bg-white/30 selection:text-white">
         <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
         <div className="container mx-auto px-4 text-center relative z-10 max-w-3xl">
           <h2 className="text-4xl sm:text-6xl font-bold mb-8 tracking-tight">
             Ready to grow?
           </h2>
-          <p className="text-xl text-primary-foreground/80 max-w-2xl mx-auto mb-12">
+          <p className="text-xl text-white/90 max-w-2xl mx-auto mb-12">
             Join the waitlist and get 3 months of LeadsBox Pro for free when we launch.
           </p>
           
@@ -701,7 +701,7 @@ const Index = () => {
               <input
                 type="email"
                 placeholder="name@company.com"
-                className="w-full h-14 px-6 rounded-full border-2 border-transparent bg-white text-foreground focus:outline-none focus:ring-4 focus:ring-white/30 transition-all text-lg"
+                className="w-full h-14 px-6 rounded-full border-2 border-transparent bg-white text-foreground focus:outline-none focus:ring-4 focus:ring-white/30 transition-all text-lg selection:bg-primary/20 selection:text-foreground"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -715,7 +715,7 @@ const Index = () => {
               {state === 'loading' ? 'Joining...' : 'Join Waitlist'}
             </Button>
           </div>
-          <p className="text-sm text-primary-foreground/60 mt-6">
+          <p className="text-sm text-white/70 mt-6">
             No credit card required • Unsubscribe anytime
           </p>
         </div>
