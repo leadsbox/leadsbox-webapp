@@ -1,14 +1,14 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Moon, Sun, Check, Star, Zap, MessageCircle, Users, BarChart3, Shield, Globe, Clock, Play, ArrowRight, Menu, X } from 'lucide-react';
+import React, { Suspense, lazy, useEffect, useMemo, useState, useRef } from 'react';
+import { Moon, Sun, Check, Star, Zap, MessageCircle, Users, BarChart3, Shield, Globe, Clock, Play, ArrowRight, Menu, X, LayoutDashboard, Search, Briefcase, ListTodo, FileText } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useInView, useMotionValue, useSpring } from 'framer-motion';
 
 /**
- * LeadsBox — Tasklyn Clone Redesign
+ * LeadsBox — LeadsBox Clone Redesign
  * Font: Manrope
  * Style: Clean, Rounded, Centered, Blue Accent
  */
@@ -110,7 +110,7 @@ const Index = () => {
         </Suspense>
       )}
 
-      {/* Navigation (Tasklyn Style: Minimal, Rounded) */}
+      {/* Navigation (LeadsBox Style: Minimal, Rounded) */}
       <header className='fixed top-0 left-0 right-0 z-50 px-4 pt-4'>
         <div className='container mx-auto max-w-6xl'>
           <nav className='bg-background/80 backdrop-blur-xl border border-border/50 rounded-full px-6 h-16 flex items-center justify-between shadow-sm'>
@@ -193,7 +193,7 @@ const Index = () => {
         )}
       </AnimatePresence>
 
-      {/* Hero Section (Tasklyn Style: Centered, Bold, Pill Badge) */}
+      {/* Hero Section (LeadsBox Style: Centered, Bold, Pill Badge) */}
       <section className='pt-40 pb-20 md:pt-48 md:pb-32 px-4 relative overflow-hidden'>
         {/* Background Blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-primary/5 to-transparent rounded-[100%] blur-3xl -z-10 pointer-events-none" />
@@ -551,6 +551,10 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Everything you need to succeed Section */}
+      <SuccessSection />
+      <WorkflowSection />
+
       {/* Features (Bento Grid) */}
       <section id="features" className="py-32 bg-muted/30">
         <div className="container mx-auto px-4 max-w-6xl">
@@ -761,6 +765,203 @@ const Index = () => {
         </div>
       </footer>
     </div>
+  );
+};
+
+const SuccessSection = () => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a419949a77d88d40d5b154_card-blue-icon-1.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'See your work clearly—real-time progress, blockers, and deadlines in one customizable, distraction-free dashboard that adapts to your role.', cursor: { label: 'Admin', color: 'blue' } },
+    { id: 'search', label: 'Global Search', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a15df2bef3c956db2852_color-logo-card-2.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'Find anything across your workspace in seconds. Smart filters and AI-powered search help you locate tasks, messages, and files instantly.', cursor: { label: 'User', color: 'purple' } },
+    { id: 'workspace', label: 'Multiple Workspace', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a0d0f38b7710f7cd35c1_color-logo-card-2.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'Manage multiple projects or clients from a single account. Switch contexts instantly without losing your flow.', cursor: { label: 'Manager', color: 'emerald' } },
+    { id: 'messages', label: 'Messages', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a2683090cca3785c42b4_color-logo-card-4.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'Keep conversations right where the work happens. Contextual threads ensure everyone stays on the same page.', cursor: { label: 'Team', color: 'yellow' } },
+    { id: 'tasks', label: 'Multiple Task view', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a2683d9c61ae25e2d678_color-logo-card-5.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'Visualize your work your way. Switch between List, Kanban, Calendar, and Timeline views with a single click.', cursor: { label: 'Lead', color: 'orange' } },
+    { id: 'notepad', label: 'Privet Notepad', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a268d941df603936d03e_color-logo-card-6.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'Jot down quick thoughts, meeting notes, or draft ideas in your private, secure notepad accessible from anywhere.', cursor: { label: 'Writer', color: 'pink' } },
+    { id: 'security', label: '2FA Security', icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a2685e15888b0ecb8304_color-logo-card-7.svg', url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg', description: 'Secure by default—two-factor login with backup codes, device trust, and a clear, guided recovery flow when needed.', cursor: { label: 'SecOps', color: 'cyan' } },
+  ];
+
+  const activeContent = tabs.find(t => t.id === activeTab) || tabs[0];
+
+  const cursorColors: Record<string, { text: string; bg: string; textDark: string }> = {
+    blue: { text: 'text-blue-400', bg: 'bg-blue-400', textDark: 'text-blue-950' },
+    purple: { text: 'text-purple-400', bg: 'bg-purple-400', textDark: 'text-purple-950' },
+    emerald: { text: 'text-emerald-400', bg: 'bg-emerald-400', textDark: 'text-emerald-950' },
+    yellow: { text: 'text-yellow-400', bg: 'bg-yellow-400', textDark: 'text-yellow-950' },
+    orange: { text: 'text-orange-400', bg: 'bg-orange-400', textDark: 'text-orange-950' },
+    pink: { text: 'text-pink-400', bg: 'bg-pink-400', textDark: 'text-pink-950' },
+    cyan: { text: 'text-cyan-400', bg: 'bg-cyan-400', textDark: 'text-cyan-950' },
+  };
+
+  const currentCursorColor = cursorColors[activeContent.cursor.color];
+
+  return (
+    <section className="py-24 bg-background border-y border-border">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
+            Everything you need to succeed. Fast.
+          </h2>
+        </div>
+
+        <div className="grid md:grid-cols-12 gap-0 border border-border overflow-hidden shadow-sm">
+          {/* Left Column: Tabs */}
+          <div className="md:col-span-4 flex flex-col bg-white dark:bg-card border-r border-border">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onMouseEnter={() => setActiveTab(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
+                className={`group flex items-center gap-4 p-4 text-left transition-all focus:outline-none relative overflow-hidden border-b border-border ${
+                  activeTab === tab.id
+                    ? 'bg-gradient-to-r from-blue-50/80 to-transparent text-blue-600 dark:from-blue-500/10 dark:text-blue-400'
+                    : 'hover:bg-muted/50 text-black hover:text-blue-600'
+                }`}
+              >
+                {activeTab === tab.id && (
+                  <>
+                    {/* Top Left Corner Accent */}
+                    <div className="absolute top-0 left-0 w-0.5 h-3 bg-blue-600 dark:bg-blue-400" />
+                    <div className="absolute top-0 left-0 w-3 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                    
+                    {/* Bottom Right Corner Accent */}
+                    <div className="absolute bottom-0 right-0 w-0.5 h-3 bg-blue-600 dark:bg-blue-400" />
+                    <div className="absolute bottom-0 right-0 w-3 h-0.5 bg-blue-600 dark:bg-blue-400" />
+                  </>
+                )}
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <img 
+                    src={tab.icon} 
+                    alt={tab.label} 
+                    className={`w-6 h-6 object-contain transition-all duration-300 ${
+                      activeTab === tab.id 
+                        ? '' 
+                        : 'grayscale brightness-0 opacity-70 group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100'
+                    }`} 
+                  />
+                </div>
+                <span className="font-semibold text-base">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right Column: Content */}
+          <div className="md:col-span-8 bg-white dark:bg-card p-12 min-h-[600px] flex flex-col relative">
+            {/* Dotted Background Pattern */}
+            <div className="absolute inset-0 opacity-[0.7]" style={{
+              backgroundImage: 'radial-gradient(#94a3b8 0.75px, transparent 0.75px)',
+              backgroundSize: '16px 16px'
+            }} />
+            
+            <div className="relative z-10 h-full flex flex-col">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeContent.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col h-full"
+                >
+                  <p className="text-xl text-black mb-12 max-w-2xl leading-relaxed">
+                    {activeContent.description}
+                  </p>
+                  
+                  <div className="flex-1 relative w-full overflow-hidden flex items-center justify-center group">
+                    <img 
+                      src={activeContent.url} 
+                      alt={activeContent.label} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    
+                    {/* Floating Cursor */}
+                    <motion.div 
+                      className="absolute bottom-12 right-12 z-20 flex items-center gap-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: [0, -8, 0] }}
+                      transition={{ 
+                        opacity: { duration: 0.3 },
+                        y: { duration: 3, repeat: Infinity, ease: "easeInOut" } 
+                      }}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${currentCursorColor.text} drop-shadow-md`}>
+                        <path d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19841L11.7841 12.3673H5.65376Z" fill="currentColor" stroke="white"/>
+                      </svg>
+                      <span className={`${currentCursorColor.bg} ${currentCursorColor.textDark} text-[10px] font-bold px-2 py-1 rounded-full shadow-sm`}>
+                        {activeContent.cursor.label}
+                      </span>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Counter = ({ value, label, suffix = '' }: { value: number; label: string; suffix?: string }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const motionValue = useMotionValue(0);
+  const springValue = useSpring(motionValue, { duration: 3000 });
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    if (isInView) {
+      motionValue.set(value);
+    }
+  }, [isInView, value, motionValue]);
+
+  useEffect(() => {
+    springValue.on("change", (latest) => {
+      setDisplayValue(Math.floor(latest));
+    });
+  }, [springValue]);
+
+  return (
+    <div ref={ref} className="text-center">
+      <div className="text-5xl md:text-6xl font-bold text-foreground mb-2 tabular-nums tracking-tight">
+        {displayValue}{suffix}
+      </div>
+      <div className="text-muted-foreground font-medium">{label}</div>
+    </div>
+  );
+};
+
+const WorkflowSection = () => {
+  return (
+    <section className="py-24 bg-background border-b border-border">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6">
+            Automate workflows. Unlock more wins.
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+            Let LeadsBox handle the repetitive tasks—from daily reminders to complex project workflows—so your team can stay focused on delivering big results.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-24 border-y border-border/50 py-12">
+          <Counter value={45} suffix="K+" label="Teams worldwide" />
+          <div className="hidden md:block w-px bg-border/50 absolute left-1/3 top-12 bottom-12" />
+          <Counter value={20} suffix="M+" label="Tasks completed" />
+          <div className="hidden md:block w-px bg-border/50 absolute right-1/3 top-12 bottom-12" />
+          <Counter value={98} suffix="%" label="User satisfaction" />
+        </div>
+
+        <div className="relative rounded-3xl overflow-hidden border border-border shadow-2xl bg-muted/20">
+          <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent z-10" />
+          <img 
+            src="https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a2fb49288a807b15484702_302d32017f8dda4d9496925b07d3a7d7_workflow-section-image%20.svg" 
+            alt="LeadsBox Workflow Interface" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+      </div>
+    </section>
   );
 };
 
