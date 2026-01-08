@@ -424,6 +424,7 @@ const Register = () => {
           <img
             src='https://leadsboxapp.s3.us-east-1.amazonaws.com/registerleadsbox.webp'
             alt='LeadsBox Register'
+            crossOrigin='anonymous'
             className='absolute inset-0 w-full h-full object-cover'
           />
         </div>

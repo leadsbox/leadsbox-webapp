@@ -261,6 +261,7 @@ const Login = () => {
           <img
             src='https://leadsboxapp.s3.us-east-1.amazonaws.com/loginleadsbox.webp'
             alt='LeadsBox Login'
+            crossOrigin='anonymous'
             className='absolute inset-0 w-full h-full object-cover'
           />
         </div>
