@@ -207,104 +207,69 @@ const Register = () => {
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4'>
-      <Card className='w-full max-w-md'>
-        <CardHeader className='space-y-2'>
-          <AuthBrand />
-          <CardTitle className='text-2xl font-bold text-center'>Create account</CardTitle>
-          <CardDescription className='text-center'>Sign up for your LeadsBox account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {formError && (
-            <Alert variant='destructive' className='mb-4'>
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          )}
+    <div className='min-h-screen bg-[#F0F4F8] flex flex-col items-center justify-center p-4 gap-8'>
+      {/* Brand Logo - Centered above card */}
+      <div className='flex justify-center items-center gap-3'>
+        <AuthBrand />
+        <span className='text-2xl font-bold text-gray-900 tracking-tight'>LeadsBox</span>
+      </div>
 
-          <Button
-            type='button'
-            variant='outline'
-            className='w-full flex items-center justify-center gap-2 mb-6'
-            onClick={handleGoogleRedirect}
-            disabled={isLoading}
-          >
-            <svg className='h-4 w-4' viewBox='0 0 24 24'>
-              <path
-                d='M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z'
-                fill='#4285F4'
-              />
-              <path
-                d='M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z'
-                fill='#34A853'
-              />
-              <path
-                d='M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z'
-                fill='#FBBC05'
-              />
-              <path
-                d='M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z'
-                fill='#EA4335'
-              />
-            </svg>
-            Continue with Google
-          </Button>
-
-          <div className='relative mb-6'>
-            <div className='absolute inset-0 flex items-center'>
-              <span className='w-full border-t' />
-            </div>
-            <div className='relative flex justify-center text-xs uppercase'>
-              <span className='bg-background px-2 text-muted-foreground'>Or continue with email</span>
-            </div>
-          </div>
-          <form onSubmit={handleSubmit} className='space-y-4'>
+      <div className='w-full max-w-[1100px] h-auto lg:h-[750px] bg-white rounded-[32px] shadow-sm overflow-hidden flex'>
+        {/* Left Side - Form */}
+        <div className='w-full lg:w-1/2 p-10 md:p-14 lg:p-16 flex flex-col justify-center bg-white relative'>
+          <div className='w-full max-w-sm mx-auto space-y-6'>
             <div className='space-y-2'>
-              <Label htmlFor='username'>Username</Label>
-              <div className='relative'>
-                <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='username'
-                  name='username'
-                  type='text'
-                  placeholder='yourname'
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  onBlur={() => checkUsername(formData.username)}
-                  className='pl-10'
-                  disabled={isLoading}
-                  aria-invalid={Boolean(fieldErrors.username)}
-                  aria-describedby={fieldErrors.username ? 'register-username-error' : undefined}
-                />
-                {checkingUsername && <p className='mt-1 text-xs text-muted-foreground'>Checking availability…</p>}
-                {usernameAvailable === true && !checkingUsername && <p className='mt-1 text-xs text-green-600'>Username is available</p>}
-                {usernameAvailable === false && !checkingUsername && <p className='mt-1 text-xs text-red-600'>Username is taken</p>}
-              </div>
-              {fieldErrors.username && (
-                <p id='register-username-error' className='text-sm text-destructive'>
-                  {fieldErrors.username}
-                </p>
-              )}
+              <h1 className='text-[32px] font-bold text-[#111827] tracking-tight leading-tight'>Create an account</h1>
+              <p className='text-[#6B7280] text-[15px]'>Sign up for your LeadsBox account</p>
             </div>
-            {/* First/Last name moved to profile settings after registration */}
 
-            {inviteToken ? (
-              <div className='space-y-2 rounded-md border border-dashed border-muted p-4 bg-muted/20'>
-                <p className='text-sm text-muted-foreground'>
+            {formError && (
+              <Alert variant='destructive' className='rounded-xl'>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className='space-y-4'>
+              <div className='space-y-1.5'>
+                <Label htmlFor='username' className='text-[13px] font-bold text-[#374151]'>
+                  Username*
+                </Label>
+                <div className='relative'>
+                  <Input
+                    id='username'
+                    name='username'
+                    type='text'
+                    placeholder='Username'
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    onBlur={() => checkUsername(formData.username)}
+                    className='h-12 px-4 rounded-xl border-[#E5E7EB] bg-white text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all'
+                    disabled={isLoading}
+                    aria-invalid={Boolean(fieldErrors.username)}
+                  />
+                  {checkingUsername && <p className='absolute right-3 top-3.5 text-xs text-muted-foreground'>Checking...</p>}
+                </div>
+                {usernameAvailable === true && !checkingUsername && <p className='text-xs text-green-600 font-medium mt-1'>Available</p>}
+                {usernameAvailable === false && !checkingUsername && <p className='text-xs text-red-600 font-medium mt-1'>Taken</p>}
+                {fieldErrors.username && <p className='text-sm text-destructive mt-1'>{fieldErrors.username}</p>}
+              </div>
+
+              {inviteToken ? (
+                <div className='rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4 text-sm text-muted-foreground'>
                   {inviteError ? (
                     <span className='text-destructive'>{inviteError}</span>
                   ) : (
                     <>
-                      You&apos;re joining <span className='font-medium'>{inviteOrgName || 'this organization'}</span> as a{' '}
+                      You&apos;re joining <span className='font-medium text-foreground'>{inviteOrgName || 'this organization'}</span> as a{' '}
                       <span className='font-medium lowercase'>{inviteRole.toLowerCase()}</span>.
                     </>
                   )}
-                </p>
-              </div>
-            ) : (
-              <div className='space-y-2'>
-                <Label htmlFor='organizationName'>Organization Name</Label>
-                <div className='relative'>
-                  <Building className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                </div>
+              ) : (
+                <div className='space-y-1.5'>
+                  <Label htmlFor='organizationName' className='text-[13px] font-bold text-[#374151]'>
+                    Organization Name*
+                  </Label>
                   <Input
                     id='organizationName'
                     name='organizationName'
@@ -312,156 +277,155 @@ const Register = () => {
                     placeholder='Your Company'
                     value={formData.organizationName}
                     onChange={handleInputChange}
-                    className='pl-10'
+                    className='h-12 px-4 rounded-xl border-[#E5E7EB] bg-white text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all'
                     disabled={isLoading}
                     aria-invalid={Boolean(fieldErrors.organizationName)}
-                    aria-describedby={fieldErrors.organizationName ? 'register-organization-error' : undefined}
                   />
+                  {fieldErrors.organizationName && <p className='text-sm text-destructive mt-1'>{fieldErrors.organizationName}</p>}
                 </div>
-                {fieldErrors.organizationName && (
-                  <p id='register-organization-error' className='text-sm text-destructive'>
-                    {fieldErrors.organizationName}
-                  </p>
-                )}
-              </div>
-            )}
+              )}
 
-            <div className='space-y-2'>
-              <Label htmlFor='email'>Email</Label>
-              <div className='relative'>
-                <Mail className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+              <div className='space-y-1.5'>
+                <Label htmlFor='email' className='text-[13px] font-bold text-[#374151]'>
+                  Email*
+                </Label>
                 <Input
                   id='email'
                   name='email'
                   type='email'
-                  placeholder='john@company.com'
+                  placeholder='Email'
                   value={formData.email}
                   onChange={handleInputChange}
-                  className='pl-10'
+                  className='h-12 px-4 rounded-xl border-[#E5E7EB] bg-white text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all'
                   disabled={isLoading}
                   aria-invalid={Boolean(fieldErrors.email)}
-                  aria-describedby={fieldErrors.email ? 'register-email-error' : undefined}
                 />
+                {fieldErrors.email && <p className='text-sm text-destructive mt-1'>{fieldErrors.email}</p>}
               </div>
-              {fieldErrors.email && (
-                <p id='register-email-error' className='text-sm text-destructive'>
-                  {fieldErrors.email}
-                </p>
-              )}
+
+              <div className='space-y-4'>
+                <div className='space-y-1.5'>
+                  <Label htmlFor='password' className='text-[13px] font-bold text-[#374151]'>
+                    Password*
+                  </Label>
+                  <div className='relative'>
+                    <Input
+                      id='password'
+                      name='password'
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder='Password'
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className='h-12 px-4 pr-10 rounded-xl border-[#E5E7EB] bg-white text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all'
+                      disabled={isLoading}
+                      aria-invalid={Boolean(fieldErrors.password)}
+                    />
+                    <button
+                      type='button'
+                      onClick={() => setShowPassword(!showPassword)}
+                      className='absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors'
+                      disabled={isLoading}
+                    >
+                      {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                    </button>
+                  </div>
+                  {fieldErrors.password && <p className='text-sm text-destructive mt-1'>{fieldErrors.password}</p>}
+                </div>
+
+                <div className='space-y-1.5'>
+                  <Label htmlFor='confirmPassword' className='text-[13px] font-bold text-[#374151]'>
+                    Confirm*
+                  </Label>
+                  <div className='relative'>
+                    <Input
+                      id='confirmPassword'
+                      name='confirmPassword'
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder='Confirm'
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className='h-12 px-4 pr-10 rounded-xl border-[#E5E7EB] bg-white text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all'
+                      disabled={isLoading}
+                      aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                    />
+                    <button
+                      type='button'
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className='absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors'
+                      disabled={isLoading}
+                    >
+                      {showConfirmPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && <p className='text-sm text-destructive mt-1'>{fieldErrors.confirmPassword}</p>}
+                </div>
+              </div>
+
+              <div className='space-y-3 pt-2'>
+                <div className='flex items-center gap-3'>
+                  <Checkbox
+                    id='agree'
+                    checked={agree}
+                    onCheckedChange={(v) => {
+                      setAgree(!!v);
+                      if (agreementError) setAgreementError(null);
+                    }}
+                    className='rounded-[6px] border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600'
+                  />
+                  <Label htmlFor='agree' className='text-[13px] text-gray-600 font-medium leading-tight'>
+                    I agree to the{' '}
+                    <Link to='/privacy' className='text-blue-600 hover:underline'>
+                      Privacy Policy
+                    </Link>{' '}
+                    and{' '}
+                    <Link to='/terms' className='text-blue-600 hover:underline'>
+                      Terms of Service
+                    </Link>
+                  </Label>
+                </div>
+                {agreementError && <p className='text-sm text-destructive'>{agreementError}</p>}
+              </div>
+
+              <Button
+                type='submit'
+                className='w-full h-12 text-[15px] font-semibold rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white shadow-sm transition-all mt-2'
+                disabled={isLoading || !agree}
+              >
+                {isLoading ? 'Creating account...' : 'Create Account'}
+              </Button>
+            </form>
+
+            <div className='relative py-4'>
+              <div className='absolute inset-0 flex items-center'>
+                <span className='w-full border-t border-gray-200' />
+              </div>
+              <div className='relative flex justify-center text-[10px] uppercase'>
+                <span className='bg-white px-3 text-gray-400 font-medium tracking-widest'>OR</span>
+              </div>
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='password'>Password</Label>
-              <div className='relative'>
-                <Lock className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='password'
-                  name='password'
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder='Create a password'
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className='pl-10 pr-10'
-                  disabled={isLoading}
-                  aria-invalid={Boolean(fieldErrors.password)}
-                  aria-describedby={fieldErrors.password ? 'register-password-error' : undefined}
-                />
-                <button
-                  type='button'
-                  onClick={() => setShowPassword(!showPassword)}
-                  className='absolute right-3 top-3 text-muted-foreground hover:text-foreground'
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
-                </button>
-              </div>
-              {fieldErrors.password && (
-                <p id='register-password-error' className='text-sm text-destructive'>
-                  {fieldErrors.password}
-                </p>
-              )}
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='confirmPassword'>Confirm Password</Label>
-              <div className='relative'>
-                <Lock className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='confirmPassword'
-                  name='confirmPassword'
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder='Confirm your password'
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className='pl-10 pr-10'
-                  disabled={isLoading}
-                  aria-invalid={Boolean(fieldErrors.confirmPassword)}
-                  aria-describedby={fieldErrors.confirmPassword ? 'register-confirm-password-error' : undefined}
-                />
-                <button
-                  type='button'
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className='absolute right-3 top-3 text-muted-foreground hover:text-foreground'
-                  disabled={isLoading}
-                >
-                  {showConfirmPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
-                </button>
-              </div>
-              {fieldErrors.confirmPassword && (
-                <p id='register-confirm-password-error' className='text-sm text-destructive'>
-                  {fieldErrors.confirmPassword}
-                </p>
-              )}
-            </div>
-
-            <div className='space-y-3'>
-              <div className='flex items-start gap-2'>
-                <Checkbox
-                  id='agree'
-                  checked={agree}
-                  onCheckedChange={(v) => {
-                    setAgree(!!v);
-                    if (agreementError) {
-                      setAgreementError(null);
-                    }
-                  }}
-                />
-                <Label htmlFor='agree' className='text-sm text-muted-foreground'>
-                  I agree to the{' '}
-                  <Link to='/privacy' className='text-primary hover:underline'>
-                    Privacy Policy
-                  </Link>{' '}
-                  and{' '}
-                  <Link to='/terms' className='text-primary hover:underline'>
-                    Terms of Service
-                  </Link>
-                </Label>
-              </div>
-              {agreementError && <p className='text-sm text-destructive'>{agreementError}</p>}
-            </div>
-
-            <Button type='submit' className='w-full mt-2' disabled={isLoading || !agree}>
-              {isLoading ? 'Creating account...' : 'Create Account'}
-            </Button>
-          </form>
-
-          <div className='mt-4 text-center text-sm'>
-            <span className='text-muted-foreground'>Already have an account? </span>
-            <Link
-              to={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : '/login'}
-              className='text-primary hover:underline font-medium'
-            >
-              Sign in
+            <Link to='/login'>
+              <Button
+                type='button'
+                variant='outline'
+                className='w-full h-12 text-[15px] font-semibold rounded-xl border-[#E5E7EB] text-[#374151] hover:bg-gray-50 hover:text-[#111827] transition-all'
+                disabled={isLoading}
+              >
+                Sign In
+              </Button>
             </Link>
           </div>
+        </div>
 
-          <div className='mt-4 text-center'>
-            <Link to='/' className='text-sm text-muted-foreground hover:text-foreground hover:underline'>
-              ← Back to home
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Right Side - Image */}
+        <div className='hidden lg:block lg:w-1/2 relative bg-[#F3F4F6]'>
+          <img
+            src='https://leadsboxapp.s3.us-east-1.amazonaws.com/registerleadsbox.webp'
+            alt='LeadsBox Register'
+            className='absolute inset-0 w-full h-full object-cover'
+          />
+        </div>
+      </div>
     </div>
   );
 };
