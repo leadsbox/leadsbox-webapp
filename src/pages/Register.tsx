@@ -214,10 +214,10 @@ const Register = () => {
         <span className='text-2xl font-bold text-gray-900 tracking-tight'>LeadsBox</span>
       </div>
 
-      <div className='w-full max-w-[1100px] h-auto lg:h-[750px] bg-white rounded-[32px] shadow-sm overflow-hidden flex'>
+      <div className='w-full max-w-[1100px] h-auto lg:h-[700px] bg-white rounded-[32px] shadow-sm overflow-hidden flex'>
         {/* Left Side - Form */}
-        <div className='w-full lg:w-1/2 p-10 md:p-14 lg:p-16 flex flex-col justify-center bg-white relative'>
-          <div className='w-full max-w-sm mx-auto space-y-6'>
+        <div className='w-full lg:w-1/2 flex flex-col bg-white relative overflow-y-auto'>
+          <div className='w-full max-w-sm mx-auto space-y-6 p-4 md:p-6 lg:p-8'>
             <div className='space-y-2'>
               <h1 className='text-[32px] font-bold text-[#111827] tracking-tight leading-tight'>Create an account</h1>
               <p className='text-[#6B7280] text-[15px]'>Sign up for your LeadsBox account</p>
