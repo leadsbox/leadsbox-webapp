@@ -123,8 +123,10 @@ const Login = () => {
     <div className='min-h-screen bg-[#F0F4F8] flex flex-col items-center justify-center p-4 gap-8'>
       {/* Brand Logo - Centered above card */}
       <div className='flex justify-center items-center gap-3'>
-        <AuthBrand />
-        <span className='text-2xl font-bold text-gray-900 tracking-tight'>LeadsBox</span>
+        <Link to='/' className='flex items-center gap-3 hover:opacity-80 transition-opacity'>
+          <AuthBrand />
+          <span className='text-2xl font-bold text-gray-900 tracking-tight'>LeadsBox</span>
+        </Link>
       </div>
 
       <div className='w-full max-w-[1100px] h-auto lg:h-[700px] bg-white rounded-[32px] shadow-sm overflow-hidden flex'>
