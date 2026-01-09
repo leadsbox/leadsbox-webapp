@@ -344,7 +344,13 @@ export const IntegrationsTab: React.FC = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button className='mt-2' size='sm' onClick={confirmBusiness} disabled={businessLoading || !selectedBusiness} loading={businessLoading}>
+                      <Button
+                        className='mt-2'
+                        size='sm'
+                        onClick={confirmBusiness}
+                        disabled={businessLoading || !selectedBusiness}
+                        loading={businessLoading}
+                      >
                         Next
                       </Button>
                     </div>
@@ -392,35 +398,85 @@ export const IntegrationsTab: React.FC = () => {
                 ) : (
                   <>
                     {waConnected && connections.length > 0 && (
-                      <div className='space-y-2'>
-                        <Label>Select connection to disconnect</Label>
-                        <Select value={disconnectKey} onValueChange={setDisconnectKey}>
-                          <SelectTrigger>
-                            <SelectValue placeholder='Choose a connection' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {connections.map((c) => (
-                              <SelectItem key={c.id} value={`${c.wabaId}|${c.phoneNumberId}`}>
-                                WABA: {c.wabaId} — Phone: {c.display || c.phoneNumberId}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <div className='space-y-3 mb-4'>
+                        <Label className='text-xs font-semibold text-muted-foreground uppercase'>Connected Numbers</Label>
+                        <div className='bg-slate-50 rounded-lg border border-slate-100 divide-y divide-slate-100'>
+                          {connections.map((c) => (
+                            <div key={c.id} className='p-3 flex items-center justify-between'>
+                              <div className='flex items-center space-x-3'>
+                                <div className='bg-green-100 p-2 rounded-full'>
+                                  <WhatsAppIcon className='h-4 w-4' />
+                                </div>
+                                <div>
+                                  <p className='text-sm font-medium text-slate-900'>{c.display || c.phoneNumberId}</p>
+                                  <p className='text-xs text-slate-500'>WABA: {c.wabaId}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+
                     <div className='flex space-x-2'>
+                      {/* Only show Reconnect if we have 0 connections, OR if we want to allow adding more? 
+                            Usually 1 connection per org is enough, but multi is possible.
+                            Let's keep Reconnect always to fix broken tokens.
+                        */}
                       <Button onClick={startWhatsAppConnect} className='flex-1' disabled={ctaLoading} loading={ctaLoading}>
-                        {waConnected ? 'Reconnect' : 'Connect WhatsApp'}
+                        {waConnected ? 'Reconnect / Add Another' : 'Connect WhatsApp'}
                       </Button>
-                      <Button
-                        variant='outline'
-                        className='text-destructive'
-                        disabled={!waConnected || disconnectLoading}
-                        loading={disconnectLoading}
-                        onClick={disconnectWhatsApp}
-                      >
-                        Disconnect
-                      </Button>
+
+                      {waConnected && (
+                        <div className='w-full'>
+                          {/* Disconnect Logic: Ideally per connection. 
+                                 For now, let's keep the mass disconnect or specific select if multiple.
+                                 To simplify, we can put the disconnect dropdown back BUT keep the list above for visibility.
+                             */}
+                          {connections.length > 1 ? (
+                            <Select
+                              value={disconnectKey}
+                              onValueChange={(val) => {
+                                setDisconnectKey(val);
+                                // Optionally auto-trigger or show a button next to it?
+                              }}
+                            >
+                              <SelectTrigger className='w-full'>
+                                <SelectValue placeholder='Select to Disconnect' />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {connections.map((c) => (
+                                  <SelectItem key={c.id} value={`${c.wabaId}|${c.phoneNumberId}`}>
+                                    Disconnect {c.display}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Button
+                              variant='outline'
+                              className='text-destructive w-full'
+                              disabled={disconnectLoading}
+                              loading={disconnectLoading}
+                              onClick={disconnectWhatsApp}
+                            >
+                              Disconnect
+                            </Button>
+                          )}
+                        </div>
+                      )}
+
+                      {connections.length > 1 && disconnectKey && (
+                        <Button
+                          variant='outline'
+                          className='text-destructive'
+                          disabled={disconnectLoading}
+                          loading={disconnectLoading}
+                          onClick={disconnectWhatsApp}
+                        >
+                          Confirm
+                        </Button>
+                      )}
                     </div>
                   </>
                 )}
