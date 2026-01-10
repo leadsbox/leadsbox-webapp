@@ -101,6 +101,12 @@ const sidebarItems: SidebarItem[] = [
     description: 'Follow-ups & workflow builder',
   },
   {
+    title: 'Carousel',
+    href: '/dashboard/carousel',
+    icon: Sparkles,
+    description: 'Generate branded carousels from videos',
+  },
+  {
     title: 'Invoices',
     href: '/dashboard/invoices',
     icon: FileText,

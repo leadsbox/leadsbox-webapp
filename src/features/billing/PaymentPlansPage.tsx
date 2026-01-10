@@ -326,11 +326,7 @@ const PaymentPlansPage: React.FC = () => {
       </motion.div>
 
       {/* Referral Program Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
         <Card className='border-l-4 border-l-green-500 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/20'>
           <CardContent className='p-4 flex items-center justify-between gap-4 flex-wrap'>
             <div className='flex items-center gap-3 flex-1'>
@@ -347,9 +343,7 @@ const PaymentPlansPage: React.FC = () => {
                 </svg>
               </div>
               <div className='flex-1'>
-                <p className='font-semibold text-sm text-foreground'>
-                  Get a free month when you refer a friend!
-                </p>
+                <p className='font-semibold text-sm text-foreground'>Get a free month when you refer a friend!</p>
                 <p className='text-xs text-muted-foreground mt-0.5'>
                   Invite friends to join LeadsBox. When they sign up and subscribe, you both get 1 free month.
                 </p>
@@ -504,14 +498,29 @@ const PaymentPlansPage: React.FC = () => {
                       </div>
                     ) : null}
 
-                    <ul className='space-y-2 text-sm text-muted-foreground flex-1'>
+                    <ul className='space-y-3 text-sm text-muted-foreground flex-1'>
                       {features.length ? (
-                        features.map((feature, index) => (
-                          <li key={index} className='flex items-start gap-2'>
-                            <span className='mt-1 h-2 w-2 rounded-full bg-primary/70' />
-                            <span>{feature}</span>
-                          </li>
-                        ))
+                        features.map((feature, index) => {
+                          const isAIFeature = feature.toLowerCase().includes('ai') || feature.toLowerCase().includes('carousel');
+                          return (
+                            <li
+                              key={index}
+                              className={cn(
+                                'flex items-start gap-2.5 transition-colors duration-200',
+                                isAIFeature
+                                  ? 'text-foreground font-medium p-2 rounded-lg bg-primary/5 border border-primary/10 shadow-sm animate-fade-in'
+                                  : ''
+                              )}
+                            >
+                              {isAIFeature ? (
+                                <Sparkles className='h-4 w-4 text-primary mt-0.5 shrink-0' />
+                              ) : (
+                                <span className='mt-2 h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0' />
+                              )}
+                              <span>{feature}</span>
+                            </li>
+                          );
+                        })
                       ) : (
                         <li className='text-xs italic text-muted-foreground/80'>Feature breakdown coming soon.</li>
                       )}

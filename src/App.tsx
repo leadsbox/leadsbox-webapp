@@ -46,10 +46,9 @@ const PaymentPlansPage = lazy(() => import('./features/billing/PaymentPlansPage'
 const OrganizationOnboarding = lazy(() => import('./pages/OrganizationOnboarding'));
 const NotificationsPage = lazy(() => import('./features/notifications/NotificationsPage'));
 const ReferralsPage = lazy(() => import('./features/referrals/ReferralsPage'));
+const CarouselGeneratorPage = lazy(() => import('./features/carousel/CarouselGeneratorPage'));
 
-const RouteLoader = () => (
-  <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>
-);
+const RouteLoader = () => <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>;
 
 const App = () => {
   return (
@@ -66,7 +65,7 @@ const App = () => {
           <Route path='/contact' element={<Contact />} />
           <Route path='/status' element={<StatusPage />} />
           <Route path='/referral-program' element={<ReferralProgram />} />
-          
+
           <Route element={<AppProviders />}>
             <Route path='/login' element={<Login />} />
             <Route path='/register' element={<Register />} />
@@ -116,6 +115,7 @@ const App = () => {
               <Route path='billing' element={<PaymentPlansPage />} />
               <Route path='notifications' element={<NotificationsPage />} />
               <Route path='referrals' element={<ReferralsPage />} />
+              <Route path='carousel' element={<CarouselGeneratorPage />} />
               <Route
                 path='settings'
                 element={

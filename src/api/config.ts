@@ -132,6 +132,12 @@ export const endpoints = {
     remove: (code: string) => `/invoices/${code}`,
     bulkRemove: '/invoices/bulk-delete',
   },
+  carousel: {
+    generate: '/carousel/generate',
+    credits: '/carousel/credits',
+    status: (jobId: string) => `/carousel/${jobId}`,
+    download: (jobId: string) => `/carousel/${jobId}/download`,
+  },
 } as const;
 
 // HTTP Methods
