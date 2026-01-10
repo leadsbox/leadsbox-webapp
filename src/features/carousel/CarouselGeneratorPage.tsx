@@ -218,14 +218,14 @@ export default function CarouselGeneratorPage() {
                 <Slider
                   value={[slideCount]}
                   onValueChange={([value]) => setSlideCount(value)}
-                  min={3}
+                  min={1}
                   max={7}
                   step={1}
                   className='w-full'
                   disabled={jobStatus !== 'idle'}
                 />
                 <div className='flex justify-between text-xs text-muted-foreground'>
-                  <span>3 slides</span>
+                  <span>1 slide</span>
                   <span>7 slides</span>
                 </div>
               </div>
@@ -353,7 +353,7 @@ export default function CarouselGeneratorPage() {
             <div className='flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs'>
               1
             </div>
-            <p>Paste your video URL and choose the number of slides (3-7)</p>
+            <p>Paste your video URL and choose the number of slides (1-7)</p>
           </div>
           <div className='flex gap-3'>
             <div className='flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs'>
