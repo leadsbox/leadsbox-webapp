@@ -114,10 +114,30 @@ export default function CarouselGeneratorPage() {
     }
   };
 
-  const handleDownload = () => {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
     if (!jobId) return;
-    const downloadUrl = `${client.defaults.baseURL}${endpoints.carousel.download(jobId)}`;
-    window.open(downloadUrl, '_blank');
+    try {
+      setDownloading(true);
+      const response = await client.get(endpoints.carousel.download(jobId), {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `carousel-${jobId}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed', err);
+      setError('Failed to download file. Please check your connection and try again.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleReset = () => {
@@ -314,11 +334,20 @@ export default function CarouselGeneratorPage() {
                 <p className='text-muted-foreground'>Download your {slideCount}-slide branded carousel</p>
               </div>
               <div className='flex gap-3 justify-center'>
-                <Button onClick={handleDownload} size='lg' className='gap-2'>
-                  <Download className='h-5 w-5' />
-                  Download ZIP
+                <Button onClick={handleDownload} size='lg' className='gap-2' disabled={downloading}>
+                  {downloading ? (
+                    <>
+                      <Loader2 className='h-5 w-5 animate-spin' />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className='h-5 w-5' />
+                      Download ZIP
+                    </>
+                  )}
                 </Button>
-                <Button onClick={handleReset} variant='outline' size='lg'>
+                <Button onClick={handleReset} variant='outline' size='lg' disabled={downloading}>
                   Create Another
                 </Button>
               </div>
