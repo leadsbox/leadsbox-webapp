@@ -231,7 +231,9 @@ export type Stage =
   | 'QUALIFIED'
   | 'IN_PROGRESS'
   | 'WON'
-  | 'LOST';
+  | 'LOST'
+  | 'CONTACTED'
+  | 'NEGOTIATION';
 
 // Available lead labels from backend
 export const LEAD_LABELS = [
