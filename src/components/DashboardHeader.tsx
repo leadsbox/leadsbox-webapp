@@ -86,6 +86,48 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     };
     loadRole();
   }, [orgId, user?.id]);
+
+  // Fetch list of organizations for switcher
+  const [orgs, setOrgs] = React.useState<Array<{ id: string; name: string; role?: string }>>([]);
+
+  React.useEffect(() => {
+    const loadOrgs = async () => {
+      try {
+        const resp = await client.get('/orgs');
+        const list = resp?.data?.data?.orgs || [];
+
+        // Enrich with roles if needed, or simple list
+        setOrgs(list);
+      } catch (e) {
+        console.error('Failed to load organizations for header', e);
+      }
+    };
+    if (user) {
+      loadOrgs();
+    }
+  }, [user]);
+
+  const { setOrg } = useAuth(); // Ensure useAuth exposes setOrg or we import client's setOrgId
+
+  const handleOrgSwitch = (newOrgId: string) => {
+    if (newOrgId === orgId) return;
+
+    // Update local storage and context
+    // Assuming useAuth has setOrg, otherwise use client directly
+    if (setOrg) {
+      setOrg(newOrgId);
+    } else {
+      // Fallback if setOrg is not exposed
+      localStorage.setItem('lb_org_id', newOrgId);
+    }
+
+    // Dispatch event to notify valid listeners
+    window.dispatchEvent(new CustomEvent('lb:org-changed'));
+
+    // Force reload/navigate to home to ensure fresh data context
+    // Optional: could just navigate(0)
+    window.location.href = '/dashboard/home';
+  };
   const formatName = (name: string) => {
     return name
       .split(' ')
@@ -137,9 +179,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
       {user && user.emailVerified === false && (
         <div className='w-full bg-amber-50 text-amber-800 text-xs sm:text-sm px-3 py-2 rounded-b-md flex items-center justify-between border-b border-amber-200'>
           <span>Your email is not verified. Please check your inbox.</span>
-              <Button size='sm' variant='outline' onClick={resendVerification} className='ml-3'>
-                Resend link
-              </Button>
+          <Button size='sm' variant='outline' onClick={resendVerification} className='ml-3'>
+            Resend link
+          </Button>
         </div>
       )}
       {user && !orgId && (
@@ -183,28 +225,38 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
             <DropdownMenuContent className='w-56' align='start'>
               <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className='p-0'>
-                <Link to='/dashboard/home' className='flex-1 flex items-center justify-between p-2'>
-                  <div className='flex items-center gap-2'>
-                    <div className='w-8 h-8 p-1 rounded-sm flex items-center justify-center'>
-                      <CustomAvatar src={userAvatar || undefined} name={formattedDisplayName} size='sm' className='w-full h-full' />
+              {orgs.length === 0 ? (
+                <div className='p-2 text-sm text-muted-foreground'>No organizations found</div>
+              ) : (
+                orgs.map((org) => (
+                  <DropdownMenuItem key={org.id} className='p-0 cursor-pointer' onClick={() => handleOrgSwitch(org.id)}>
+                    <div className='flex-1 flex items-center justify-between p-2'>
+                      <div className='flex items-center gap-2'>
+                        <div className='w-8 h-8 p-1 rounded-sm flex items-center justify-center bg-primary/10'>
+                          <span className='font-bold text-primary uppercase'>{org.name.substring(0, 2)}</span>
+                        </div>
+                        <div>
+                          <p className='text-sm font-medium'>{org.name}</p>
+                          <p className='text-xs text-muted-foreground'>{org.role ? org.role.toLowerCase() : 'Member'}</p>
+                        </div>
+                      </div>
+                      {orgId === org.id && <Check className='h-4 w-4 text-primary' />}
                     </div>
-                    <div>
-                      <p className='text-sm font-medium'>{formattedDisplayName}</p>
-                      <p className='text-xs text-muted-foreground'>Personal Workspace</p>
-                    </div>
-                  </div>
-                  <Check className='h-4 w-4 text-primary' />
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to='/dashboard/settings?tab=organization' className='cursor-pointer'>
+                  <PlusCircle className='mr-2 h-4 w-4' />
+                  <span>Create New Workspace</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <PlusCircle className='mr-2 h-4 w-4' />
-                <span>Create New Workspace</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className='mr-2 h-4 w-4' />
-                <span>Workspace Settings</span>
+              <DropdownMenuItem asChild>
+                <Link to='/dashboard/settings?tab=organization' className='cursor-pointer'>
+                  <Settings className='mr-2 h-4 w-4' />
+                  <span>Workspace Settings</span>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -226,10 +278,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           </Button>
 
           <Link
-            to="/dashboard/referrals"
-            className="hidden sm:flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors mr-2"
+            to='/dashboard/referrals'
+            className='hidden sm:flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors mr-2'
           >
-            <Gift className="h-3.5 w-3.5" />
+            <Gift className='h-3.5 w-3.5' />
             Invite & Earn
           </Link>
 

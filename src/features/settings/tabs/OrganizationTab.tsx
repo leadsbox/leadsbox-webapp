@@ -217,6 +217,7 @@ export const OrganizationTab: React.FC<Props> = ({
                   </Select>
                 </div>
               </div>
+
               <Button onClick={onSaveOrganization} disabled={!selectedOrgId}>
                 <Save className='h-4 w-4 mr-2' />
                 Save Changes
@@ -244,6 +245,65 @@ export const OrganizationTab: React.FC<Props> = ({
           </>
         )}
       </Card>
+
+      {/* Danger Zone for Deletion */}
+      {hasOrganizations && selectedOrgId && (
+        <Card className='border-destructive/50 bg-destructive/5 mt-6'>
+          <CardHeader>
+            <CardTitle className='text-destructive'>Danger Zone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4'>
+              <div>
+                <p className='font-medium text-foreground'>Delete this organization</p>
+                <p className='text-sm text-muted-foreground'>
+                  Once deleted, all data (leads, messages, settings) will be permanently lost. This action cannot be undone.
+                </p>
+              </div>
+              <Button
+                variant='destructive'
+                onClick={async () => {
+                  if (window.confirm('Are you sure you want to PERMANENTLY delete this organization? This cannot be undone.')) {
+                    try {
+                      await client.delete(`/orgs/${selectedOrgId}`);
+                      notify.success({ title: 'Organization deleted' });
+
+                      // Remove from local list
+                      const remaining = orgs.filter((o) => String(o.id) !== selectedOrgId);
+                      setOrgs(remaining);
+
+                      if (remaining.length > 0) {
+                        const nextId = String(remaining[0].id);
+                        setSelectedOrgId(nextId);
+                        try {
+                          setOrg(nextId);
+                          window.dispatchEvent(new CustomEvent('lb:org-changed'));
+                        } catch (error) {
+                          console.error('Error switching organization after delete:', error);
+                        }
+                      } else {
+                        setSelectedOrgId('');
+                        try {
+                          setOrg('');
+                          window.dispatchEvent(new CustomEvent('lb:org-changed'));
+                          window.location.reload();
+                        } catch (error) {
+                          console.error('Error clearing organization:', error);
+                        }
+                      }
+                    } catch (e) {
+                      console.error(e);
+                      notify.error({ title: 'Failed to delete organization', description: 'Ensure you are the owner and try again.' });
+                    }
+                  }
+                }}
+              >
+                Delete Organization
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create Organization Modal */}
       <Dialog open={createOrgOpen} onOpenChange={setCreateOrgOpen}>
