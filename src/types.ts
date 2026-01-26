@@ -481,3 +481,23 @@ export interface AuthResponse {
   token: string;
   refreshToken: string;
 }
+
+export interface SubscriptionSummary {
+  id: string;
+  status: string;
+  plan?: {
+    id: string;
+    name: string;
+    amount: number;
+    currency: string;
+    interval: string;
+    trialPeriodDays?: number | null;
+  } | null;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
+  reference?: string | null;
+  cancelAtPeriodEnd?: boolean | null;
+  paystackSubscriptionId?: string | null;
+  paystackCustomerCode?: string | null;
+  trialDaysRemaining?: number;
+}

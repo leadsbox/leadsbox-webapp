@@ -27,6 +27,7 @@ import SupportWidget from './SupportWidget';
 import { FeedbackDialog } from './FeedbackDialog';
 import client from '../api/client';
 import { endpoints } from '../api/config';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 interface SidebarItem {
   title: string;
@@ -34,20 +35,6 @@ interface SidebarItem {
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   badge?: number;
-}
-
-interface SubscriptionSummary {
-  id: string;
-  status: string;
-  plan?: {
-    id: string;
-    name: string;
-    amount: number;
-    currency: string;
-    interval: string;
-  } | null;
-  trialEndsAt?: string | null;
-  currentPeriodEnd?: string | null;
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -147,11 +134,7 @@ export const DashboardLayout: React.FC = () => {
   const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false));
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number>(14);
-  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState<boolean>(false);
-  const location = useLocation();
+  const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
 
   // Fetch actual inbox count
   useEffect(() => {
@@ -173,77 +156,6 @@ export const DashboardLayout: React.FC = () => {
     fetchInboxCount();
   }, []);
 
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    // Set initial
-    setIsMobile(mq.matches);
-    mq.addEventListener('change', listener);
-    return () => mq.removeEventListener('change', listener);
-  }, []);
-
-  // Allow other components (e.g., header menu on Inbox) to control the global mobile sidebar
-  useEffect(() => {
-    const toggle = () => setMobileOpen((v) => !v);
-    const open = () => setMobileOpen(true);
-    const close = () => setMobileOpen(false);
-    window.addEventListener('lb:toggle-global-sidebar', toggle);
-    window.addEventListener('lb:open-global-sidebar', open);
-    window.addEventListener('lb:close-global-sidebar', close);
-    return () => {
-      window.removeEventListener('lb:toggle-global-sidebar', toggle);
-      window.removeEventListener('lb:open-global-sidebar', open);
-      window.removeEventListener('lb:close-global-sidebar', close);
-    };
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('lb_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
-    } catch (error) {
-      console.error('Failed to save sidebar state to localStorage:', error);
-    }
-  }, [sidebarCollapsed]);
-
-  // Prevent background scroll when mobile menu is open
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  }, [mobileOpen]);
-
-  // Close mobile drawer on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const fetchSubscription = async () => {
-      try {
-        setSubscriptionLoading(true);
-        const response = await client.get(endpoints.billing.subscription);
-        const payload = response?.data?.data || response?.data;
-        if (payload) {
-          setSubscription(payload.subscription ?? null);
-          if (typeof payload.trialDaysRemaining === 'number') {
-            setTrialDaysLeft(payload.trialDaysRemaining);
-          }
-          if (typeof payload.trialEndsAt === 'string') {
-            setTrialEndsAt(payload.trialEndsAt);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load subscription info:', error);
-      } finally {
-        setSubscriptionLoading(false);
-      }
-    };
-
-    fetchSubscription();
-  }, []);
-
   const toggleSidebar = () => {
     if (isMobile) {
       setMobileOpen((v) => !v);
@@ -261,12 +173,12 @@ export const DashboardLayout: React.FC = () => {
   const bannerSubtitle = subscriptionLoading
     ? 'Checking subscription status…'
     : subscription?.status === 'ACTIVE'
-    ? formattedRenewal
-      ? `Renews ${formattedRenewal}`
-      : 'Thanks for being part of LeadsBox!'
-    : trialDaysLeft > 0
-    ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial`
-    : 'Trial ended — choose a plan to stay connected.';
+      ? formattedRenewal
+        ? `Renews ${formattedRenewal}`
+        : 'Thanks for being part of LeadsBox!'
+      : trialDaysRemaining > 0
+        ? `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in trial`
+        : 'Trial ended — choose a plan to stay connected.';
   const collapsedSubtitle = subscription?.status === 'ACTIVE' && subscription?.plan?.name ? subscription.plan.name : bannerSubtitle;
   const handleGoToBilling = () => navigate('/dashboard/billing');
   const billingButtonText = subscription?.status === 'ACTIVE' ? 'Manage billing' : 'View payment plans';
@@ -322,7 +234,7 @@ export const DashboardLayout: React.FC = () => {
                   className={cn(
                     'sidebar-item-base',
                     sidebarCollapsed ? 'sidebar-item-collapsed' : '',
-                    isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'
+                    isActive ? 'sidebar-item-active' : 'sidebar-item-inactive',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                   title={sidebarCollapsed ? item.title : undefined}
@@ -423,7 +335,7 @@ export const DashboardLayout: React.FC = () => {
           className={cn(
             'absolute inset-y-0 left-0 w-64 bg-sidebar border-r border-sidebar-border shadow-lg',
             'transition-transform duration-300 ease-in-out will-change-transform',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+            mobileOpen ? 'translate-x-0' : '-translate-x-full',
           )}
           role='dialog'
           aria-modal='true'
