@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import client from '@/api/client';
+import client, { getOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { SubscriptionSummary } from '../types';
 import { useAuth } from './useAuth';
@@ -24,7 +24,8 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
   const fetchSubscription = useCallback(async () => {
-    if (!user) {
+    const orgId = getOrgId();
+    if (!user || !orgId) {
       setLoading(false);
       return;
     }

@@ -2,7 +2,6 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import SubscriptionGuard from './components/SubscriptionGuard';
-import { SubscriptionProvider } from './context/SubscriptionContext';
 const AppProviders = lazy(() => import('./AppProviders'));
 
 const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
@@ -69,72 +68,70 @@ const App = () => {
           <Route path='/referral-program' element={<ReferralProgram />} />
 
           <Route element={<AppProviders />}>
-            <SubscriptionProvider>
-              <Route path='/login' element={<Login />} />
-              <Route path='/register' element={<Register />} />
-              <Route path='/invite/:token' element={<AcceptInvitePage />} />
-              <Route path='/verify-email' element={<VerifyEmail />} />
-              <Route path='/forgot-password' element={<ForgotPassword />} />
-              <Route path='/reset-password' element={<ResetPassword />} />
-              <Route
-                path='/onboarding/organization'
-                element={
-                  <ProtectedRoute requireOrganization={false}>
-                    <Suspense fallback={<RouteLoader />}>
-                      <OrganizationOnboarding />
-                    </Suspense>
-                  </ProtectedRoute>
-                }
-              />
+            <Route path='/login' element={<Login />} />
+            <Route path='/register' element={<Register />} />
+            <Route path='/invite/:token' element={<AcceptInvitePage />} />
+            <Route path='/verify-email' element={<VerifyEmail />} />
+            <Route path='/forgot-password' element={<ForgotPassword />} />
+            <Route path='/reset-password' element={<ResetPassword />} />
+            <Route
+              path='/onboarding/organization'
+              element={
+                <ProtectedRoute requireOrganization={false}>
+                  <Suspense fallback={<RouteLoader />}>
+                    <OrganizationOnboarding />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
 
-              {/* Protected Dashboard Routes */}
+            {/* Protected Dashboard Routes */}
+            <Route
+              path='/dashboard'
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<RouteLoader />}>
+                    <DashboardLayout />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to='home' replace />} />
+
+              {/* Billing is ALWAYS accessible for authenticated users */}
+              <Route path='billing' element={<PaymentPlansPage />} />
+
+              {/* Sub-protected routes requiring active subscription or trial */}
               <Route
-                path='/dashboard'
                 element={
-                  <ProtectedRoute>
-                    <Suspense fallback={<RouteLoader />}>
-                      <DashboardLayout />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <SubscriptionGuard>
+                    <Outlet />
+                  </SubscriptionGuard>
                 }
               >
-                <Route index element={<Navigate to='home' replace />} />
-
-                {/* Billing is ALWAYS accessible for authenticated users */}
-                <Route path='billing' element={<PaymentPlansPage />} />
-
-                {/* Sub-protected routes requiring active subscription or trial */}
-                <Route
-                  element={
-                    <SubscriptionGuard>
-                      <Outlet />
-                    </SubscriptionGuard>
-                  }
-                >
-                  <Route path='home' element={<DashboardHomePage />} />
-                  <Route path='invoices' element={<InvoicesPage />} />
-                  <Route path='invoices/:code' element={<InvoiceDetailPage />} />
-                  <Route path='invoices/new' element={<CreateInvoicePage />} />
-                  <Route path='receipts/:receiptId' element={<ReceiptPage />} />
-                  <Route path='inbox' element={<InboxPage />} />
-                  <Route path='leads' element={<LeadsPage />} />
-                  <Route path='leads/:leadId' element={<LeadDetailPage />} />
-                  <Route path='sales' element={<SalesPage />} />
-                  <Route path='sales/:saleId' element={<SaleDetailPage />} />
-                  <Route path='tasks' element={<TasksPage />} />
-                  <Route path='analytics' element={<AnalyticsPage />} />
-                  <Route path='templates' element={<TemplatesHomePage />} />
-                  <Route path='templates/new' element={<CreateTemplateWizardPage />} />
-                  <Route path='templates/:id' element={<TemplateDetailPage />} />
-                  <Route path='automations' element={<AutomationsPage />} />
-                  {/* Billing was here, moved up */}
-                  <Route path='notifications' element={<NotificationsPage />} />
-                  <Route path='referrals' element={<ReferralsPage />} />
-                  <Route path='carousel' element={<CarouselGeneratorPage />} />
-                  <Route path='settings' element={<SettingsPage />} />
-                </Route>
+                <Route path='home' element={<DashboardHomePage />} />
+                <Route path='invoices' element={<InvoicesPage />} />
+                <Route path='invoices/:code' element={<InvoiceDetailPage />} />
+                <Route path='invoices/new' element={<CreateInvoicePage />} />
+                <Route path='receipts/:receiptId' element={<ReceiptPage />} />
+                <Route path='inbox' element={<InboxPage />} />
+                <Route path='leads' element={<LeadsPage />} />
+                <Route path='leads/:leadId' element={<LeadDetailPage />} />
+                <Route path='sales' element={<SalesPage />} />
+                <Route path='sales/:saleId' element={<SaleDetailPage />} />
+                <Route path='tasks' element={<TasksPage />} />
+                <Route path='analytics' element={<AnalyticsPage />} />
+                <Route path='templates' element={<TemplatesHomePage />} />
+                <Route path='templates/new' element={<CreateTemplateWizardPage />} />
+                <Route path='templates/:id' element={<TemplateDetailPage />} />
+                <Route path='automations' element={<AutomationsPage />} />
+                {/* Billing was here, moved up */}
+                <Route path='notifications' element={<NotificationsPage />} />
+                <Route path='referrals' element={<ReferralsPage />} />
+                <Route path='carousel' element={<CarouselGeneratorPage />} />
+                <Route path='settings' element={<SettingsPage />} />
               </Route>
-            </SubscriptionProvider>
+            </Route>
           </Route>
 
           {/* Catch-all route */}
