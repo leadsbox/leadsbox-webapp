@@ -17,6 +17,9 @@ import {
   Home,
   CreditCard,
   Loader2,
+  Package,
+  BookOpen,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -98,6 +101,24 @@ const sidebarItems: SidebarItem[] = [
     href: '/dashboard/invoices',
     icon: FileText,
     description: 'Create and manage invoices',
+  },
+  {
+    title: 'Products',
+    href: '/dashboard/products',
+    icon: Package,
+    description: 'Manage your product catalog',
+  },
+  {
+    title: 'Catalogs',
+    href: '/dashboard/catalogs',
+    icon: BookOpen,
+    description: 'Product collections and sharing',
+  },
+  {
+    title: 'Quotes',
+    href: '/dashboard/quotes',
+    icon: FileSpreadsheet,
+    description: 'Create and send quotes',
   },
   {
     title: 'Billing',
