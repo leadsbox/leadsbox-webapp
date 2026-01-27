@@ -122,19 +122,19 @@ const App = () => {
                 <Route path='leads/:leadId' element={<LeadDetailPage />} />
                 <Route path='sales' element={<SalesPage />} />
                 <Route path='sales/:saleId' element={<SaleDetailPage />} />
-                <Route path='tasks' element={<TasksPage />} />
+                {/* <Route path='tasks' element={<TasksPage />} /> */}
                 <Route path='analytics' element={<AnalyticsPage />} />
                 <Route path='templates' element={<TemplatesHomePage />} />
                 <Route path='templates/new' element={<CreateTemplateWizardPage />} />
                 <Route path='templates/:id' element={<TemplateDetailPage />} />
-                <Route path='automations' element={<AutomationsPage />} />
+                {/* <Route path='automations' element={<AutomationsPage />} /> */}
                 {/* Billing was here, moved up */}
-                <Route path='notifications' element={<NotificationsPage />} />
-                <Route path='referrals' element={<ReferralsPage />} />
-                <Route path='carousel' element={<CarouselGeneratorPage />} />
+                {/* <Route path='notifications' element={<NotificationsPage />} /> */}
+                {/* <Route path='referrals' element={<ReferralsPage />} /> */}
+                {/* <Route path='carousel' element={<CarouselGeneratorPage />} /> */}
                 <Route path='products' element={<ProductsPage />} />
                 <Route path='catalogs' element={<CatalogsPage />} />
-                <Route path='quotes' element={<QuotesPage />} />
+                {/* <Route path='quotes' element={<QuotesPage />} /> */}
                 <Route path='settings' element={<SettingsPage />} />
               </Route>
             </Route>

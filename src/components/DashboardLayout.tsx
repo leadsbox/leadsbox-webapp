@@ -71,31 +71,32 @@ const sidebarItems: SidebarItem[] = [
     icon: MessageSquare,
     description: 'WhatsApp message templates',
   },
-  {
-    title: 'Tasks',
-    href: '/dashboard/tasks',
-    icon: CheckSquare,
-    badge: 3,
-    description: 'Your tasks and reminders',
-  },
+  // {
+  //   title: 'Tasks',
+  //   href: '/dashboard/tasks',
+  //   icon: CheckSquare,
+  //   badge: 3,
+  //   description: 'Your tasks and reminders',
+  // },
   {
     title: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
     description: 'Performance metrics',
   },
-  {
-    title: 'Automations',
-    href: '/dashboard/automations',
-    icon: Sparkles,
-    description: 'Follow-ups & workflow builder',
-  },
-  {
-    title: 'Carousel',
-    href: '/dashboard/carousel',
-    icon: Sparkles,
-    description: 'Generate branded carousels from videos',
-  },
+  // 🚀 LAUNCH MVP: Hiding non-essential features (can re-enable by uncommenting)
+  // {
+  //   title: 'Automations',
+  //   href: '/dashboard/automations',
+  //   icon: Sparkles,
+  //   description: 'Follow-ups & workflow builder',
+  // },
+  // {
+  //   title: 'Carousel',
+  //   href: '/dashboard/carousel',
+  //   icon: Sparkles,
+  //   description: 'Generate branded carousels from videos',
+  // },
   {
     title: 'Invoices',
     href: '/dashboard/invoices',
@@ -114,12 +115,12 @@ const sidebarItems: SidebarItem[] = [
     icon: BookOpen,
     description: 'Product collections and sharing',
   },
-  {
-    title: 'Quotes',
-    href: '/dashboard/quotes',
-    icon: FileSpreadsheet,
-    description: 'Create and send quotes',
-  },
+  // {
+  //   title: 'Quotes',
+  //   href: '/dashboard/quotes',
+  //   icon: FileSpreadsheet,
+  //   description: 'Create and send quotes',
+  // },
   {
     title: 'Billing',
     href: '/dashboard/billing',
