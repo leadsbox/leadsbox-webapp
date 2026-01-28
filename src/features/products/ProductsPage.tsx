@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const ProductsPage = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('_ALL_');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -34,7 +34,11 @@ const ProductsPage = () => {
   // Fetch products
   const { data: productsData, isLoading } = useQuery({
     queryKey: ['products', { search, category: categoryFilter }],
-    queryFn: () => productsApi.list({ search: search || undefined, category: categoryFilter || undefined }),
+    queryFn: () =>
+      productsApi.list({
+        search: search || undefined,
+        category: categoryFilter === '_ALL_' ? undefined : categoryFilter,
+      }),
   });
 
   // Fetch categories
@@ -167,7 +171,7 @@ const ProductsPage = () => {
             <SelectValue placeholder='All Categories' />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=''>All Categories</SelectItem>
+            <SelectItem value='_ALL_'>All Categories</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
