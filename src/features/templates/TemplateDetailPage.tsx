@@ -1,25 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  CircleDashed,
-  Loader2,
-  MoreHorizontal,
-  RefreshCcw,
-  Send,
-  ShieldAlert,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { ArrowLeft, CheckCircle2, CircleDashed, Loader2, MoreHorizontal, RefreshCcw, Send, ShieldAlert, Sparkles, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -98,7 +81,7 @@ const TemplateDetailPage: React.FC = () => {
   });
 
   const sendTestMutation = useMutation({
-    mutationFn: async (payload: { phone: string; values: Record<string, string> }) => {
+    mutationFn: async (payload: { phoneNumber: string; values: Record<string, string> }) => {
       if (!id) throw new Error('Missing template id');
       return templateApi.sendTest(id, payload);
     },
@@ -139,10 +122,7 @@ const TemplateDetailPage: React.FC = () => {
 
   const status = template?.status ?? 'DRAFT';
 
-  const templatePlaceholders = useMemo(
-    () => template?.variables ?? [],
-    [template?.variables]
-  );
+  const templatePlaceholders = useMemo(() => template?.variables ?? [], [template?.variables]);
 
   const handleSubmit = (mode: 'submit' | 'resubmit') => {
     if (!template) return;
@@ -153,9 +133,7 @@ const TemplateDetailPage: React.FC = () => {
           notify.success({
             key: `templates:${template.id}:${mode}`,
             title: mode === 'submit' ? 'Template submitted' : 'Template resubmitted',
-            description: mode === 'submit'
-              ? 'We sent this template to Meta for review.'
-              : 'Updated template sent for approval again.',
+            description: mode === 'submit' ? 'We sent this template to Meta for review.' : 'Updated template sent for approval again.',
           });
         },
         onError: (error: any) => {
@@ -165,7 +143,7 @@ const TemplateDetailPage: React.FC = () => {
             description: error?.message || 'Please try again.',
           });
         },
-      }
+      },
     );
   };
 
@@ -188,7 +166,7 @@ const TemplateDetailPage: React.FC = () => {
             description: error?.message || 'Please try again.',
           });
         },
-      }
+      },
     );
   };
 
@@ -214,10 +192,10 @@ const TemplateDetailPage: React.FC = () => {
   const openTestDialog = () => {
     if (!template) return;
     const initialValues: Record<string, string> = {};
-    (template.sampleValues || template.variables || []).forEach((key) => {
+    const variablesList = Array.isArray(template.variables) ? template.variables : [];
+    variablesList.forEach((key) => {
       if (typeof key === 'string') {
-        initialValues[key] =
-          (template.sampleValues as Record<string, string> | null)?.[key] ?? '';
+        initialValues[key] = (template.sampleValues as Record<string, string> | null)?.[key] ?? '';
       }
     });
     setTestValues(initialValues);
@@ -236,7 +214,7 @@ const TemplateDetailPage: React.FC = () => {
 
     try {
       await sendTestMutation.mutateAsync({
-        phone: testPhone.trim(),
+        phoneNumber: testPhone.trim(),
         values: testValues,
       });
       notify.success({
@@ -256,13 +234,13 @@ const TemplateDetailPage: React.FC = () => {
 
   if (isLoading || !template) {
     return (
-      <div className="p-4 sm:p-6 space-y-6">
-        <Button variant="ghost" onClick={() => navigate(-1)}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+      <div className='p-4 sm:p-6 space-y-6'>
+        <Button variant='ghost' onClick={() => navigate(-1)}>
+          <ArrowLeft className='mr-2 h-4 w-4' /> Back
         </Button>
         <Card>
-          <CardContent className="flex items-center justify-center py-24">
-            <Loader2 className="h-6 w-6 animate-spin" />
+          <CardContent className='flex items-center justify-center py-24'>
+            <Loader2 className='h-6 w-6 animate-spin' />
           </CardContent>
         </Card>
       </div>
@@ -270,14 +248,14 @@ const TemplateDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="px-0 text-sm text-muted-foreground">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+    <div className='p-4 sm:p-6 space-y-8'>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className='space-y-1'>
+          <Button variant='ghost' onClick={() => navigate(-1)} className='px-0 text-sm text-muted-foreground'>
+            <ArrowLeft className='mr-2 h-4 w-4' /> Back
           </Button>
-          <h1 className="text-2xl font-semibold text-foreground">{template.name}</h1>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <h1 className='text-2xl font-semibold text-foreground'>{template.name}</h1>
+          <div className='flex items-center gap-3 text-sm text-muted-foreground'>
             <TemplateStatusBadge status={template.status as TemplateStatus} />
             <span>{CATEGORY_LABELS[template.category]}</span>
             <span aria-hidden>•</span>
@@ -290,50 +268,46 @@ const TemplateDetailPage: React.FC = () => {
             ) : null}
           </div>
           {isTestMode ? (
-            <Badge variant="outline" className="border-dashed text-muted-foreground">
+            <Badge variant='outline' className='border-dashed text-muted-foreground'>
               Test account — send tests to whitelisted numbers only.
             </Badge>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className='flex flex-wrap items-center gap-2'>
           {statusSupportsSubmit(template.status as TemplateStatus) ? (
-            <Button
-              onClick={() => handleSubmit('submit')}
-              disabled={mutateWrapper.isLoading}
-            >
-              <Sparkles className="mr-2 h-4 w-4" /> Submit for approval
+            <Button onClick={() => handleSubmit('submit')} disabled={mutateWrapper.isPending}>
+              <Sparkles className='mr-2 h-4 w-4' /> Submit for approval
             </Button>
           ) : null}
           {statusSupportsResubmit(template.status as TemplateStatus) ? (
-            <Button
-              onClick={() => handleSubmit('resubmit')}
-              disabled={mutateWrapper.isLoading}
-            >
-              <Sparkles className="mr-2 h-4 w-4" /> Resubmit
+            <Button onClick={() => handleSubmit('resubmit')} disabled={mutateWrapper.isPending}>
+              <Sparkles className='mr-2 h-4 w-4' /> Resubmit
             </Button>
           ) : null}
           {statusSupportsDeprecate(template.status as TemplateStatus) ? (
-            <Button variant="outline" onClick={handleDeprecate} disabled={mutateWrapper.isLoading}>
-              <Trash2 className="mr-2 h-4 w-4" /> Deprecate
+            <Button variant='outline' onClick={handleDeprecate} disabled={mutateWrapper.isPending}>
+              <Trash2 className='mr-2 h-4 w-4' /> Deprecate
             </Button>
           ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
+              <Button variant='outline' size='icon'>
+                <MoreHorizontal className='h-4 w-4' />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align='end'>
               <DropdownMenuItem onClick={() => navigate('/dashboard/templates/new', { state: { duplicateOf: template.id, prefills: template } })}>
                 Duplicate
               </DropdownMenuItem>
               <DropdownMenuItem onClick={openTestDialog} disabled={template.status !== 'APPROVED'}>
                 Send test
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => templateQuery.refetch()}>
-                Refresh status
-              </DropdownMenuItem>
-              <DropdownMenuItem className='text-destructive focus:text-destructive' disabled={deleteMutation.isPending} onClick={handleDeleteTemplate}>
+              <DropdownMenuItem onClick={() => templateQuery.refetch()}>Refresh status</DropdownMenuItem>
+              <DropdownMenuItem
+                className='text-destructive focus:text-destructive'
+                disabled={deleteMutation.isPending}
+                onClick={handleDeleteTemplate}
+              >
                 <Trash2 className='mr-2 h-4 w-4' />
                 Delete template
               </DropdownMenuItem>
@@ -342,57 +316,55 @@ const TemplateDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <section className='grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Template history</CardTitle>
+            <CardTitle className='text-lg'>Template history</CardTitle>
             <CardDescription>Track versions, submissions, approvals, and test sends.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
+          <CardContent className='space-y-4'>
+            <div className='space-y-3'>
               {template.versions?.length ? (
                 template.versions.map((version) => (
-                  <div key={version.id} className="rounded-lg border bg-muted/40 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div key={version.id} className='rounded-lg border bg-muted/40 p-4'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Version v{version.version}</p>
-                        <p className="text-xs text-muted-foreground">Updated {new Date(version.updatedAt).toLocaleString()}</p>
+                        <p className='text-sm font-semibold text-foreground'>Version v{version.version}</p>
+                        <p className='text-xs text-muted-foreground'>Updated {new Date(version.updatedAt).toLocaleString()}</p>
                       </div>
-                      <Badge variant="outline">{version.body.length} chars</Badge>
+                      <Badge variant='outline'>{version.body.length} chars</Badge>
                     </div>
-                    <Separator className="my-3" />
-                    <pre className="whitespace-pre-wrap text-sm text-muted-foreground">{version.body}</pre>
+                    <Separator className='my-3' />
+                    <pre className='whitespace-pre-wrap text-sm text-muted-foreground'>{version.body}</pre>
                   </div>
                 ))
               ) : (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  No versions recorded yet.
-                </div>
+                <div className='rounded-lg border border-dashed p-4 text-sm text-muted-foreground'>No versions recorded yet.</div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Audit log</p>
-              <ScrollArea className="max-h-64 rounded-md border">
-                <div className="divide-y text-sm">
+            <div className='space-y-2'>
+              <p className='text-sm font-medium text-foreground'>Audit log</p>
+              <ScrollArea className='max-h-64 rounded-md border'>
+                <div className='divide-y text-sm'>
                   {template.audits?.length ? (
                     template.audits.map((audit) => (
-                      <div key={audit.id} className="flex items-start justify-between gap-4 px-4 py-3">
+                      <div key={audit.id} className='flex items-start justify-between gap-4 px-4 py-3'>
                         <div>
-                          <p className="font-medium text-foreground">{audit.action.toLowerCase()}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className='font-medium text-foreground'>{audit.action.toLowerCase()}</p>
+                          <p className='text-xs text-muted-foreground'>
                             {audit.actor?.email ?? 'System'} · {new Date(audit.createdAt).toLocaleString()}
                           </p>
                         </div>
                         {audit.metadata ? (
-                          <pre className="max-w-xs whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                          <pre className='max-w-xs whitespace-pre-wrap break-words text-xs text-muted-foreground'>
                             {JSON.stringify(audit.metadata, null, 2)}
                           </pre>
                         ) : null}
                       </div>
                     ))
                   ) : (
-                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">No audit events yet.</div>
+                    <div className='px-4 py-6 text-center text-sm text-muted-foreground'>No audit events yet.</div>
                   )}
                 </div>
               </ScrollArea>
@@ -400,7 +372,7 @@ const TemplateDetailPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
+        <div className='space-y-4'>
           <TemplatePreview
             name={template.name}
             header={(template as any).header ?? ''}
@@ -409,11 +381,11 @@ const TemplateDetailPage: React.FC = () => {
             sampleValues={(template.sampleValues as Record<string, string> | null) ?? {}}
           />
           {template.rejectionReason ? (
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardHeader className="flex items-start gap-3">
-                <ShieldAlert className="h-5 w-5 text-destructive" />
+            <Card className='border-destructive/30 bg-destructive/5'>
+              <CardHeader className='flex items-start gap-3'>
+                <ShieldAlert className='h-5 w-5 text-destructive' />
                 <div>
-                  <CardTitle className="text-sm">Not approved</CardTitle>
+                  <CardTitle className='text-sm'>Not approved</CardTitle>
                   <CardDescription>{template.rejectionReason}</CardDescription>
                 </div>
               </CardHeader>
@@ -421,16 +393,14 @@ const TemplateDetailPage: React.FC = () => {
           ) : null}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Meta review status</CardTitle>
-              <CardDescription>
-                Last refreshed {new Date(template.updatedAt ?? template.createdAt).toLocaleString()}
-              </CardDescription>
+              <CardTitle className='text-sm'>Meta review status</CardTitle>
+              <CardDescription>Last refreshed {new Date(template.updatedAt || Date.now()).toLocaleString()}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <CircleDashed className="h-4 w-4" /> {ACTION_LABELS[template.status as TemplateStatus]}
+            <CardContent className='space-y-3 text-sm text-muted-foreground'>
+              <div className='flex items-center gap-2'>
+                <CircleDashed className='h-4 w-4' /> {ACTION_LABELS[template.status as TemplateStatus]}
               </div>
-              <Button variant="outline" size="sm" onClick={() => templateQuery.refetch()} disabled={isFetching}>
+              <Button variant='outline' size='sm' onClick={() => templateQuery.refetch()} disabled={isFetching}>
                 <RefreshCcw className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')} /> Refresh status
               </Button>
             </CardContent>
@@ -443,15 +413,10 @@ const TemplateDetailPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Send test message</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="test-phone">Recipient number</Label>
-              <Input
-                id="test-phone"
-                placeholder="e.g. 2348012345678"
-                value={testPhone}
-                onChange={(event) => setTestPhone(event.target.value)}
-              />
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='test-phone'>Recipient number</Label>
+              <Input id='test-phone' placeholder='e.g. 2348012345678' value={testPhone} onChange={(event) => setTestPhone(event.target.value)} />
             </div>
             <TemplatePreview
               name={template.name}
@@ -469,15 +434,11 @@ const TemplateDetailPage: React.FC = () => {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
+            <Button variant='outline' onClick={() => setTestDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSendTest} disabled={sendTestMutation.isLoading}>
-              {sendTestMutation.isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="mr-2 h-4 w-4" />
-              )}
+            <Button onClick={handleSendTest} disabled={sendTestMutation.isPending}>
+              {sendTestMutation.isPending ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <Send className='mr-2 h-4 w-4' />}
               Send test
             </Button>
           </DialogFooter>

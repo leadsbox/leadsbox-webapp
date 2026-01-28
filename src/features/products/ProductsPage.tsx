@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ProductsPage = () => {
   const queryClient = useQueryClient();
@@ -196,11 +197,31 @@ const ProductsPage = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className='text-center py-8'>
-                  Loading...
-                </TableCell>
-              </TableRow>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Skeleton className='h-4 w-[150px]' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-[80px]' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-[100px]' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-[80px]' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-[80px]' />
+                  </TableCell>
+                  <TableCell className='text-right'>
+                    <div className='flex justify-end gap-2'>
+                      <Skeleton className='h-8 w-8' />
+                      <Skeleton className='h-8 w-8' />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : products.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className='text-center py-8'>

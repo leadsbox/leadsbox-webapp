@@ -15,7 +15,7 @@ const Terms: React.FC = () => {
       height={24}
       className='h-full w-full object-contain'
       decoding='async'
-      fetchpriority={priority ? 'high' : undefined}
+      fetchPriority={priority ? 'high' : undefined}
       loading={priority ? 'eager' : 'lazy'}
     />
   );

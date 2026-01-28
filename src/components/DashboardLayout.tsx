@@ -28,6 +28,8 @@ import { Button } from './ui/button';
 import DashboardHeader from './DashboardHeader';
 import SupportWidget from './SupportWidget';
 import { FeedbackDialog } from './FeedbackDialog';
+import { OfflineBanner } from './OfflineBanner';
+import { ConnectionStatus } from './ConnectionStatus';
 import client from '../api/client';
 import { endpoints } from '../api/config';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -207,6 +209,8 @@ export const DashboardLayout: React.FC = () => {
 
   return (
     <div className='dashboard-container flex h-screen overflow-hidden'>
+      <OfflineBanner />
+      <ConnectionStatus />
       {/* Desktop Sidebar */}
       <aside
         className={cn('dashboard-sidebar hidden md:flex flex-col border-r bg-sidebar transition-[width] duration-300 ease-in-out', sidebarWidth)}

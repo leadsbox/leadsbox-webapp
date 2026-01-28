@@ -104,6 +104,7 @@ export interface FollowUpRule {
   templateId?: string | null;
   variables?: Record<string, string> | null;
   template?: Template;
+  metadata?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
 }
