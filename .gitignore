@@ -12,14 +12,11 @@ dist
 dist-ssr
 *.local
 
-# Yarn
+# Yarn v4+ config (keep yarn.lock for deployment consistency)
 .yarnrc.yml
-yarn.lock
-.yarn/install-state.gz
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
+.yarn/
+!.yarn/releases
+!.yarn/plugins
 .pnp.*
 
 # Editor directories and files
