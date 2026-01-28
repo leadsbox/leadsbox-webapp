@@ -12,11 +12,10 @@ dist
 dist-ssr
 *.local
 
-# Yarn v4+ config (keep yarn.lock for deployment consistency)
+# Yarn (not used - switched to npm)
+yarn.lock
 .yarnrc.yml
 .yarn/
-!.yarn/releases
-!.yarn/plugins
 .pnp.*
 
 # Editor directories and files
