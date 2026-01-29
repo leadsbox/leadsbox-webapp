@@ -205,7 +205,7 @@ const InboxPage: React.FC = () => {
       leadId: leadData?.id || api.contact.id, // Use actual lead ID if available
       lead: toUiLead(api),
       channel: mapChannel(api.channel.type),
-      status: 'OPEN',
+      status: (api.status as Thread['status']) || 'OPEN',
       priority: 'MEDIUM',
       isUnread: false,
       lastMessage: undefined,
@@ -317,11 +317,12 @@ const InboxPage: React.FC = () => {
       if (selectedThread?.id === message.threadId) {
         setMessages((prev) => {
           // Avoid duplicates
-          const exists = prev.some((m) => m.id === message.id);
+          const uiMessage = toUiMessage(message as ApiMessage);
+          const exists = prev.some((m) => m.id === uiMessage.id);
           if (exists) {
             return prev;
           }
-          const newMessages = [...prev, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          const newMessages = [...prev, uiMessage].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           // Scroll to bottom after new message is added
           setTimeout(scrollToBottom, 100);
           return newMessages;
@@ -334,11 +335,16 @@ const InboxPage: React.FC = () => {
         if (existingIndex >= 0) {
           // Update existing thread
           const updated = [...prev];
-          updated[existingIndex] = { ...thread, lastMessage: message };
+          const uiThread = toUiThread(thread as ApiThread);
+          // Preserve the lastMessage if strictly newer, but usually socket's message is newest
+          const uiMessage = toUiMessage(message as ApiMessage);
+          updated[existingIndex] = { ...uiThread, lastMessage: uiMessage };
           return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         } else {
           // Add new thread
-          return [{ ...thread, lastMessage: message }, ...prev];
+          const uiThread = toUiThread(thread as ApiThread);
+          const uiMessage = toUiMessage(message as ApiMessage);
+          return [{ ...uiThread, lastMessage: uiMessage }, ...prev];
         }
       });
 
@@ -353,35 +359,37 @@ const InboxPage: React.FC = () => {
     });
 
     // Handle thread updates
-    const unsubscribeThreadUpdate = socketOn('thread:updated', (data) => {
+    const unsubscribeThreadUpdate = socketOn('thread:update', (data) => {
       const { thread } = data;
+      const uiThread = toUiThread(thread as ApiThread);
 
       setThreads((prev) => {
-        const existingIndex = prev.findIndex((t) => t.id === thread.id);
+        const existingIndex = prev.findIndex((t) => t.id === uiThread.id);
         if (existingIndex >= 0) {
           const updated = [...prev];
-          updated[existingIndex] = thread;
+          updated[existingIndex] = uiThread;
           return updated;
         }
         return prev;
       });
 
       // Update selected thread if it's the same
-      if (selectedThread?.id === thread.id) {
-        setSelectedThread(thread);
+      if (selectedThread?.id === uiThread.id) {
+        setSelectedThread(uiThread);
       }
     });
 
     // Handle new threads
     const unsubscribeNewThread = socketOn('thread:new', (data) => {
       const { thread } = data;
+      const uiThread = toUiThread(thread as ApiThread);
 
       setThreads((prev) => {
         // Avoid duplicates
-        const exists = prev.some((t) => t.id === thread.id);
+        const exists = prev.some((t) => t.id === uiThread.id);
         if (exists) return prev;
 
-        return [thread, ...prev];
+        return [uiThread, ...prev];
       });
 
       notify.success({
