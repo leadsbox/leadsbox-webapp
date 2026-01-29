@@ -68,11 +68,48 @@ const sidebarItems: SidebarItem[] = [
     description: 'Sales grouped from conversations',
   },
   {
-    title: 'Templates',
-    href: '/dashboard/templates',
-    icon: MessageSquare,
-    description: 'WhatsApp message templates',
+    title: 'Products',
+    href: '/dashboard/products',
+    icon: Package,
+    description: 'Manage your product catalog',
   },
+  {
+    title: 'Catalogs',
+    href: '/dashboard/catalogs',
+    icon: BookOpen,
+    description: 'Product collections and sharing',
+  },
+  {
+    title: 'Invoices',
+    href: '/dashboard/invoices',
+    icon: FileText,
+    description: 'Create and manage invoices',
+  },
+
+  {
+    title: 'Analytics',
+    href: '/dashboard/analytics',
+    icon: BarChart3,
+    description: 'Performance metrics',
+  },
+  {
+    title: 'Billing',
+    href: '/dashboard/billing',
+    icon: CreditCard,
+    description: 'Plans, subscriptions, payments',
+  },
+  {
+    title: 'Settings',
+    href: '/dashboard/settings',
+    icon: Settings,
+    description: 'Account and preferences',
+  },
+  // {
+  //   title: 'Templates',
+  //   href: '/dashboard/templates',
+  //   icon: MessageSquare,
+  //   description: 'WhatsApp message templates',
+  // },
   // {
   //   title: 'Tasks',
   //   href: '/dashboard/tasks',
@@ -80,12 +117,7 @@ const sidebarItems: SidebarItem[] = [
   //   badge: 3,
   //   description: 'Your tasks and reminders',
   // },
-  {
-    title: 'Analytics',
-    href: '/dashboard/analytics',
-    icon: BarChart3,
-    description: 'Performance metrics',
-  },
+
   // 🚀 LAUNCH MVP: Hiding non-essential features (can re-enable by uncommenting)
   // {
   //   title: 'Automations',
@@ -99,42 +131,13 @@ const sidebarItems: SidebarItem[] = [
   //   icon: Sparkles,
   //   description: 'Generate branded carousels from videos',
   // },
-  {
-    title: 'Invoices',
-    href: '/dashboard/invoices',
-    icon: FileText,
-    description: 'Create and manage invoices',
-  },
-  {
-    title: 'Products',
-    href: '/dashboard/products',
-    icon: Package,
-    description: 'Manage your product catalog',
-  },
-  {
-    title: 'Catalogs',
-    href: '/dashboard/catalogs',
-    icon: BookOpen,
-    description: 'Product collections and sharing',
-  },
+
   // {
   //   title: 'Quotes',
   //   href: '/dashboard/quotes',
   //   icon: FileSpreadsheet,
   //   description: 'Create and send quotes',
   // },
-  {
-    title: 'Billing',
-    href: '/dashboard/billing',
-    icon: CreditCard,
-    description: 'Plans, subscriptions, payments',
-  },
-  {
-    title: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-    description: 'Account and preferences',
-  },
 ];
 
 const DashboardContentFallback = () => (

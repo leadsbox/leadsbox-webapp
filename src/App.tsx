@@ -127,9 +127,9 @@ const App = () => {
                   <Route path='sales/:saleId' element={<SaleDetailPage />} />
                   {/* <Route path='tasks' element={<TasksPage />} /> */}
                   <Route path='analytics' element={<AnalyticsPage />} />
-                  <Route path='templates' element={<TemplatesHomePage />} />
+                  {/* <Route path='templates' element={<TemplatesHomePage />} />
                   <Route path='templates/new' element={<CreateTemplateWizardPage />} />
-                  <Route path='templates/:id' element={<TemplateDetailPage />} />
+                  <Route path='templates/:id' element={<TemplateDetailPage />} /> */}
                   {/* <Route path='automations' element={<AutomationsPage />} /> */}
                   {/* Billing was here, moved up */}
                   {/* <Route path='notifications' element={<NotificationsPage />} /> */}

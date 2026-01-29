@@ -35,7 +35,6 @@ import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
-import StatusBadge from './components/StatusBadge';
 
 const InboxPage: React.FC = () => {
   // ...other state...
@@ -555,7 +554,7 @@ const InboxPage: React.FC = () => {
             return matchesSearch;
         }
       }),
-    [threads, searchQuery, activeFilter],
+    [threads, searchQuery, activeFilter]
   );
 
   const getChannelIcon = (channel: Thread['channel']) => {
@@ -910,7 +909,9 @@ const InboxPage: React.FC = () => {
                     </div>
 
                     <div className='flex items-center space-x-2 mb-2'>
-                      <StatusBadge className={getStatusColor(thread.status)} status={thread.status} />
+                      <Badge variant='outline' className={getStatusColor(thread.status)}>
+                        {thread.status}
+                      </Badge>
                       <Badge variant='outline' className={getPriorityColor(thread.priority)}>
                         {thread.priority}
                       </Badge>
@@ -1416,7 +1417,9 @@ const InboxPage: React.FC = () => {
                         </div>
                       </div>
                       <div className='flex items-center space-x-2 mb-2'>
-                        <StatusBadge className={getStatusColor(thread.status)} status={thread.status} />
+                        <Badge variant='outline' className={getStatusColor(thread.status)}>
+                          {thread.status}
+                        </Badge>
                         <Badge variant='outline' className={getPriorityColor(thread.priority)}>
                           {thread.priority}
                         </Badge>
