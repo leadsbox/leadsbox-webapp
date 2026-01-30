@@ -8,10 +8,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, Sparkles, CheckCircle2, TrendingUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductImportDialog } from './ProductImportDialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const ProductsPage = () => {
   const queryClient = useQueryClient();
@@ -49,6 +51,12 @@ const ProductsPage = () => {
     queryFn: () => productsApi.categories(),
   });
 
+  // Fetch pending products
+  const { data: pendingData, isLoading: pendingLoading } = useQuery({
+    queryKey: ['products', 'pending'],
+    queryFn: () => productsApi.getPending(),
+  });
+
   // Create product
   const createMutation = useMutation({
     mutationFn: productsApi.create,
@@ -84,6 +92,18 @@ const ProductsPage = () => {
     },
     onError: () => {
       toast.error('Failed to delete product');
+    },
+  });
+
+  // Approve product
+  const approveMutation = useMutation({
+    mutationFn: productsApi.approve,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Product approved and added to catalog');
+    },
+    onError: () => {
+      toast.error('Failed to approve product');
     },
   });
 
@@ -147,6 +167,13 @@ const ProductsPage = () => {
 
   const products = productsData?.data?.products || [];
   const categories = categoriesData?.data?.categories || [];
+  const pendingProducts = pendingData?.data?.products || [];
+
+  const handleApprove = async (productId: string) => {
+    if (confirm('Approve this product and add it to your catalog?')) {
+      approveMutation.mutate(productId);
+    }
+  };
 
   return (
     <div className='container mx-auto py-6 space-y-6'>
@@ -164,6 +191,159 @@ const ProductsPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Stats Cards */}
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>Total Products</CardTitle>
+            <Package className='h-4 w-4 text-muted-foreground' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>{products.length}</div>
+            <p className='text-xs text-muted-foreground'>In your catalog</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>Pending Review</CardTitle>
+            <Sparkles className='h-4 w-4 text-yellow-500' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>{pendingProducts.length}</div>
+            <p className='text-xs text-muted-foreground'>AI-detected products</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>In Stock</CardTitle>
+            <TrendingUp className='h-4 w-4 text-green-500' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>{products.filter((p) => p.inStock).length}</div>
+            <p className='text-xs text-muted-foreground'>Available products</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pending Products Section */}
+      {pendingProducts.length > 0 && (
+        <Card className='border-yellow-200 bg-yellow-50/50'>
+          <CardHeader>
+            <div className='flex items-center gap-2'>
+              <Sparkles className='h-5 w-5 text-yellow-600' />
+              <div>
+                <CardTitle>Pending Review - AI-Detected Products</CardTitle>
+                <CardDescription>
+                  Products automatically detected from sales conversations. Review and approve to add them to your catalog.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className='border rounded-lg bg-white'>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product Name</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>AI Confidence</TableHead>
+                    <TableHead className='text-right'>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingLoading
+                    ? Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Skeleton className='h-4 w-[150px]' />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className='h-4 w-[80px]' />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className='h-4 w-[100px]' />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className='h-4 w-[60px]' />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className='h-8 w-[100px] ml-auto' />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : pendingProducts.map((product) => (
+                        <TableRow key={product.id}>
+                          <TableCell className='font-medium'>
+                            <div className='flex items-center gap-2'>
+                              {product.name}
+                              {product.isAutoDetected && (
+                                <Badge variant='outline' className='text-xs bg-yellow-100 text-yellow-700 border-yellow-300'>
+                                  AI-Detected
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {product.unitPrice.toLocaleString()} {product.currency}
+                          </TableCell>
+                          <TableCell>{product.category || '—'}</TableCell>
+                          <TableCell>
+                            {product.detectionMetadata?.aiConfidence ? (
+                              <Badge
+                                variant='outline'
+                                className={
+                                  product.detectionMetadata.aiConfidence > 0.8
+                                    ? 'bg-green-100 text-green-700 border-green-300'
+                                    : product.detectionMetadata.aiConfidence > 0.6
+                                      ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                                      : 'bg-red-100 text-red-700 border-red-300'
+                                }
+                              >
+                                {Math.round(product.detectionMetadata.aiConfidence * 100)}%
+                              </Badge>
+                            ) : (
+                              '—'
+                            )}
+                          </TableCell>
+                          <TableCell className='text-right space-x-2'>
+                            <Button variant='outline' size='sm' onClick={() => openDialog(product)}>
+                              <Edit className='h-3 w-3 mr-1' />
+                              Edit
+                            </Button>
+                            <Button
+                              variant='default'
+                              size='sm'
+                              onClick={() => handleApprove(product.id)}
+                              disabled={approveMutation.isPending}
+                              className='bg-green-600 hover:bg-green-700'
+                            >
+                              <CheckCircle2 className='h-3 w-3 mr-1' />
+                              Approve
+                            </Button>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => {
+                                if (confirm('Delete this auto-detected product?')) {
+                                  deleteMutation.mutate(product.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className='h-3 w-3' />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className='flex gap-4'>

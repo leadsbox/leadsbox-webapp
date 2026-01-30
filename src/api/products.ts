@@ -13,6 +13,19 @@ export interface Product {
   inStock: boolean;
   stockQuantity?: number;
   metadata?: Record<string, any>;
+
+  // Auto-detection fields
+  isAutoDetected: boolean;
+  detectionMetadata?: {
+    aiConfidence?: number;
+    reasoning?: string;
+    sourceMessage?: string;
+    sourceSale?: string;
+  };
+  approvedBy?: string;
+  approvedAt?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+
   createdAt: string;
   updatedAt: string;
 }
@@ -82,6 +95,17 @@ export const productsApi = {
 
   categories: async () => {
     const response = await client.get<CategoriesResponse>('/products/categories/list');
+    return response.data;
+  },
+
+  // Auto-detection methods
+  getPending: async () => {
+    const response = await client.get<ProductListResponse>('/products/pending');
+    return response.data;
+  },
+
+  approve: async (id: string) => {
+    const response = await client.post<ProductResponse>(`/products/${id}/approve`);
     return response.data;
   },
 };
