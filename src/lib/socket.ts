@@ -12,6 +12,7 @@ export interface ServerToClientEvents {
   // Thread & Message Events
   'thread:new': (data: { thread: Thread }) => void;
   'thread:updated': (data: { thread: Thread }) => void;
+  'thread:read': (data: { threadId: string } | any) => void;
   'thread:deleted': (data: { threadId: string }) => void;
 
   // Message Events
@@ -283,6 +284,17 @@ export class SocketIOService {
     };
   }
 
+  // Remove event listener
+  off<K extends keyof ServerToClientEvents>(event: K, callback: (data: Parameters<ServerToClientEvents[K]>[0]) => void): void {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.delete(callback);
+      if (eventListeners.size === 0) {
+        this.listeners.delete(event);
+      }
+    }
+  }
+
   // Emit events to registered listeners
   private emitToListeners(event: string, data: unknown): void {
     const listeners = this.listeners.get(event);
@@ -416,6 +428,7 @@ export function useSocketIO() {
     subscribeToDashboard: socketService.subscribeToDashboard.bind(socketService),
     unsubscribeFromDashboard: socketService.unsubscribeFromDashboard.bind(socketService),
     on: socketService.on.bind(socketService),
+    off: socketService.off.bind(socketService),
   };
 }
 

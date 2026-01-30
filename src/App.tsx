@@ -117,8 +117,9 @@ const App = () => {
                 >
                   <Route path='home' element={<DashboardHomePage />} />
                   <Route path='invoices' element={<InvoicesPage />} />
-                  <Route path='invoices/:code' element={<InvoiceDetailPage />} />
+                  <Route path='invoices/create' element={<CreateInvoicePage />} />
                   <Route path='invoices/new' element={<CreateInvoicePage />} />
+                  <Route path='invoices/:code' element={<InvoiceDetailPage />} />
                   <Route path='receipts/:receiptId' element={<ReceiptPage />} />
                   <Route path='inbox' element={<InboxPage />} />
                   <Route path='leads' element={<LeadsPage />} />

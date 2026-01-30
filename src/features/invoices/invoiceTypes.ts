@@ -75,6 +75,14 @@ export const statusTone: Record<string, { label: string; badgeClass: string }> =
     label: 'Pending',
     badgeClass: 'bg-slate-500/10 text-slate-600 dark:text-slate-200',
   },
+  DRAFT: {
+    label: 'Draft (AI Detected)',
+    badgeClass: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-300 border-yellow-200',
+  },
+  PENDING_CONFIRMATION: {
+    label: 'Ready to Confirm',
+    badgeClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-200',
+  },
   DEFAULT: {
     label: 'Unknown',
     badgeClass: 'bg-muted text-muted-foreground',

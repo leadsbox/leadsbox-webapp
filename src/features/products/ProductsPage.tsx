@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ProductImportDialog } from './ProductImportDialog';
 
 const ProductsPage = () => {
   const queryClient = useQueryClient();
@@ -155,10 +156,13 @@ const ProductsPage = () => {
           <h1 className='text-3xl font-bold'>Products</h1>
           <p className='text-muted-foreground'>Manage your product catalog</p>
         </div>
-        <Button onClick={() => openDialog()}>
-          <Plus className='h-4 w-4 mr-2' />
-          Add Product
-        </Button>
+        <div className='flex gap-2'>
+          <ProductImportDialog onSuccess={() => queryClient.invalidateQueries({ queryKey: ['products'] })} />
+          <Button onClick={() => openDialog()}>
+            <Plus className='h-4 w-4 mr-2' />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

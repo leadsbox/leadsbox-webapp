@@ -33,6 +33,8 @@ import { ConnectionStatus } from './ConnectionStatus';
 import client from '../api/client';
 import { endpoints } from '../api/config';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { useSocketIO } from '../lib/socket';
+import { Message } from '@/types';
 
 interface SidebarItem {
   title: string;
@@ -149,6 +151,7 @@ const DashboardContentFallback = () => (
 
 export const DashboardLayout: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('lb_sidebar_collapsed');
@@ -162,16 +165,17 @@ export const DashboardLayout: React.FC = () => {
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
+  const { socket } = useSocketIO();
 
   // Fetch actual inbox count
   useEffect(() => {
     const fetchInboxCount = async () => {
       try {
         setInboxLoading(true);
-        const threadsResp = await client.get('/threads');
-        const threadsList = threadsResp?.data?.data?.threads || threadsResp?.data || [];
-        // Ensure threadsList is an array before accessing .length
-        setInboxCount(Array.isArray(threadsList) ? threadsList.length : 0);
+        // Fetch unread count specifically
+        const resp = await client.get('/threads/unread-count');
+        const count = resp.data?.data?.count ?? 0;
+        setInboxCount(count);
       } catch (error) {
         console.error('Failed to fetch inbox count:', error);
         setInboxCount(0);
@@ -182,6 +186,41 @@ export const DashboardLayout: React.FC = () => {
 
     fetchInboxCount();
   }, []);
+
+  // Listen for real-time updates to inbox count
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessageNew = (data: { message: Message }) => {
+      // If new inbound message, increment count
+      if (data?.message?.sender === 'LEAD') {
+        setInboxCount((prev) => prev + 1);
+      }
+    };
+
+    const handleRefresh = () => {
+      // Refresh count on thread updates (e.g. read status changes)
+      client
+        .get('/threads/unread-count')
+        .then((resp) => setInboxCount(resp.data?.data?.count ?? 0))
+        .catch(console.error);
+    };
+
+    socket.on('message:new', handleMessageNew);
+    socket.on('thread:updated', handleRefresh);
+    socket.on('thread:read', handleRefresh); // Just in case backend emits this
+
+    // Listen for custom event from InboxPage
+    const handleLocalRead = () => handleRefresh();
+    window.addEventListener('leadsbox:thread-read', handleLocalRead);
+
+    return () => {
+      socket.off('message:new', handleMessageNew);
+      socket.off('thread:updated', handleRefresh);
+      socket.off('thread:read', handleRefresh);
+      window.removeEventListener('leadsbox:thread-read', handleLocalRead);
+    };
+  }, [socket]);
 
   const toggleSidebar = () => {
     if (isMobile) {
@@ -280,18 +319,12 @@ export const DashboardLayout: React.FC = () => {
                       <>
                         <span className='ml-3 flex-1'>{item.title}</span>
                         {item.title === 'Inbox' && inboxCount > 0 && (
-                          <Badge
-                            variant={isActive ? 'secondary' : 'outline'}
-                            className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'
-                          >
+                          <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                             {inboxLoading ? '...' : inboxCount}
                           </Badge>
                         )}
                         {item.title === 'Tasks' && item.badge && (
-                          <Badge
-                            variant={isActive ? 'secondary' : 'outline'}
-                            className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'
-                          >
+                          <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                             {item.badge}
                           </Badge>
                         )}

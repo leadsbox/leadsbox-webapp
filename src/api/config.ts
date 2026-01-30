@@ -122,6 +122,7 @@ export const endpoints = {
     list: '/invoices',
     create: '/invoices',
     detail: (code: string) => `/invoices/${code}`,
+    update: (code: string) => `/invoices/${code}`,
     verifyPayment: (code: string) => `/invoices/${code}/verify-payment`,
     confirmPayment: (code: string) => `/invoices/${code}/confirm-payment`,
     claim: (code: string) => `/invoices/${code}/claim`,
@@ -137,6 +138,14 @@ export const endpoints = {
     credits: '/carousel/credits',
     status: (jobId: string) => `/carousel/${jobId}`,
     download: (jobId: string) => `/carousel/${jobId}/download`,
+  },
+  sales: {
+    list: '/sales',
+    detail: (id: string) => `/sales/${id}`,
+    approve: (id: string) => `/sales/${id}/approve`,
+    update: (id: string) => `/sales/${id}`,
+    remove: (id: string) => `/sales/${id}`,
+    pendingCount: '/sales/pending/count',
   },
 } as const;
 

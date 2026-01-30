@@ -35,6 +35,7 @@ import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
+import confetti from 'canvas-confetti';
 
 const InboxPage: React.FC = () => {
   // ...other state...
@@ -415,12 +416,53 @@ const InboxPage: React.FC = () => {
       }
     });
 
+    // Handle lead updates (for status changes)
+    const unsubscribeLeadUpdate = socketOn('lead:updated', (data) => {
+      const { lead } = data;
+      const leadId = lead.id;
+
+      setThreads((prev) => {
+        return prev.map((t) => {
+          // Match by lead ID or if the thread's lead matches
+          if (t.leadId === leadId || t.lead.id === leadId) {
+            const newStage = lead.label || t.lead.stage;
+            return {
+              ...t,
+              lead: {
+                ...t.lead,
+                stage: newStage,
+                tags: [newStage], // Update tags to show new stage
+                source: lead.provider || t.lead.source,
+              },
+            };
+          }
+          return t;
+        });
+      });
+
+      if (selectedThread && (selectedThread.leadId === leadId || selectedThread.lead.id === leadId)) {
+        const newStage = lead.label || selectedThread.lead.stage;
+        setSelectedThread((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            lead: {
+              ...prev.lead,
+              stage: newStage,
+              tags: [newStage],
+            },
+          };
+        });
+      }
+    });
+
     return () => {
       unsubscribeNewMessage();
       unsubscribeThreadUpdate();
       unsubscribeNewThread();
       unsubscribeTypingStart();
       unsubscribeTypingStop();
+      unsubscribeLeadUpdate(); // Unsubscribe
       logAllEvents();
     };
   }, [isConnected, selectedThread?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -436,6 +478,65 @@ const InboxPage: React.FC = () => {
       }
     };
   }, [selectedThread?.id, isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Animation for status change with confetti for successful transactions
+  const prevThreadStage = React.useRef<string | undefined>(undefined);
+  const [highlightStageInbox, setHighlightStageInbox] = useState(false);
+  const confettiFiredRef = React.useRef<Set<string>>(new Set()); // Track which transitions already fired confetti
+
+  useEffect(() => {
+    if (selectedThread?.lead?.stage && prevThreadStage.current && selectedThread.lead.stage !== prevThreadStage.current) {
+      // Trigger highlight animation
+      setHighlightStageInbox(true);
+      setTimeout(() => setHighlightStageInbox(false), 4000); // Extended to 4 seconds for better visibility
+
+      // Check if status changed to TRANSACTION_SUCCESSFUL
+      if (selectedThread.lead.stage === 'TRANSACTION_SUCCESSFUL') {
+        const transitionKey = `${selectedThread.id}-${selectedThread.lead.stage}`;
+
+        // Only fire confetti once per transition
+        if (!confettiFiredRef.current.has(transitionKey)) {
+          confettiFiredRef.current.add(transitionKey);
+
+          // Trigger confetti celebration
+          const duration = 3000;
+          const animationEnd = Date.now() + duration;
+          const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+          function randomInRange(min: number, max: number) {
+            return Math.random() * (max - min) + min;
+          }
+
+          const interval = setInterval(function () {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+              return clearInterval(interval);
+            }
+
+            const particleCount = 50 * (timeLeft / duration);
+
+            // Fire confetti from different positions for a fuller effect
+            confetti({
+              ...defaults,
+              particleCount,
+              origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+              colors: ['#22c55e', '#10b981', '#16a34a', '#fbbf24', '#f59e0b'], // Green and gold colors
+            });
+            confetti({
+              ...defaults,
+              particleCount,
+              origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+              colors: ['#22c55e', '#10b981', '#16a34a', '#fbbf24', '#f59e0b'],
+            });
+          }, 250);
+        }
+      }
+    }
+    if (selectedThread?.lead?.stage) {
+      prevThreadStage.current = selectedThread.lead.stage;
+    }
+  }, [selectedThread?.lead?.stage, selectedThread?.id]);
 
   // Handle typing indicators for current user
   useEffect(() => {
@@ -554,7 +655,7 @@ const InboxPage: React.FC = () => {
             return matchesSearch;
         }
       }),
-    [threads, searchQuery, activeFilter]
+    [threads, searchQuery, activeFilter],
   );
 
   const getChannelIcon = (channel: Thread['channel']) => {
@@ -1130,11 +1231,29 @@ const InboxPage: React.FC = () => {
                           </h2>
                           {/* 🏷️ Lead Tags Display */}
                           <div className='flex flex-wrap gap-1'>
-                            {selectedThread.lead.tags.slice(0, 2).map((tag) => (
-                              <Badge key={tag} variant='outline' className={`text-xs px-2 py-1 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
-                                {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
-                              </Badge>
-                            ))}
+                            {selectedThread.lead.tags.slice(0, 2).map((tag) => {
+                              const isStageTag = tag === selectedThread.lead.stage;
+                              return (
+                                <Badge
+                                  key={tag}
+                                  variant='outline'
+                                  className={`text-xs px-2 py-1 transition-all duration-500 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)} ${
+                                    isStageTag && highlightStageInbox
+                                      ? 'ring-4 ring-primary ring-offset-2 scale-110 animate-pulse shadow-lg shadow-primary/50'
+                                      : ''
+                                  }`}
+                                  style={
+                                    isStageTag && highlightStageInbox
+                                      ? {
+                                          animation: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                        }
+                                      : undefined
+                                  }
+                                >
+                                  {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
+                                </Badge>
+                              );
+                            })}
                             {selectedThread.lead.tags.length > 2 && (
                               <Badge variant='outline' className='text-xs px-2 py-1'>
                                 +{selectedThread.lead.tags.length - 2}

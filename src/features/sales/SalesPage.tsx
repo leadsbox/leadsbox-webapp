@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Filter, MessageSquare, Search, ShoppingBag, User } from 'lucide-react';
+import { DollarSign, Filter, MessageSquare, Search, ShoppingBag, User, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
@@ -16,6 +16,8 @@ import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useNavigate } from 'react-router-dom';
+import { salesApi, Sale } from '@/api/sales';
+import SalesDetailModal from './SalesDetailModal';
 
 interface BackendLead {
   id: string;
@@ -150,6 +152,11 @@ const SalesPage: React.FC = () => {
   const { getMemberByUserId } = useOrgMembers();
   const navigate = useNavigate();
 
+  // Sales-specific state
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [isSalesLoading, setIsSalesLoading] = useState(false);
+
   const fetchLeads = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -211,22 +218,36 @@ const SalesPage: React.FC = () => {
     }
   }, []);
 
+  const fetchSales = useCallback(async () => {
+    try {
+      setIsSalesLoading(true);
+      const response = await salesApi.list();
+      setSales(response?.data?.sales || []);
+    } catch (error) {
+      console.error('Failed to load sales:', error);
+      notify.error({
+        key: 'sales:load:error',
+        title: 'Unable to load sales',
+        description: 'Failed to fetch auto-detected sales.',
+      });
+    } finally {
+      setIsSalesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeads();
-  }, [fetchLeads]);
+    fetchSales();
+  }, [fetchLeads, fetchSales]);
 
   const handleUpdateStatus = useCallback(
     async (leadId: string, newLabel: LeadLabel) => {
       try {
         // Optimistic update
-        setLeads((prevLeads) =>
-          prevLeads.map((lead) =>
-            lead.id === leadId ? { ...lead, stage: newLabel, label: newLabel } : lead
-          )
-        );
+        setLeads((prevLeads) => prevLeads.map((lead) => (lead.id === leadId ? { ...lead, stage: newLabel, label: newLabel } : lead)));
 
         await client.put(`${endpoints.leads}/${leadId}`, { label: newLabel });
-        
+
         notify.success({
           key: `lead-update-${leadId}`,
           title: 'Status updated',
@@ -246,7 +267,76 @@ const SalesPage: React.FC = () => {
         await fetchLeads();
       }
     },
-    [fetchLeads]
+    [fetchLeads],
+  );
+
+  const handleApproveSale = useCallback(
+    async (saleId: string) => {
+      try {
+        await salesApi.approve(saleId);
+        notify.success({
+          key: `sale-approve-${saleId}`,
+          title: 'Sale approved',
+          description: 'The auto-detected sale has been approved.',
+        });
+        await fetchSales();
+        setSelectedSale(null);
+      } catch (error) {
+        console.error('Failed to approve sale:', error);
+        notify.error({
+          key: `sale-approve-error-${saleId}`,
+          title: 'Approval failed',
+          description: 'Unable to approve sale. Please try again.',
+        });
+      }
+    },
+    [fetchSales],
+  );
+
+  const handleUpdateSale = useCallback(
+    async (saleId: string, data: { amount?: number; items?: SaleItem[]; paidAt?: Date; notes?: string }) => {
+      try {
+        await salesApi.update(saleId, data);
+        notify.success({
+          key: `sale-update-${saleId}`,
+          title: 'Sale updated',
+          description: 'The sale details have been updated.',
+        });
+        await fetchSales();
+        setSelectedSale(null);
+      } catch (error) {
+        console.error('Failed to update sale:', error);
+        notify.error({
+          key: `sale-update-error-${saleId}`,
+          title: 'Update failed',
+          description: 'Unable to update sale. Please try again.',
+        });
+      }
+    },
+    [fetchSales],
+  );
+
+  const handleDeleteSale = useCallback(
+    async (saleId: string) => {
+      try {
+        await salesApi.delete(saleId);
+        notify.success({
+          key: `sale-delete-${saleId}`,
+          title: 'Sale deleted',
+          description: 'The sale has been removed.',
+        });
+        await fetchSales();
+        setSelectedSale(null);
+      } catch (error) {
+        console.error('Failed to delete sale:', error);
+        notify.error({
+          key: `sale-delete-error-${saleId}`,
+          title: 'Deletion failed',
+          description: 'Unable to delete sale. Please try again.',
+        });
+      }
+    },
+    [fetchSales],
   );
 
   const resolveAssignedUser = useCallback(
@@ -263,7 +353,7 @@ const SalesPage: React.FC = () => {
         avatar: user?.profileImage ?? null,
       };
     },
-    [getMemberByUserId]
+    [getMemberByUserId],
   );
 
   const groupedLeads = useMemo(() => {
@@ -305,6 +395,7 @@ const SalesPage: React.FC = () => {
     const inquiries = groupedLeads.INQUIRIES.length;
     const pending = groupedLeads.PENDING.length;
     const closed = groupedLeads.CLOSED.length;
+    const pendingReview = sales.filter((s) => s.status === 'PENDING').length;
     return [
       {
         label: 'Recorded sales',
@@ -312,6 +403,13 @@ const SalesPage: React.FC = () => {
         change: groupedLeads.SALES.filter((lead) => new Date(lead.updatedAt).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7).length,
         helper: 'Last 7 days',
         icon: ShoppingBag,
+      },
+      {
+        label: 'Pending review',
+        value: pendingReview,
+        helper: 'AI-detected sales',
+        icon: Sparkles,
+        highlight: pendingReview > 0,
       },
       {
         label: 'Active inquiries',
@@ -332,7 +430,7 @@ const SalesPage: React.FC = () => {
         icon: User,
       },
     ];
-  }, [groupedLeads]);
+  }, [groupedLeads, sales]);
 
   const renderTableBody = () => {
     if (isLoading) {
@@ -377,10 +475,7 @@ const SalesPage: React.FC = () => {
             </div>
           </TableCell>
           <TableCell className='hidden md:table-cell' onClick={(e) => e.stopPropagation()}>
-            <Select
-              value={lead.stage}
-              onValueChange={(value) => handleUpdateStatus(lead.id, value as LeadLabel)}
-            >
+            <Select value={lead.stage} onValueChange={(value) => handleUpdateStatus(lead.id, value as LeadLabel)}>
               <SelectTrigger className='w-[200px] h-8'>
                 <SelectValue />
               </SelectTrigger>
@@ -468,6 +563,96 @@ const SalesPage: React.FC = () => {
         })}
       </div>
 
+      {/* Pending Review Section */}
+      {sales.filter((s) => s.status === 'PENDING').length > 0 && (
+        <Card className='border-primary/20 bg-primary/5'>
+          <CardHeader>
+            <div className='flex items-center gap-2'>
+              <Sparkles className='h-5 w-5 text-primary' />
+              <div>
+                <CardTitle>Pending Review - AI-Detected Sales</CardTitle>
+                <CardDescription>Review, approve, edit, or delete sales automatically detected from customer conversations</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className='space-y-3'>
+            {isSalesLoading ? (
+              <div className='space-y-2'>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className='flex items-center gap-4 p-3'>
+                    <Skeleton className='h-10 w-10 rounded-full' />
+                    <div className='space-y-2 flex-1'>
+                      <Skeleton className='h-4 w-48' />
+                      <Skeleton className='h-3 w-64' />
+                    </div>
+                    <Skeleton className='h-9 w-24' />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              sales
+                .filter((sale) => sale.status === 'PENDING')
+                .map((sale) => {
+                  const leadContact = sale.lead?.contact;
+                  const displayName = leadContact?.displayName || leadContact?.phone || 'Unknown';
+                  const confidence = sale.detectionConfidence ? Math.round(sale.detectionConfidence * 100) : 0;
+
+                  return (
+                    <div
+                      key={sale.id}
+                      className='flex items-center justify-between gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors'
+                    >
+                      <div className='flex items-center gap-3 flex-1 min-w-0'>
+                        <Avatar className='h-10 w-10 shrink-0'>
+                          <AvatarFallback className='bg-primary/10 text-primary'>
+                            {displayName
+                              .split(' ')
+                              .map((n) => n[0])
+                              .slice(0, 2)
+                              .join('')
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center gap-2 flex-wrap'>
+                            <p className='font-medium truncate'>{displayName}</p>
+                            <Badge variant='outline' className='text-xs shrink-0'>
+                              {confidence}% confidence
+                            </Badge>
+                          </div>
+                          <div className='flex items-center gap-2 text-sm text-muted-foreground mt-1'>
+                            <span className='font-semibold'>
+                              {sale.currency} {sale.amount.toLocaleString()}
+                            </span>
+                            <span>•</span>
+                            <span className='truncate'>
+                              {sale.items.length} item{sale.items.length !== 1 ? 's' : ''}
+                            </span>
+                            {sale.detectionMetadata?.deliveryAddress && (
+                              <>
+                                <span>•</span>
+                                <span className='truncate text-xs'>{sale.detectionMetadata.deliveryAddress}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className='flex items-center gap-2 shrink-0'>
+                        <Button size='sm' variant='outline' onClick={() => setSelectedSale(sale)}>
+                          View Details
+                        </Button>
+                        <Button size='sm' onClick={() => handleApproveSale(sale.id)} className='bg-primary hover:bg-primary/90'>
+                          Approve
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className='space-y-3'>
           <div className='flex items-center justify-between'>
@@ -528,6 +713,16 @@ const SalesPage: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Sales Detail Modal */}
+      <SalesDetailModal
+        sale={selectedSale}
+        isOpen={selectedSale !== null}
+        onClose={() => setSelectedSale(null)}
+        onApprove={handleApproveSale}
+        onUpdate={handleUpdateSale}
+        onDelete={handleDeleteSale}
+      />
     </div>
   );
 };

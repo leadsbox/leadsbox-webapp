@@ -1,14 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import {
-  ArrowLeft,
-  Loader2,
-  MessageSquare,
-  RefreshCcw,
-  Save,
-  Send,
-} from 'lucide-react';
+import { ArrowLeft, Check, Loader2, MessageSquare, Pencil, Plus, RefreshCcw, Save, Send, Trash } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,19 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { invoiceApi, Invoice } from '@/api/invoices';
 
 interface BackendLead {
   id: string;
@@ -98,15 +86,11 @@ const mapBackendLead = (payload: BackendLead): Lead => {
   const normalizedLabel = normalizeLabelToStage(payload.label);
   return {
     id: payload.id,
-    name: payload.providerId
-      ? `Lead ${String(payload.providerId).slice(0, 6)}`
-      : payload.conversationId || 'Lead',
+    name: payload.providerId ? `Lead ${String(payload.providerId).slice(0, 6)}` : payload.conversationId || 'Lead',
     email: payload.user?.email || '',
     phone: undefined,
     company: undefined,
-    source:
-      (String(payload.provider || 'manual').toLowerCase() as Lead['source']) ||
-      'manual',
+    source: (String(payload.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
     stage: normalizedLabel,
     priority: 'MEDIUM',
     tags: normalizedLabel ? [normalizedLabel] : [],
@@ -145,6 +129,7 @@ const SaleDetailPage: React.FC = () => {
   const { members, getMemberByUserId } = useOrgMembers();
 
   const [sale, setSale] = useState<Lead | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [silentLoading, setSilentLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -160,13 +145,21 @@ const SaleDetailPage: React.FC = () => {
           setIsLoading(true);
         }
         const response = await client.get(endpoints.lead(saleId));
-        const payload: BackendLead | undefined =
-          response?.data?.data?.lead || response?.data?.lead || response?.data;
+        const payload: BackendLead | undefined = response?.data?.data?.lead || response?.data?.lead || response?.data;
         if (!payload) {
           throw new Error('Sale not found');
         }
         setSale(mapBackendLead(payload));
+
+        // Fetch invoices for this sale/lead
+        try {
+          const invResponse = await invoiceApi.list({ leadId: saleId });
+          setInvoices(invResponse.data.invoices || []);
+        } catch (invError) {
+          console.error('Failed to load invoices for sale', invError);
+        }
       } catch (error) {
+        // ...
         console.error('Failed to load sale', error);
         setSale(null);
         notify.error({
@@ -182,12 +175,28 @@ const SaleDetailPage: React.FC = () => {
         }
       }
     },
-    [saleId]
+    [saleId],
   );
 
   useEffect(() => {
     loadSale();
   }, [loadSale]);
+
+  const prevStage = React.useRef<string | undefined>(undefined);
+  const [highlightStage, setHighlightStage] = React.useState(false);
+
+  useEffect(() => {
+    // Only animate if we had a previous stage (not initial load) and it changed
+    if (sale?.stage && prevStage.current && sale.stage !== prevStage.current) {
+      setHighlightStage(true);
+      const timer = setTimeout(() => setHighlightStage(false), 2500); // 2.5s highlight
+      return () => clearTimeout(timer);
+    }
+    // Update ref
+    if (sale?.stage) {
+      prevStage.current = sale.stage;
+    }
+  }, [sale?.stage]);
 
   const handleStatusChange = async (newStage: string) => {
     if (!sale) return;
@@ -214,6 +223,7 @@ const SaleDetailPage: React.FC = () => {
 
   const handleAssigneeChange = async (userId: string) => {
     if (!sale) return;
+    console.log('handleAssigneeChange', { saleId: sale.id, userId });
     try {
       setIsSaving(true);
       await client.put(endpoints.lead(sale.id), { assignedUserId: userId });
@@ -341,17 +351,25 @@ const SaleDetailPage: React.FC = () => {
                   <CardTitle className='text-2xl'>{sale.name}</CardTitle>
                   <CardDescription className='mt-1'>{sale.email || 'No email on record'}</CardDescription>
                 </div>
-                <Button onClick={handleOpenConversation}>
-                  <MessageSquare className='h-4 w-4 mr-2' />
-                  Open Chat
-                </Button>
+                <div className='flex gap-2'>
+                  <Button variant='outline' onClick={() => navigate(`/dashboard/invoices/create?leadId=${sale.id}`)}>
+                    <Plus className='h-4 w-4 mr-2' />
+                    Record Sale
+                  </Button>
+                  <Button onClick={handleOpenConversation}>
+                    <MessageSquare className='h-4 w-4 mr-2' />
+                    Open Chat
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className='space-y-6'>
                 <div className='grid gap-4 sm:grid-cols-2'>
                   <div className='space-y-2'>
                     <Label>Status</Label>
                     <Select value={sale.stage} onValueChange={handleStatusChange} disabled={isSaving}>
-                      <SelectTrigger>
+                      <SelectTrigger
+                        className={`transition-all duration-500 ${highlightStage ? 'ring-2 ring-purple-500 ring-offset-2 bg-purple-50 dark:bg-purple-900/20' : ''}`}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -403,6 +421,208 @@ const SaleDetailPage: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* AI Detected Drafts */}
+            {invoices.filter((inv) => ['DRAFT', 'PENDING_CONFIRMATION'].includes(inv.status)).length > 0 && (
+              <Card className='border-purple-200 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-900/10'>
+                <CardHeader>
+                  <div className='flex items-center gap-2'>
+                    <div className='h-2 w-2 rounded-full bg-purple-500 animate-pulse' />
+                    <CardTitle className='text-purple-900 dark:text-purple-100'>AI Detected Sales</CardTitle>
+                  </div>
+                  <CardDescription>Potential sales detected from conversation. Review to confirm.</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-6'>
+                  {invoices
+                    .filter((inv) => ['DRAFT', 'PENDING_CONFIRMATION'].includes(inv.status))
+                    .map((invoice) => (
+                      <div key={invoice.id} className='space-y-4 bg-background p-4 rounded-lg border shadow-sm'>
+                        <div className='flex items-center justify-between pb-2 border-b'>
+                          <div className='flex flex-col'>
+                            <span className='font-medium text-sm'>Draft #{invoice.code}</span>
+                            <span className='text-xs text-muted-foreground'>{new Date(invoice.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            <Badge variant='outline' className='bg-purple-100 text-purple-700 border-purple-200'>
+                              {invoice.status === 'PENDING_CONFIRMATION' ? 'Ready to Confirm' : 'Draft'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Items Table */}
+                        <div className='rounded-md border'>
+                          <table className='w-full text-sm'>
+                            <thead className='bg-muted/50'>
+                              <tr className='border-b'>
+                                <th className='h-10 px-4 text-left font-medium text-muted-foreground w-1/2'>Item</th>
+                                <th className='h-10 px-4 text-right font-medium text-muted-foreground'>Qty</th>
+                                <th className='h-10 px-4 text-right font-medium text-muted-foreground'>Price</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {invoice.items && invoice.items.length > 0 ? (
+                                invoice.items.map((item, idx) => (
+                                  <tr key={idx} className='border-b last:border-0 hover:bg-muted/50'>
+                                    <td className='p-3 align-middle font-medium'>{item.name}</td>
+                                    <td className='p-3 align-middle text-right'>{item.qty}</td>
+                                    <td className='p-3 align-middle text-right'>
+                                      {invoice.currency} {item.unitPrice.toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={3} className='p-4 text-center text-muted-foreground'>
+                                    No items
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                            <tfoot className='bg-muted/50 font-medium'>
+                              <tr>
+                                <td colSpan={2} className='px-4 py-2 text-right text-xs uppercase text-muted-foreground'>
+                                  Total Value
+                                </td>
+                                <td className='px-4 py-2 text-right'>
+                                  {invoice.currency} {invoice.total.toLocaleString()}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+
+                        {/* Actions */}
+                        <div className='flex gap-2 justify-end pt-2'>
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            className='text-destructive hover:text-destructive hover:bg-destructive/10'
+                            onClick={() => {
+                              if (confirm('Are you sure you want to discard this draft?')) {
+                                invoiceApi
+                                  .delete(invoice.code)
+                                  .then(() => {
+                                    notify.success({ title: 'Draft discarded' });
+                                    loadSale({ silent: true });
+                                  })
+                                  .catch(() => notify.error({ title: 'Failed to delete' }));
+                              }
+                            }}
+                          >
+                            <Trash className='h-4 w-4 mr-2' />
+                            Discard
+                          </Button>
+                          <Button variant='outline' size='sm' onClick={() => navigate(`/dashboard/invoices/create?code=${invoice.code}&edit=true`)}>
+                            <Pencil className='h-4 w-4 mr-2' />
+                            Edit Details
+                          </Button>
+                          <Button
+                            size='sm'
+                            className='bg-purple-600 hover:bg-purple-700 text-white'
+                            onClick={() => {
+                              invoiceApi
+                                .update(invoice.code, { status: 'SENT' })
+                                .then(() => {
+                                  notify.success({ title: 'Sale Confirmed', description: 'Invoice has been generated.' });
+                                  loadSale({ silent: true });
+                                })
+                                .catch(() => notify.error({ title: 'Failed to confirm' }));
+                            }}
+                          >
+                            <Check className='h-4 w-4 mr-2' />
+                            Confirm Sale
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Confirmed Orders (Invoices) */}
+            {invoices.filter((inv) => !['DRAFT', 'PENDING_CONFIRMATION'].includes(inv.status)).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Confirmed Orders</CardTitle>
+                  <CardDescription>Processed sales and invoices</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-6'>
+                  {invoices
+                    .filter((inv) => !['DRAFT', 'PENDING_CONFIRMATION'].includes(inv.status))
+                    .map((invoice) => (
+                      <div key={invoice.id} className='space-y-4'>
+                        <div className='flex items-center justify-between pb-2 border-b'>
+                          <div className='flex flex-col'>
+                            <span className='font-medium text-sm'>Invoice #{invoice.code}</span>
+                            <span className='text-xs text-muted-foreground'>{new Date(invoice.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <Badge variant={invoice.status === 'PAID' ? 'default' : 'secondary'}>{invoice.status}</Badge>
+                        </div>
+
+                        {/* Items Table */}
+                        <div className='rounded-md border'>
+                          <table className='w-full text-sm'>
+                            <thead className='bg-muted/50'>
+                              <tr className='border-b'>
+                                <th className='h-10 px-4 text-left font-medium text-muted-foreground'>Item</th>
+                                <th className='h-10 px-4 text-right font-medium text-muted-foreground'>Qty</th>
+                                <th className='h-10 px-4 text-right font-medium text-muted-foreground'>Price</th>
+                                <th className='h-10 px-4 text-right font-medium text-muted-foreground'>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {invoice.items && invoice.items.length > 0 ? (
+                                invoice.items.map((item, idx) => (
+                                  <tr key={idx} className='border-b last:border-0 hover:bg-muted/50'>
+                                    <td className='p-4 align-middle font-medium'>{item.name}</td>
+                                    <td className='p-4 align-middle text-right'>{item.qty}</td>
+                                    <td className='p-4 align-middle text-right'>
+                                      {invoice.currency} {item.unitPrice.toLocaleString()}
+                                    </td>
+                                    <td className='p-4 align-middle text-right'>
+                                      {invoice.currency} {(item.qty * item.unitPrice).toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={4} className='p-4 text-center text-muted-foreground'>
+                                    No items listed
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                            <tfoot className='bg-muted/50 font-medium'>
+                              <tr>
+                                <td colSpan={3} className='px-4 py-3 text-right'>
+                                  Subtotal
+                                </td>
+                                <td className='px-4 py-3 text-right'>
+                                  {invoice.currency} {invoice.subtotal.toLocaleString()}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td colSpan={3} className='px-4 py-3 text-right'>
+                                  Total
+                                </td>
+                                <td className='px-4 py-3 text-right'>
+                                  {invoice.currency} {invoice.total.toLocaleString()}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                        <div className='flex justify-end'>
+                          <Button variant='ghost' size='sm' onClick={() => navigate(`/dashboard/invoices/create?code=${invoice.code}&edit=true`)}>
+                            <Pencil className='h-3 w-3 mr-2' />
+                            Edit
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Notes & Activity</CardTitle>
@@ -449,9 +669,7 @@ const SaleDetailPage: React.FC = () => {
                                 {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
                               </span>
                             </div>
-                            <div className='rounded-lg border p-3 bg-muted/30 text-sm'>
-                              {note.note}
-                            </div>
+                            <div className='rounded-lg border p-3 bg-muted/30 text-sm'>{note.note}</div>
                           </div>
                         </div>
                       ))}
@@ -473,15 +691,11 @@ const SaleDetailPage: React.FC = () => {
               <CardContent className='space-y-4'>
                 <div>
                   <p className='text-xs text-muted-foreground uppercase tracking-wide'>Created</p>
-                  <p className='text-sm font-medium mt-1'>
-                    {sale.createdAt ? new Date(sale.createdAt).toLocaleString() : 'Unknown'}
-                  </p>
+                  <p className='text-sm font-medium mt-1'>{sale.createdAt ? new Date(sale.createdAt).toLocaleString() : 'Unknown'}</p>
                 </div>
                 <div>
                   <p className='text-xs text-muted-foreground uppercase tracking-wide'>Last Activity</p>
-                  <p className='text-sm font-medium mt-1'>
-                    {sale.lastActivity ? new Date(sale.lastActivity).toLocaleString() : 'Unknown'}
-                  </p>
+                  <p className='text-sm font-medium mt-1'>{sale.lastActivity ? new Date(sale.lastActivity).toLocaleString() : 'Unknown'}</p>
                 </div>
                 <div>
                   <p className='text-xs text-muted-foreground uppercase tracking-wide'>Source</p>
@@ -489,9 +703,7 @@ const SaleDetailPage: React.FC = () => {
                 </div>
                 <div>
                   <p className='text-xs text-muted-foreground uppercase tracking-wide'>Provider ID</p>
-                  <p className='text-sm font-medium mt-1 font-mono text-xs truncate'>
-                    {sale.providerId || sale.conversationId}
-                  </p>
+                  <p className='text-sm font-medium mt-1 font-mono text-xs truncate'>{sale.providerId || sale.conversationId}</p>
                 </div>
               </CardContent>
             </Card>

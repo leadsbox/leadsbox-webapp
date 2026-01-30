@@ -1,3 +1,4 @@
+import { InvoiceItem } from '@/features/invoices/invoiceTypes';
 import client from './client';
 
 export interface Invoice {
@@ -6,7 +7,7 @@ export interface Invoice {
   organizationId: string;
   contactPhone?: string;
   currency: string;
-  items: unknown[];
+  items: InvoiceItem[];
   subtotal: number;
   total: number;
   status: string;
@@ -35,17 +36,22 @@ export interface InvoiceResponse {
   data: Invoice;
 }
 
-export const invoiceApi = {
-  list: async (page = 1, limit = 20, status?: string) => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    });
-    if (status) {
-      params.append('status', status);
-    }
+export interface InvoiceListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  leadId?: string;
+}
 
-    const response = await client.get<InvoiceListResponse>(`/invoices?${params.toString()}`);
+export const invoiceApi = {
+  list: async (params: InvoiceListParams = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.status) query.append('status', params.status);
+    if (params.leadId) query.append('leadId', params.leadId);
+
+    const response = await client.get<InvoiceListResponse>(`/invoices?${query.toString()}`);
     return response.data;
   },
 
