@@ -54,6 +54,7 @@ export const endpoints = {
   thread: (id: string) => `/threads/${id}`,
   threadMessages: (threadId: string) => `/threads/${threadId}/messages`,
   threadReply: (threadId: string) => `/threads/${threadId}/reply`,
+  threadMarkRead: (threadId: string) => `/threads/${threadId}/mark-read`,
   threadStart: '/threads/start',
 
   // Tasks

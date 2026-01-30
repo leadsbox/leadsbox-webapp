@@ -280,7 +280,21 @@ const InboxPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedThread?.id) fetchMessages(selectedThread.id);
+    if (selectedThread?.id) {
+      fetchMessages(selectedThread.id);
+
+      // Mark thread as read when it's opened
+      client
+        .post(endpoints.threadMarkRead(selectedThread.id))
+        .then(() => {
+          // Emit event to update sidebar unread count
+          window.dispatchEvent(new CustomEvent('leadsbox:thread-read'));
+        })
+        .catch((err) => {
+          // Silently fail - marking as read is not critical
+          console.error('Failed to mark thread as read:', err);
+        });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThread?.id]);
 
