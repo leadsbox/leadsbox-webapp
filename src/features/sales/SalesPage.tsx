@@ -16,7 +16,7 @@ import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useNavigate } from 'react-router-dom';
-import { salesApi, Sale } from '@/api/sales';
+import { salesApi, Sale, SaleItem } from '@/api/sales';
 import SalesDetailModal from './SalesDetailModal';
 
 interface BackendLead {
