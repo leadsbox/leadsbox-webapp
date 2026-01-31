@@ -16,6 +16,8 @@ export interface Sale {
   items: SaleItem[];
   status: 'PENDING' | 'PAID' | 'PARTIAL' | 'REFUNDED' | 'VOID';
   isAutoDetected: boolean;
+  isManual?: boolean;
+  isImported?: boolean;
   detectionConfidence?: number;
   detectionReasoning?: string;
   detectionMetadata?: {
@@ -101,6 +103,33 @@ export const salesApi = {
    */
   getPendingCount: async (): Promise<{ data: { count: number } }> => {
     const response = await client.get(endpoints.sales.pendingCount);
+    return response.data;
+  },
+
+  /**
+   * Create a manual sale
+   */
+  create: async (data: {
+    leadId: string;
+    items: SaleItem[];
+    currency: string;
+    amount: number;
+    status: string;
+    isManual: boolean;
+  }): Promise<{ data: { sale: Sale } }> => {
+    const response = await client.post(endpoints.sales.list, data);
+    return response.data;
+  },
+
+  /**
+   * Import sales from CSV
+   */
+  importCSV: async (formData: FormData): Promise<{ data: { imported: number } }> => {
+    const response = await client.post(`${endpoints.sales.list}/import`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 };

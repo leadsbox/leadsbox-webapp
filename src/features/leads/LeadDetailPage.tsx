@@ -30,6 +30,8 @@ import { endpoints } from '@/api/config';
 import { notify } from '@/lib/toast';
 import { AxiosError } from 'axios';
 import { Skeleton } from '../../components/ui/skeleton';
+import { salesApi, Sale, SaleItem } from '@/api/sales';
+import SalesDetailModal from '../sales/SalesDetailModal';
 
 // Safe date formatting helper to prevent Invalid time value errors
 const safeFormatDistance = (dateValue: string | Date | null | undefined): string => {
@@ -117,6 +119,11 @@ const LeadDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { members, isLoading: membersLoading, getMemberByUserId } = useOrgMembers();
 
+  // Sales history state
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+
   const labelToStage = (label?: string): Stage => {
     if (!label) {
       return 'NEW_LEAD';
@@ -203,9 +210,25 @@ const LeadDetailPage: React.FC = () => {
         email: user?.email ?? undefined,
       };
     },
-    [getMemberByUserId]
+    [getMemberByUserId],
   );
 
+  // Fetch sales for this lead
+  const fetchSales = useCallback(async (leadId: string) => {
+    try {
+      setSalesLoading(true);
+      const response = await salesApi.list({ leadId });
+      setSales(response?.data?.sales || []);
+    } catch (error) {
+      console.error('Failed to load sales for lead:', error);
+      // Don't show error notification - sales are optional
+      setSales([]);
+    } finally {
+      setSalesLoading(false);
+    }
+  }, []);
+
+  // Load lead data
   const getStageColor = (stage: Stage) => {
     switch (stage) {
       case 'NEW_LEAD':
@@ -383,6 +406,9 @@ const LeadDetailPage: React.FC = () => {
           };
 
           setLead(mappedLead);
+
+          // Fetch sales for this lead
+          fetchSales(backendLead.id);
         } else {
           notify.error({
             key: `lead:${leadId ?? 'unknown'}:missing`,
@@ -408,7 +434,7 @@ const LeadDetailPage: React.FC = () => {
     };
 
     loadLead();
-  }, [leadId, navigate]);
+  }, [leadId, navigate, fetchSales]);
 
   const handleEditLead = (lead: Lead) => {
     setEditForm(lead);
@@ -1127,6 +1153,113 @@ const LeadDetailPage: React.FC = () => {
         </Card>
       </div>
 
+      {/* Sales History Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className='flex items-center gap-2'>
+            <DollarSign className='h-5 w-5' />
+            Sales History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {salesLoading ? (
+            <div className='space-y-3'>
+              <Skeleton className='h-20 w-full' />
+              <Skeleton className='h-20 w-full' />
+            </div>
+          ) : sales.length > 0 ? (
+            <div className='space-y-4'>
+              {sales.map((sale) => {
+                const totalItems = (sale.items as SaleItem[])?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+                const statusColor =
+                  sale.status === 'PAID'
+                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                    : sale.status === 'PENDING'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      : 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+
+                return (
+                  <div
+                    key={sale.id}
+                    onClick={() => setSelectedSale(sale)}
+                    className='p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors'
+                  >
+                    {/* Sale Header */}
+                    <div className='flex items-start justify-between mb-3'>
+                      <div className='flex-1'>
+                        <div className='flex items-center gap-2 mb-1'>
+                          <span className='font-bold text-xl'>
+                            {sale.currency} {sale.amount.toLocaleString()}
+                          </span>
+                          <Badge className={statusColor}>{sale.status}</Badge>
+                          {sale.isAutoDetected && (
+                            <Badge variant='outline' className='text-xs'>
+                              AI-Detected
+                            </Badge>
+                          )}
+                        </div>
+                        <p className='text-xs text-muted-foreground'>
+                          {new Date(sale.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                      <MoreHorizontal className='h-5 w-5 text-muted-foreground' />
+                    </div>
+
+                    {/* Items List */}
+                    <div className='space-y-2 mt-3 pt-3 border-t'>
+                      <p className='text-sm font-medium text-muted-foreground mb-2'>Items:</p>
+                      {(sale.items as SaleItem[]).map((item, idx) => (
+                        <div key={idx} className='flex items-center justify-between text-sm bg-muted/30 p-2 rounded'>
+                          <div className='flex-1'>
+                            <span className='font-medium'>{item.name}</span>
+                            <span className='text-muted-foreground ml-2'>× {item.quantity}</span>
+                          </div>
+                          <span className='font-medium'>
+                            {sale.currency} {(item.unitPrice * item.quantity).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+
+                      {/* Total Summary */}
+                      <div className='flex items-center justify-between text-sm font-semibold pt-2 border-t'>
+                        <span>
+                          Total ({totalItems} item{totalItems !== 1 ? 's' : ''})
+                        </span>
+                        <span>
+                          {sale.currency} {sale.amount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Detection Info for AI-detected sales */}
+                    {sale.isAutoDetected && sale.detectionReasoning && (
+                      <div className='mt-3 pt-3 border-t'>
+                        <p className='text-xs font-medium text-muted-foreground mb-1'>AI Detection Reasoning:</p>
+                        <p className='text-xs text-muted-foreground italic'>{sale.detectionReasoning}</p>
+                        {sale.detectionConfidence && (
+                          <p className='text-xs text-muted-foreground mt-1'>Confidence: {(sale.detectionConfidence * 100).toFixed(0)}%</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className='text-center py-8 text-muted-foreground'>
+              <DollarSign className='h-12 w-12 mx-auto mb-2 opacity-20' />
+              <p>No sales recorded for this lead yet.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Notes Section */}
       <Card>
         <CardHeader>
@@ -1148,6 +1281,29 @@ const LeadDetailPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Sales Detail Modal */}
+      {selectedSale && (
+        <SalesDetailModal
+          sale={selectedSale}
+          isOpen={!!selectedSale}
+          onClose={() => setSelectedSale(null)}
+          onApprove={async (id) => {
+            // Refresh sales after approval
+            if (leadId) await fetchSales(leadId);
+            setSelectedSale(null);
+          }}
+          onUpdate={async (id, data) => {
+            // Refresh sales after update
+            if (leadId) await fetchSales(leadId);
+          }}
+          onDelete={async (id) => {
+            // Refresh sales after delete
+            if (leadId) await fetchSales(leadId);
+            setSelectedSale(null);
+          }}
+        />
+      )}
     </div>
   );
 };

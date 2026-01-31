@@ -398,10 +398,10 @@ const SalesPage: React.FC = () => {
     const pendingReview = sales.filter((s) => s.status === 'PENDING').length;
     return [
       {
-        label: 'Recorded sales',
-        value: totalSales,
-        change: groupedLeads.SALES.filter((lead) => new Date(lead.updatedAt).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7).length,
-        helper: 'Last 7 days',
+        label: 'Total sales',
+        value: sales.length,
+        change: sales.filter((s) => new Date(s.createdAt).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7).length,
+        helper: `${sales.filter((s) => s.status === 'PAID').length} paid`,
         icon: ShoppingBag,
       },
       {

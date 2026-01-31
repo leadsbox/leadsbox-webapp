@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Check, Loader2, MessageSquare, Pencil, Plus, RefreshCcw, Save, Send, Trash } from 'lucide-react';
+import { ArrowLeft, Check, DollarSign, Loader2, MessageSquare, Pencil, Plus, RefreshCcw, Save, Send, Trash } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,9 @@ import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { invoiceApi, Invoice } from '@/api/invoices';
+import { salesApi, Sale, SaleItem } from '@/api/sales';
+import { AddManualSaleModal } from './AddManualSaleModal';
+import { ImportCSVModal } from './ImportCSVModal';
 
 interface BackendLead {
   id: string;
@@ -135,6 +138,12 @@ const SaleDetailPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [newNote, setNewNote] = useState('');
 
+  // Sales records state
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [showAddSaleModal, setShowAddSaleModal] = useState(false);
+  const [showImportCSVModal, setShowImportCSVModal] = useState(false);
+
   const loadSale = useCallback(
     async (options?: { silent?: boolean }) => {
       if (!saleId) return;
@@ -178,9 +187,25 @@ const SaleDetailPage: React.FC = () => {
     [saleId],
   );
 
+  // Fetch sales records for this lead
+  const fetchSales = useCallback(async () => {
+    if (!saleId) return;
+    try {
+      setSalesLoading(true);
+      const response = await salesApi.list({ leadId: saleId });
+      setSales(response?.data?.sales || []);
+    } catch (error) {
+      console.error('Failed to load sales for lead:', error);
+      setSales([]);
+    } finally {
+      setSalesLoading(false);
+    }
+  }, [saleId]);
+
   useEffect(() => {
     loadSale();
-  }, [loadSale]);
+    fetchSales();
+  }, [loadSale, fetchSales]);
 
   const prevStage = React.useRef<string | undefined>(undefined);
   const [highlightStage, setHighlightStage] = React.useState(false);
@@ -538,6 +563,157 @@ const SaleDetailPage: React.FC = () => {
               </Card>
             )}
 
+            {/* Sales History - Manual, Imported & AI-Detected Sales */}
+            {(salesLoading || sales.length > 0) && (
+              <Card>
+                <CardHeader>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <DollarSign className='h-5 w-5' />
+                      <CardTitle>Sales History</CardTitle>
+                    </div>
+                    <div className='flex gap-2'>
+                      <Button variant='outline' size='sm' onClick={() => setShowImportCSVModal(true)}>
+                        Import CSV
+                      </Button>
+                      <Button size='sm' onClick={() => setShowAddSaleModal(true)}>
+                        <Plus className='h-4 w-4 mr-2' />
+                        Add Sale
+                      </Button>
+                    </div>
+                  </div>
+                  <CardDescription>All sales transactions from conversations and manual entries</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {salesLoading ? (
+                    <div className='space-y-3'>
+                      <Skeleton className='h-32 w-full' />
+                      <Skeleton className='h-32 w-full' />
+                    </div>
+                  ) : sales.length > 0 ? (
+                    <div className='space-y-4'>
+                      {sales.map((saleRecord) => {
+                        const totalItems = (saleRecord.items as SaleItem[])?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+                        const statusColor =
+                          saleRecord.status === 'PAID'
+                            ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                            : saleRecord.status === 'PENDING'
+                              ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                              : 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+
+                        return (
+                          <div key={saleRecord.id} className='p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors'>
+                            {/* Sale Header */}
+                            <div className='flex items-start justify-between mb-3'>
+                              <div className='flex-1'>
+                                <div className='flex items-center gap-2 mb-1 flex-wrap'>
+                                  <span className='font-bold text-xl'>
+                                    {saleRecord.currency} {saleRecord.amount.toLocaleString()}
+                                  </span>
+                                  <Badge className={statusColor}>{saleRecord.status}</Badge>
+                                  {saleRecord.isAutoDetected && (
+                                    <Badge
+                                      variant='outline'
+                                      className='text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300'
+                                    >
+                                      🤖 AI-Detected
+                                    </Badge>
+                                  )}
+                                  {saleRecord.isManual && (
+                                    <Badge variant='outline' className='text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'>
+                                      ✍️ Manual
+                                    </Badge>
+                                  )}
+                                  {saleRecord.isImported && (
+                                    <Badge variant='outline' className='text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'>
+                                      📥 Imported
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className='text-xs text-muted-foreground'>
+                                  {new Date(saleRecord.createdAt).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                              </div>
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => {
+                                  // TODO: Open edit modal
+                                  console.log('Edit sale:', saleRecord.id);
+                                }}
+                              >
+                                <Pencil className='h-4 w-4' />
+                              </Button>
+                            </div>
+
+                            {/* Items List */}
+                            <div className='space-y-2 mt-3 pt-3 border-t'>
+                              <p className='text-sm font-medium text-muted-foreground mb-2'>Items:</p>
+                              {(saleRecord.items as SaleItem[]).map((item, idx) => (
+                                <div key={idx} className='flex items-center justify-between text-sm bg-background p-2 rounded'>
+                                  <div className='flex-1'>
+                                    <span className='font-medium'>{item.name}</span>
+                                    <span className='text-muted-foreground ml-2'>× {item.quantity}</span>
+                                  </div>
+                                  <span className='font-medium'>
+                                    {saleRecord.currency} {(item.unitPrice * item.quantity).toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+
+                              {/* Total Summary */}
+                              <div className='flex items-center justify-between text-sm font-semibold pt-2 border-t'>
+                                <span>
+                                  Total ({totalItems} item{totalItems !== 1 ? 's' : ''})
+                                </span>
+                                <span>
+                                  {saleRecord.currency} {saleRecord.amount.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* AI Detection Info */}
+                            {saleRecord.isAutoDetected && saleRecord.detectionReasoning && (
+                              <div className='mt-3 pt-3 border-t'>
+                                <p className='text-xs font-medium text-muted-foreground mb-1'>AI Detection Reasoning:</p>
+                                <p className='text-xs text-muted-foreground italic'>{saleRecord.detectionReasoning}</p>
+                                {saleRecord.detectionConfidence && (
+                                  <p className='text-xs text-muted-foreground mt-1'>
+                                    Confidence: {(saleRecord.detectionConfidence * 100).toFixed(0)}%
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className='text-center py-12 text-muted-foreground'>
+                      <DollarSign className='h-16 w-16 mx-auto mb-4 opacity-20' />
+                      <h3 className='text-lg font-semibold mb-2'>No Sales Yet</h3>
+                      <p className='text-sm mb-4'>AI-detected sales, manual entries, and imported records will appear here</p>
+                      <div className='flex gap-2 justify-center'>
+                        <Button variant='outline' size='sm'>
+                          Import from CSV
+                        </Button>
+                        <Button size='sm'>
+                          <Plus className='h-4 w-4 mr-2' />
+                          Add Manual Sale
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Confirmed Orders (Invoices) */}
             {invoices.filter((inv) => !['DRAFT', 'PENDING_CONFIRMATION'].includes(inv.status)).length > 0 && (
               <Card>
@@ -717,6 +893,26 @@ const SaleDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <AddManualSaleModal
+        open={showAddSaleModal}
+        onOpenChange={setShowAddSaleModal}
+        leadId={saleId || ''}
+        onSuccess={() => {
+          fetchSales();
+          loadSale({ silent: true });
+        }}
+      />
+      <ImportCSVModal
+        open={showImportCSVModal}
+        onOpenChange={setShowImportCSVModal}
+        leadId={saleId || ''}
+        onSuccess={() => {
+          fetchSales();
+          loadSale({ silent: true });
+        }}
+      />
     </div>
   );
 };
