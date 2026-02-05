@@ -546,7 +546,9 @@ export const IntegrationsTab: React.FC = () => {
                   className='w-full'
                   disabled={igConnected}
                   onClick={() => {
-                    window.location.href = `${apiRoot}/api/provider/instagram`;
+                    const orgId = getOrgId();
+                    const url = orgId ? `${apiRoot}/api/provider/instagram?orgId=${encodeURIComponent(orgId)}` : `${apiRoot}/api/provider/instagram`;
+                    window.location.href = url;
                   }}
                 >
                   {igConnected ? 'Connected' : 'Connect Instagram'}
