@@ -1011,7 +1011,19 @@ const InboxPage: React.FC = () => {
                       <AvatarImage src={thread.lead.name} />
                       <AvatarFallback>{thread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className='absolute -bottom-1 -right-1 text-lg'>{getChannelIcon(thread.channel)}</div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 rounded-full p-0.5 shadow-md ${
+                        thread.channel === 'whatsapp'
+                          ? 'bg-green-500'
+                          : thread.channel === 'instagram'
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-500'
+                            : thread.channel === 'telegram'
+                              ? 'bg-blue-500'
+                              : 'bg-gray-500'
+                      }`}
+                    >
+                      <div className='text-white'>{getChannelIcon(thread.channel)}</div>
+                    </div>
                   </div>
 
                   <div className='flex-1 min-w-0'>
@@ -1200,7 +1212,19 @@ const InboxPage: React.FC = () => {
                       <AvatarImage src={selectedThread.lead.name} />
                       <AvatarFallback>{selectedThread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className='absolute -bottom-1 -right-1 text-lg'>{getChannelIcon(selectedThread.channel)}</div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 rounded-full p-0.5 shadow-md ${
+                        selectedThread.channel === 'whatsapp'
+                          ? 'bg-green-500'
+                          : selectedThread.channel === 'instagram'
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-500'
+                            : selectedThread.channel === 'telegram'
+                              ? 'bg-blue-500'
+                              : 'bg-gray-500'
+                      }`}
+                    >
+                      <div className='text-white'>{getChannelIcon(selectedThread.channel)}</div>
+                    </div>
                     {selectedThread.tags?.length > 0 && (
                       <div className='absolute -top-1 -right-1 flex flex-wrap-reverse justify-end max-w-[80px] gap-0.5'>
                         {selectedThread.tags.slice(0, 3).map((tag, index) => (
@@ -1537,7 +1561,19 @@ const InboxPage: React.FC = () => {
                         <AvatarImage src={thread.lead.name} />
                         <AvatarFallback>{thread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      <div className='absolute -bottom-1 -right-1 text-lg'>{getChannelIcon(thread.channel)}</div>
+                      <div
+                        className={`absolute -bottom-1 -right-1 rounded-full p-0.5 shadow-md ${
+                          thread.channel === 'whatsapp'
+                            ? 'bg-green-500'
+                            : thread.channel === 'instagram'
+                              ? 'bg-gradient-to-br from-purple-500 to-pink-500'
+                              : thread.channel === 'telegram'
+                                ? 'bg-blue-500'
+                                : 'bg-gray-500'
+                        }`}
+                      >
+                        <div className='text-white'>{getChannelIcon(thread.channel)}</div>
+                      </div>
                     </div>
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-center justify-between mb-1'>
