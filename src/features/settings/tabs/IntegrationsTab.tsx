@@ -139,6 +139,19 @@ export const IntegrationsTab: React.FC = () => {
     })();
   }, [apiRoot]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await client.get(`${apiRoot}/api/provider/instagram/status`);
+        const payload = resp?.data?.data || {};
+        const connected = !!payload?.connected;
+        setIgConnected(connected);
+      } catch {
+        // Ignore error - user not connected
+      }
+    })();
+  }, [apiRoot]);
+
   const confirmBusiness = async () => {
     if (!waToken || !selectedBusiness) return;
     setBusinessLoading(true);
