@@ -542,17 +542,48 @@ export const IntegrationsTab: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className='space-y-3'>
-                <Button
-                  className='w-full'
-                  disabled={igConnected}
-                  onClick={() => {
-                    const orgId = getOrgId();
-                    const url = orgId ? `${apiRoot}/api/provider/instagram?orgId=${encodeURIComponent(orgId)}` : `${apiRoot}/api/provider/instagram`;
-                    window.location.href = url;
-                  }}
-                >
-                  {igConnected ? 'Connected' : 'Connect Instagram'}
-                </Button>
+                {igConnected ? (
+                  <Button
+                    variant='destructive'
+                    className='w-full'
+                    onClick={async () => {
+                      try {
+                        await client.delete('/api/provider/instagram/disconnect');
+                        notify.success({
+                          key: 'integrations:instagram:disconnected',
+                          title: 'Instagram Disconnected',
+                          description: 'Your Instagram account has been disconnected',
+                        });
+                        // Update Instagram connection state
+                        setIgConnected(false);
+                      } catch (error: unknown) {
+                        notify.error({
+                          key: 'integrations:instagram:disconnect-error',
+                          title: 'Disconnect failed',
+                          description:
+                            error && typeof error === 'object' && 'response' in error
+                              ? (error as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to disconnect Instagram'
+                              : 'Failed to disconnect Instagram',
+                        });
+                      }
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button
+                    className='w-full'
+                    onClick={() => {
+                      const orgId = getOrgId();
+                      const url = orgId
+                        ? `${apiRoot}/api/provider/instagram?orgId=${encodeURIComponent(orgId)}`
+                        : `${apiRoot}/api/provider/instagram`;
+                      window.location.href = url;
+                    }}
+                  >
+                    Connect Instagram
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
