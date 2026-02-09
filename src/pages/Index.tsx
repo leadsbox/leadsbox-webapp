@@ -277,7 +277,7 @@ const Index = () => {
               </span>
             </h1>
 
-            <p className='text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed'>
+            <p className='text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed px-4'>
               Manage WhatsApp, Instagram, and Telegram conversations in one powerful inbox. AI-powered sales detection and invoice generation
               included.
             </p>
