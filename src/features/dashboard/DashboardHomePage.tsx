@@ -20,6 +20,7 @@ import {
   PenSquare,
   Zap,
   Gift,
+  Instagram,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +37,13 @@ import { useAuth } from '@/context/useAuth';
 import { extractFollowUps } from '@/utils/apiData';
 import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
 import OnboardingChecklist, { OnboardingStep } from './components/OnboardingChecklist';
+
+// Custom WhatsApp Icon Component
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className={className}>
+    <path d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z' />
+  </svg>
+);
 
 // Types for backend data
 interface ChartDataPoint {
@@ -124,7 +132,7 @@ const chartConfig = {
 export default function DashboardHomePage() {
   const [timeRange, setTimeRange] = useState('7d');
   const [whatsappConnected, setWhatsappConnected] = useState(false);
-  const [telegramConnected, setTelegramConnected] = useState(false);
+  const [instagramConnected, setInstagramConnected] = useState(false);
   const [paymentConnected, setPaymentConnected] = useState(false);
   const [integrationLoading, setIntegrationLoading] = useState(true);
   const [actualLeadsCount, setActualLeadsCount] = useState(0);
@@ -184,7 +192,7 @@ export default function DashboardHomePage() {
     return missing;
   }, [organizationDetails]);
 
-  const hasMessagingIntegration = whatsappConnected || telegramConnected;
+  const hasMessagingIntegration = whatsappConnected || instagramConnected;
   const hasLeads = actualLeadsCount > 0;
   const hasTemplates = (templatesCount ?? 0) > 0;
   const hasAutomations = tasks.length > 0;
@@ -206,7 +214,7 @@ export default function DashboardHomePage() {
       {
         id: 'integrations',
         title: 'Connect your first messaging channel',
-        description: 'Sync WhatsApp or Telegram so conversations flow straight into LeadsBox.',
+        description: 'Sync WhatsApp or Instagram so conversations flow straight into LeadsBox.',
         href: '/dashboard/settings?tab=integrations',
         ctaLabel: 'Connect now',
         icon: MailCheck,
@@ -264,7 +272,7 @@ export default function DashboardHomePage() {
         helperText: 'Share the love and get rewarded.',
       },
     ];
-  }, [organizationProfileComplete, missingProfileFields, hasMessagingIntegration, hasLeads, hasTemplates, hasAutomations]);
+  }, [organizationProfileComplete, missingProfileFields, hasMessagingIntegration, hasLeads, hasTemplates, hasAutomations, paymentConnected]);
 
   const coreDataReady = !countsLoading && !analyticsLoading && !templatesLoading && !integrationLoading && !tasksLoading;
   const hasIncompleteSteps = onboardingSteps?.some((step) => !step.completed) ?? false;
@@ -353,7 +361,7 @@ export default function DashboardHomePage() {
         }
       }
     },
-    [timeRange]
+    [timeRange],
   );
 
   // Helper function to process leads over time data
@@ -364,11 +372,14 @@ export default function DashboardHomePage() {
       return date.toISOString().split('T')[0];
     });
 
-    const leadsByDate = leads.reduce((acc, lead) => {
-      const date = new Date(lead.createdAt).toISOString().split('T')[0];
-      acc[date] = (acc[date] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const leadsByDate = leads.reduce(
+      (acc, lead) => {
+        const date = new Date(lead.createdAt).toISOString().split('T')[0];
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return last7Days.map((date) => ({
       date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -387,12 +398,15 @@ export default function DashboardHomePage() {
       LOST: 'Lost',
     };
 
-    const leadsByStage = leads.reduce((acc, lead) => {
-      const stage = lead.label?.toUpperCase() || 'NEW';
-      const stageKey = stageMap[stage] || 'Other';
-      acc[stageKey] = (acc[stageKey] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const leadsByStage = leads.reduce(
+      (acc, lead) => {
+        const stage = lead.label?.toUpperCase() || 'NEW';
+        const stageKey = stageMap[stage] || 'Other';
+        acc[stageKey] = (acc[stageKey] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return Object.entries(leadsByStage).map(([stage, count]) => ({
       date: stage,
@@ -473,12 +487,13 @@ export default function DashboardHomePage() {
     const checkIntegrationStatus = async () => {
       setIntegrationLoading(true);
       let nextWhatsappConnected = false;
-      let nextTelegramConnected = false;
+      let nextInstagramConnected = false;
       let nextPaymentConnected = false;
 
       try {
-        const [whatsappResult, orgResult] = await Promise.allSettled([
+        const [whatsappResult, instagramResult, orgResult] = await Promise.allSettled([
           client.get('/provider/whatsapp/status'),
+          client.get('/provider/instagram/status'),
           organizationId ? client.get(endpoints.org(organizationId)) : Promise.resolve(null),
         ]);
 
@@ -489,6 +504,13 @@ export default function DashboardHomePage() {
           console.error('Failed to check WhatsApp status:', whatsappResult.reason);
         }
 
+        if (instagramResult.status === 'fulfilled') {
+          const payload = instagramResult.value?.data?.data ?? instagramResult.value?.data;
+          nextInstagramConnected = parseIntegrationFlag(payload);
+        } else {
+          console.error('Failed to check Instagram status:', instagramResult.reason);
+        }
+
         if (orgResult.status === 'fulfilled' && orgResult.value) {
           const orgResponse = orgResult.value;
           const orgPayload = orgResponse.data?.data?.org ?? orgResponse.data?.org ?? orgResponse.data;
@@ -496,12 +518,12 @@ export default function DashboardHomePage() {
           const integrations = orgPayload?.settings?.integrations;
           if (integrations && typeof integrations === 'object') {
             const whatsappSettings = (integrations as Record<string, unknown>).whatsapp;
-            const telegramSettings = (integrations as Record<string, unknown>).telegram;
+            const instagramSettings = (integrations as Record<string, unknown>).instagram;
             if (whatsappSettings) {
               nextWhatsappConnected = parseIntegrationFlag(whatsappSettings) || nextWhatsappConnected;
             }
-            if (telegramSettings) {
-              nextTelegramConnected = parseIntegrationFlag(telegramSettings);
+            if (instagramSettings) {
+              nextInstagramConnected = parseIntegrationFlag(instagramSettings) || nextInstagramConnected;
             }
             const paystackSettings = (integrations as Record<string, unknown>).paystack;
             if (paystackSettings) {
@@ -516,7 +538,7 @@ export default function DashboardHomePage() {
         console.error('Error checking integration status:', error);
       } finally {
         setWhatsappConnected(nextWhatsappConnected);
-        setTelegramConnected(nextTelegramConnected);
+        setInstagramConnected(nextInstagramConnected);
         setPaymentConnected(nextPaymentConnected);
         setIntegrationLoading(false);
       }
@@ -617,16 +639,16 @@ export default function DashboardHomePage() {
 
           <div className='flex flex-wrap items-center gap-2'>
             <IntegrationBadge
-              icon={Globe}
+              icon={WhatsAppIcon}
               label='WhatsApp'
               connected={whatsappConnected}
               loading={integrationLoading}
               to='/dashboard/settings?tab=integrations'
             />
             <IntegrationBadge
-              icon={Send}
-              label='Telegram'
-              connected={telegramConnected}
+              icon={Instagram}
+              label='Instagram'
+              connected={instagramConnected}
               loading={integrationLoading}
               to='/dashboard/settings?tab=integrations'
             />
@@ -826,12 +848,12 @@ export default function DashboardHomePage() {
                           leadStage === 'NEW'
                             ? 'default'
                             : leadStage === 'QUALIFIED'
-                            ? 'secondary'
-                            : leadStage === 'CUSTOMER'
-                            ? 'default'
-                            : leadStage === 'CONTACTED'
-                            ? 'outline'
-                            : 'destructive'
+                              ? 'secondary'
+                              : leadStage === 'CUSTOMER'
+                                ? 'default'
+                                : leadStage === 'CONTACTED'
+                                  ? 'outline'
+                                  : 'destructive'
                         }
                       >
                         {leadStage}

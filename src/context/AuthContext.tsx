@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
     },
-    [setUser]
+    [setUser],
   );
 
   const acceptPendingInviteIfNeeded = useCallback(async () => {
@@ -114,16 +114,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        if (!cachedUserRef.current) {
-          setloading(true);
-        }
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const path = window.location.pathname || '';
 
+        // Handle Google OAuth callback with token
         if (token && !path.startsWith('/verify-email')) {
           setAccessToken(token);
           window.history.replaceState({}, document.title, window.location.pathname);
+
+          // Force loading state while we verify the token
+          if (!cachedUserRef.current) {
+            setloading(true);
+          }
+
+          // Fetch user profile with the new token
+          try {
+            const { data } = await client.get(endpoints.me);
+
+            if (data?.user) {
+              setUser(data.user);
+              if (data.user.orgId) {
+                setOrgId(data.user.orgId);
+              } else if (!getOrgId()) {
+                try {
+                  const orgRes = await client.get(endpoints.orgs);
+                  const orgs = orgRes?.data?.data?.orgs || orgRes?.data?.orgs || [];
+                  if (Array.isArray(orgs) && orgs.length > 0) {
+                    setOrgId(orgs[0].id);
+                  }
+                } catch (_) {
+                  // noop
+                }
+              }
+              if (data.accessToken) setAccessToken(data.accessToken);
+              await acceptPendingInviteIfNeeded();
+            }
+            setloading(false);
+            return; // Exit early after handling OAuth token
+          } catch (error) {
+            console.error('Failed to fetch user after OAuth:', error);
+            setUser(null);
+            localStorage.removeItem('lb_access_token');
+            localStorage.removeItem('lb_org_id');
+            setloading(false);
+            return;
+          }
+        }
+
+        // For non-token paths, check if we should skip auth check
+        if (!cachedUserRef.current) {
+          setloading(true);
         }
 
         const isPublicAuthPage =
@@ -302,7 +343,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return next;
       });
     },
-    [setUserState]
+    [setUserState],
   );
 
   return (

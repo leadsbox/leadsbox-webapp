@@ -47,6 +47,7 @@ export const IntegrationsTab: React.FC = () => {
 
   // Instagram connection state and effect
   const [igConnected, setIgConnected] = useState(false);
+  const [igConnectionDetails, setIgConnectionDetails] = useState<Array<{ id: string; username: string; pageName?: string; pageId?: string }>>([]);
   useEffect(() => {
     const status = searchParams.get('instagram');
     if (status === 'connected') {
@@ -146,8 +147,25 @@ export const IntegrationsTab: React.FC = () => {
         const payload = resp?.data?.data || {};
         const connected = !!payload?.connected;
         setIgConnected(connected);
+
+        // Extract Instagram connection details from integration object
+        if (connected && payload?.integration) {
+          const integration = payload.integration;
+          const details = [
+            {
+              id: (integration.externalId as string) || '',
+              username: (integration.username as string) || 'Unknown',
+              pageName: undefined, // Backend doesn't return page name yet
+              pageId: undefined,
+            },
+          ];
+          setIgConnectionDetails(details);
+        } else {
+          setIgConnectionDetails([]);
+        }
       } catch {
         // Ignore error - user not connected
+        setIgConnectionDetails([]);
       }
     })();
   }, [apiRoot]);
@@ -555,13 +573,29 @@ export const IntegrationsTab: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className='space-y-3'>
+                {igConnected && igConnectionDetails.length > 0 && (
+                  <div className='mb-4'>
+                    <Label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>Connected Account</Label>
+                    <div className='mt-2 space-y-2'>
+                      {igConnectionDetails.map((conn) => (
+                        <div key={conn.id} className='flex items-center gap-2 p-3 bg-muted/50 rounded-md'>
+                          <InstagramIcon className='h-4 w-4 text-pink-500' />
+                          <div className='flex-1'>
+                            <div className='font-medium text-sm'>@{conn.username}</div>
+                            {conn.pageName && <div className='text-xs text-muted-foreground'>{conn.pageName}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {igConnected ? (
                   <Button
                     variant='destructive'
                     className='w-full'
                     onClick={async () => {
                       try {
-                        await client.delete('/api/provider/instagram/disconnect');
+                        await client.delete('/provider/instagram/disconnect');
                         notify.success({
                           key: 'integrations:instagram:disconnected',
                           title: 'Instagram Disconnected',
@@ -569,6 +603,7 @@ export const IntegrationsTab: React.FC = () => {
                         });
                         // Update Instagram connection state
                         setIgConnected(false);
+                        setIgConnectionDetails([]);
                       } catch (error: unknown) {
                         notify.error({
                           key: 'integrations:instagram:disconnect-error',
