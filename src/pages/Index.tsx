@@ -90,6 +90,48 @@ function useEmailCapture() {
   return { email, setEmail, role, setRole, handle, setHandle, state, submit };
 }
 
+function usePartialTypewriter(staticText: string, endings: string[], typingSpeed = 100, deletingSpeed = 50, pauseTime = 2000) {
+  const [displayEnding, setDisplayEnding] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    const currentEnding = endings[currentIndex];
+
+    if (isPaused) {
+      const pauseTimeout = setTimeout(() => {
+        setIsPaused(false);
+        setIsDeleting(true);
+      }, pauseTime);
+      return () => clearTimeout(pauseTimeout);
+    }
+
+    if (isDeleting) {
+      if (displayEnding === '') {
+        setIsDeleting(false);
+        setCurrentIndex((prev) => (prev + 1) % endings.length);
+        return;
+      }
+      const timeout = setTimeout(() => {
+        setDisplayEnding(currentEnding.substring(0, displayEnding.length - 1));
+      }, deletingSpeed);
+      return () => clearTimeout(timeout);
+    } else {
+      if (displayEnding === currentEnding) {
+        setIsPaused(true);
+        return;
+      }
+      const timeout = setTimeout(() => {
+        setDisplayEnding(currentEnding.substring(0, displayEnding.length + 1));
+      }, typingSpeed);
+      return () => clearTimeout(timeout);
+    }
+  }, [displayEnding, currentIndex, isDeleting, isPaused, endings, typingSpeed, deletingSpeed, pauseTime]);
+
+  return { staticText, displayEnding };
+}
+
 const WaitlistDialog = lazy(() => import('./landing/WaitlistDialog'));
 const DemoDialog = lazy(() => import('./landing/DemoDialog'));
 import PricingSection from '@/components/landing/PricingSection';
@@ -104,6 +146,10 @@ const Index = () => {
   const [demoOpen, setDemoOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const ThemeIcon = useMemo(() => (resolvedTheme === 'dark' ? Sun : Moon), [resolvedTheme]);
+
+  const staticHeadline = 'Turn WhatsApp Conversations Into';
+  const rotatingEndings = ['Revenue', 'Invoices', 'Closed Deals', 'Happy Customers'];
+  const { staticText, displayEnding } = usePartialTypewriter(staticHeadline, rotatingEndings, 80, 40, 2500);
 
   const logoSrc = '/leadsboxlogo.svg';
   const LogoImage = ({ className }: { className?: string }) => <img src={logoSrc} alt='LeadsBox Logo' className={className} />;
@@ -211,7 +257,7 @@ const Index = () => {
       </AnimatePresence>
 
       {/* Hero Section (LeadsBox Style: Centered, Bold, Pill Badge) */}
-      <section className='pt-40 pb-20 md:pt-48 md:pb-32 px-4 relative overflow-hidden'>
+      <section className='pt-24 pb-20 md:pt-32 md:pb-32 px-4 relative overflow-hidden'>
         {/* Background Blobs */}
         <div className='absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-primary/5 to-transparent rounded-[100%] blur-3xl -z-10 pointer-events-none' />
 
@@ -223,9 +269,12 @@ const Index = () => {
               <ArrowRight className='w-3 h-3 text-muted-foreground ml-1' />
             </div>
 
-            <h1 className='text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-8 text-foreground'>
-              The <span className='text-primary'>WhatsApp-First CRM</span> <br className='hidden md:block' />
-              for Growing Businesses
+            <h1 className='text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-8 text-foreground min-h-[8rem] md:min-h-[10rem] flex flex-col items-center justify-center'>
+              <span className='text-foreground text-center'>{staticText}</span>
+              <span className='text-primary text-center'>
+                {displayEnding}
+                <span className='animate-pulse ml-1'>|</span>
+              </span>
             </h1>
 
             <p className='text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed'>
@@ -636,6 +685,7 @@ const Index = () => {
                 <img
                   src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_signup.svg'
                   alt='Sign Up Process'
+                  crossOrigin='anonymous'
                   className='w-full max-h-56 object-scale-down relative z-10'
                 />
                 {/* Floating Cursor: Manager */}
@@ -674,6 +724,7 @@ const Index = () => {
                 <img
                   src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_invite_members.svg'
                   alt='Invite Team Process'
+                  crossOrigin='anonymous'
                   className='w-full max-h-56 object-scale-down relative z-10'
                 />
                 {/* Floating Cursor: Team Lead */}
@@ -719,6 +770,7 @@ const Index = () => {
                 <img
                   src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_sales.png'
                   alt='Assign & Track Process'
+                  crossOrigin='anonymous'
                   className='w-full h-full object-cover object-top relative z-10 rounded-xl'
                 />
                 {/* Floating Cursor: Sales Rep */}
