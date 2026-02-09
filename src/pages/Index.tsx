@@ -634,7 +634,7 @@ const Index = () => {
               <div className='absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity' />
               <div className='mb-8 relative h-56 w-full flex items-center justify-center'>
                 <img
-                  src='https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b82916e7b0f46d246b15c6_a3a534b8e7bc746ab85606267e009d9c_process-card-1.svg'
+                  src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_signup.svg'
                   alt='Sign Up Process'
                   className='w-full h-full object-contain relative z-10'
                 />
@@ -672,7 +672,7 @@ const Index = () => {
               <div className='absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity' />
               <div className='mb-8 relative h-56 w-full flex items-center justify-center'>
                 <img
-                  src='https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2bea9a30c0622e7efb85d_5a9c5e0f33c2dd63fc417f6e977dbcbd_card-2.svg'
+                  src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_invite_members.svg'
                   alt='Invite Team Process'
                   className='w-full h-full object-contain relative z-10'
                 />
@@ -709,16 +709,17 @@ const Index = () => {
             <div className='md:col-span-2 bg-muted/30 rounded-3xl p-8 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group'>
               <div className='absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-blue-500/10 via-cyan-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity' />
               <div className='relative z-10 mb-8'>
-                <h3 className='text-xl font-bold mb-3'>Assign & track</h3>
+                <h3 className='text-xl font-bold mb-3'>Track Sales with AI from Social Commerce</h3>
                 <p className='text-sm text-muted-foreground leading-relaxed max-w-lg mx-auto'>
-                  Assign tasks to the right people and track progress in real-time. Never let a lead slip through the cracks again.
+                  Automatically detect sales opportunities from WhatsApp, Instagram, and Telegram. AI-powered tracking turns social conversations into
+                  revenue insights.
                 </p>
               </div>
-              <div className='relative h-64 w-full flex items-center justify-center'>
+              <div className='relative h-80 w-full max-w-5xl mx-auto flex items-center justify-center'>
                 <img
-                  src='https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68ad6ef946ffe203b2c5979d_621ed14e4e2e7155b962f3308bae23a4_process-card-3.svg'
+                  src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_sales.png'
                   alt='Assign & Track Process'
-                  className='w-full h-full object-contain relative z-10'
+                  className='w-full h-full object-cover object-top relative z-10 rounded-xl'
                 />
                 {/* Floating Cursor: Sales Rep */}
                 <motion.div
@@ -1051,15 +1052,35 @@ const SuccessSection = () => {
                   </>
                 )}
                 <div className='w-8 h-8 flex items-center justify-center'>
-                  <img
-                    src={tab.icon}
-                    alt={tab.label}
-                    className={`w-6 h-6 object-contain transition-all duration-300 ${
-                      activeTab === tab.id
-                        ? ''
-                        : 'grayscale brightness-0 opacity-70 group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100'
-                    }`}
-                  />
+                  {tab.id === 'dashboard' ? (
+                    <svg
+                      width='24'
+                      height='24'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      xmlns='http://www.w3.org/2000/svg'
+                      className={`transition-all duration-300 ${
+                        activeTab === tab.id
+                          ? ''
+                          : 'grayscale brightness-0 opacity-70 group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100'
+                      }`}
+                    >
+                      <path
+                        d='M18.75 11.25V15C18.75 15.3978 18.592 15.7794 18.3107 16.0607C18.0294 16.342 17.6478 16.5 17.25 16.5H4.5C4.10218 16.5 3.72064 16.342 3.43934 16.0607C3.15804 15.7794 3 15.3978 3 15V11.25C3 10.8522 3.15804 10.4706 3.43934 10.1893C3.72064 9.90804 4.10218 9.75 4.5 9.75H17.25C17.6478 9.75 18.0294 9.90804 18.3107 10.1893C18.592 10.4706 18.75 10.8522 18.75 11.25ZM0.75 0C0.551088 0 0.360322 0.0790178 0.21967 0.21967C0.0790178 0.360322 0 0.551088 0 0.75V17.25C0 17.4489 0.0790178 17.6397 0.21967 17.7803C0.360322 17.921 0.551088 18 0.75 18C0.948912 18 1.13968 17.921 1.28033 17.7803C1.42098 17.6397 1.5 17.4489 1.5 17.25V0.75C1.5 0.551088 1.42098 0.360322 1.28033 0.21967C1.13968 0.0790178 0.948912 0 0.75 0ZM4.5 8.25H13.5C13.8978 8.25 14.2794 8.09196 14.5607 7.81066C14.842 7.52936 15 7.14782 15 6.75V3C15 2.60218 14.842 2.22064 14.5607 1.93934C14.2794 1.65804 13.8978 1.5 13.5 1.5H4.5C4.10218 1.5 3.72064 1.65804 3.43934 1.93934C3.15804 2.22064 3 2.60218 3 3V6.75C3 7.14782 3.15804 7.52936 3.43934 7.81066C3.72064 8.09196 4.10218 8.25 4.5 8.25Z'
+                        fill='#335FFF'
+                      />
+                    </svg>
+                  ) : (
+                    <img
+                      src={tab.icon}
+                      alt={tab.label}
+                      className={`w-6 h-6 object-contain transition-all duration-300 ${
+                        activeTab === tab.id
+                          ? ''
+                          : 'grayscale brightness-0 opacity-70 group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100'
+                      }`}
+                    />
+                  )}
                 </div>
                 <span className='font-semibold text-base'>{tab.label}</span>
               </button>
