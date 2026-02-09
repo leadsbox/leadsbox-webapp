@@ -626,8 +626,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Trusted Brands (Static Grid) */}
-      <section className='py-20 bg-background border-b border-border'>
+      {/* Trusted Brands (Static Grid) - TODO: Re-enable when we have actual users */}
+      {/* <section className='py-20 bg-background border-b border-border'>
         <div className='container mx-auto px-4 max-w-6xl'>
           <div className='text-center mb-12'>
             <h3 className='text-xl font-medium text-foreground'>Trusted by Businesses Worldwide</h3>
@@ -668,7 +668,7 @@ const Index = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Simplify Process Section */}
       <section className='py-24 bg-background'>
