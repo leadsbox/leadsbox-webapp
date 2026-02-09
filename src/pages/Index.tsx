@@ -632,11 +632,11 @@ const Index = () => {
             {/* Card 1: Create Account */}
             <div className='bg-muted/30 rounded-3xl p-8 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group'>
               <div className='absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity' />
-              <div className='mb-8 relative h-56 w-full flex items-center justify-center'>
+              <div className='mb-8 relative min-h-56 w-full flex items-center justify-center'>
                 <img
                   src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_signup.svg'
                   alt='Sign Up Process'
-                  className='w-full h-full object-contain relative z-10'
+                  className='w-full max-h-56 object-scale-down relative z-10'
                 />
                 {/* Floating Cursor: Manager */}
                 <motion.div
@@ -670,11 +670,11 @@ const Index = () => {
             {/* Card 2: Invite Team */}
             <div className='bg-muted/30 rounded-3xl p-8 text-center border border-border/50 hover:border-border transition-colors overflow-hidden relative group'>
               <div className='absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity' />
-              <div className='mb-8 relative h-56 w-full flex items-center justify-center'>
+              <div className='mb-8 relative min-h-56 w-full flex items-center justify-center'>
                 <img
                   src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_invite_members.svg'
                   alt='Invite Team Process'
-                  className='w-full h-full object-contain relative z-10'
+                  className='w-full max-h-56 object-scale-down relative z-10'
                 />
                 {/* Floating Cursor: Team Lead */}
                 <motion.div
@@ -947,61 +947,65 @@ const SuccessSection = () => {
   const tabs = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: 'Unified Inbox',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a419949a77d88d40d5b154_card-blue-icon-1.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
       description:
-        'See your work clearly—real-time progress, blockers, and deadlines in one customizable, distraction-free dashboard that adapts to your role.',
+        'All your customer conversations in one place. WhatsApp, Instagram, and Telegram messages unified in a single, powerful inbox that keeps you in control.',
       cursor: { label: 'Admin', color: 'blue' },
     },
     {
       id: 'search',
-      label: 'Global Search',
+      label: 'AI Sales Detection',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a15df2bef3c956db2852_color-logo-card-2.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
       description:
-        'Find anything across your workspace in seconds. Smart filters and AI-powered search help you locate tasks, messages, and files instantly.',
-      cursor: { label: 'User', color: 'purple' },
+        'AI automatically detects sales opportunities from conversations and generates invoices instantly. Turn chats into revenue without lifting a finger.',
+      cursor: { label: 'Sales', color: 'purple' },
     },
     {
       id: 'workspace',
-      label: 'Multiple Workspace',
+      label: 'Team Collaboration',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a0d0f38b7710f7cd35c1_color-logo-card-2.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
-      description: 'Manage multiple projects or clients from a single account. Switch contexts instantly without losing your flow.',
+      description:
+        'Assign conversations to team members, add internal notes, and collaborate in real-time. Everyone stays aligned on every customer interaction.',
       cursor: { label: 'Manager', color: 'emerald' },
     },
     {
       id: 'messages',
-      label: 'Messages',
+      label: 'Multi-Channel Support',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a2683090cca3785c42b4_color-logo-card-4.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
-      description: 'Keep conversations right where the work happens. Contextual threads ensure everyone stays on the same page.',
-      cursor: { label: 'Team', color: 'yellow' },
+      description: 'Connect WhatsApp Business, Instagram Direct Messages, and Telegram all in one platform. Respond to customers wherever they are.',
+      cursor: { label: 'Support', color: 'yellow' },
     },
     {
       id: 'tasks',
-      label: 'Multiple Task view',
+      label: 'Lead Management',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a2683d9c61ae25e2d678_color-logo-card-5.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
-      description: 'Visualize your work your way. Switch between List, Kanban, Calendar, and Timeline views with a single click.',
-      cursor: { label: 'Lead', color: 'orange' },
+      description:
+        'Track every lead from first message to closed deal. Tag customers, view conversation history, and monitor sales pipeline all in one view.',
+      cursor: { label: 'Sales', color: 'orange' },
     },
     {
       id: 'notepad',
-      label: 'Privet Notepad',
+      label: 'Product Catalog',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a268d941df603936d03e_color-logo-card-6.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
-      description: 'Jot down quick thoughts, meeting notes, or draft ideas in your private, secure notepad accessible from anywhere.',
-      cursor: { label: 'Writer', color: 'pink' },
+      description:
+        'Manage your product catalog with prices and descriptions. AI auto-detects products from sales conversations to keep your inventory updated.',
+      cursor: { label: 'Catalog', color: 'pink' },
     },
     {
       id: 'security',
-      label: '2FA Security',
+      label: 'Enterprise Security',
       icon: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68b2a2685e15888b0ecb8304_color-logo-card-7.svg',
       url: 'https://cdn.prod.website-files.com/68a2a7fda7681f6518b88f0b/68a421bf367a651f79bc95dc_b06c76e3571e3d8014551abb853869ab_card-img-7.svg',
-      description: 'Secure by default—two-factor login with backup codes, device trust, and a clear, guided recovery flow when needed.',
-      cursor: { label: 'SecOps', color: 'cyan' },
+      description:
+        'Bank-level security with two-factor authentication, role-based access control, and encrypted data storage. Your customer data stays protected.',
+      cursor: { label: 'Secure', color: 'cyan' },
     },
   ];
 
