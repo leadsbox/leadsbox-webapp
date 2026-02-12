@@ -40,7 +40,7 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
   // Authentication
-  auth: (data: { token: string; orgId: string }) => void;
+  auth: (data: { orgId: string; token?: string }) => void;
 
   // Thread Management
   'thread:join': (data: { threadId: string }) => void;
@@ -89,17 +89,9 @@ export class SocketIOService {
       try {
         this.isConnecting = true;
 
-        // Get authentication data (matching the API client keys)
+        // Get authentication context (org required, token optional with cookie auth)
         const token = localStorage.getItem('lb_access_token');
         const orgId = localStorage.getItem('lb_org_id');
-
-        // Auth check performed; proceed or reject below.
-
-        if (!token) {
-          this.isConnecting = false;
-          reject(new Error('No access token found. Please login again.'));
-          return;
-        }
 
         if (!orgId) {
           this.isConnecting = false;
@@ -113,10 +105,16 @@ export class SocketIOService {
         // Connecting to Socket.IO server
 
         // Create Socket.IO connection
+        const authPayload: { orgId: string; token?: string } = { orgId };
+        if (token) {
+          authPayload.token = token;
+        }
+
         this.socket = io(serverUrl, {
-          auth: {
-            token,
-            orgId,
+          auth: authPayload,
+          withCredentials: true,
+          extraHeaders: {
+            'x-org-id': orgId,
           },
           transports: ['websocket', 'polling'],
           timeout: 10000,
@@ -390,8 +388,8 @@ export function useSocketIO() {
     // Check connection periodically
     const interval = setInterval(checkConnection, 1000);
 
-    // Check if we have auth data before attempting connection
-    const hasAuth = localStorage.getItem('lb_access_token') && localStorage.getItem('lb_org_id');
+    // Check if we have org context before attempting connection
+    const hasAuth = localStorage.getItem('lb_org_id');
 
     // Only attempt connection ONCE if we have authentication data and no connection exists
     if (hasAuth && !socketService.isConnected() && !socketService['isConnecting']) {

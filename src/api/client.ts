@@ -10,6 +10,13 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
 // Token and organization management
 const tokenKey = 'lb_access_token';
 const orgKey = 'lb_org_id';
+const buildRequestId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+};
 
 export const getAccessToken = () => localStorage.getItem(tokenKey) || '';
 
@@ -44,6 +51,13 @@ const client = axios.create({
 // Ensure credentials are sent with all requests
 client.interceptors.request.use((config) => {
   config.withCredentials = true;
+
+  if (!config.headers['x-request-id']) {
+    const requestId = buildRequestId();
+    config.headers['x-request-id'] = requestId;
+    config.headers['x-correlation-id'] = requestId;
+  }
+
   return config;
 });
 
@@ -218,7 +232,7 @@ client.interceptors.response.use(
         },
       });
     } else if (status === 403) {
-      const errorData = error.response?.data as any;
+      const errorData = error.response?.data as { message: string };
       const errorMessage = errorData?.message || '';
 
       // Handle invalid organization access by clearing the stale ID
