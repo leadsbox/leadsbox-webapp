@@ -485,6 +485,15 @@ export default function DashboardHomePage() {
     };
 
     const checkIntegrationStatus = async () => {
+      if (!organizationId) {
+        setWhatsappConnected(false);
+        setInstagramConnected(false);
+        setPaymentConnected(false);
+        setOrganizationDetails(null);
+        setIntegrationLoading(false);
+        return;
+      }
+
       setIntegrationLoading(true);
       let nextWhatsappConnected = false;
       let nextInstagramConnected = false;

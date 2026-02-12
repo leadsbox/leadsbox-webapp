@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/useAuth';
-import client, { getOrgId } from '@/api/client';
+import client, { getOrgId, setOrgId } from '@/api/client';
 import { API_BASE } from '@/api/config';
 import { useSearchParams } from 'react-router-dom';
 import { notify } from '@/lib/toast';
@@ -44,6 +44,35 @@ export const IntegrationsTab: React.FC = () => {
   const [newOrgName, setNewOrgName] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const apiRoot = useMemo(() => API_BASE.replace(/\/api\/?$/, ''), []);
+  const resolveOrgContext = useMemo(
+    () => async (): Promise<string | null> => {
+      const fromStorage = getOrgId();
+      if (fromStorage) {
+        return fromStorage;
+      }
+
+      const fromUser = user?.currentOrgId || user?.orgId || null;
+      if (fromUser) {
+        setOrgId(fromUser);
+        return fromUser;
+      }
+
+      try {
+        const orgResp = await client.get('/orgs');
+        const orgs = orgResp?.data?.data?.orgs || [];
+        const fallbackOrgId = Array.isArray(orgs) && orgs[0]?.id ? orgs[0].id : null;
+        if (fallbackOrgId) {
+          setOrgId(fallbackOrgId);
+          return fallbackOrgId;
+        }
+      } catch {
+        // Ignore and fall through
+      }
+
+      return null;
+    },
+    [user?.currentOrgId, user?.orgId],
+  );
 
   // Instagram connection state and effect
   const [igConnected, setIgConnected] = useState(false);
@@ -78,9 +107,8 @@ export const IntegrationsTab: React.FC = () => {
         setWaToken(token);
         (async () => {
           try {
-            const orgResp = await client.get('/orgs');
-            const orgs = orgResp?.data?.data?.orgs || [];
-            if (!Array.isArray(orgs) || orgs.length === 0) {
+            const orgId = await resolveOrgContext();
+            if (!orgId) {
               setOrgDialogOpen(true);
               return;
             }
@@ -120,10 +148,17 @@ export const IntegrationsTab: React.FC = () => {
       searchParams.delete('whatsapp');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams, apiRoot]);
+  }, [searchParams, setSearchParams, apiRoot, resolveOrgContext]);
 
   useEffect(() => {
     (async () => {
+      const orgId = await resolveOrgContext();
+      if (!orgId) {
+        setWaConnected(false);
+        setConnections([]);
+        return;
+      }
+
       try {
         const resp = await client.get(`${apiRoot}/api/provider/whatsapp/status`);
         const payload = resp?.data?.data || {};
@@ -138,10 +173,17 @@ export const IntegrationsTab: React.FC = () => {
         // Ignore error
       }
     })();
-  }, [apiRoot]);
+  }, [apiRoot, resolveOrgContext]);
 
   useEffect(() => {
     (async () => {
+      const orgId = await resolveOrgContext();
+      if (!orgId) {
+        setIgConnected(false);
+        setIgConnectionDetails([]);
+        return;
+      }
+
       try {
         const resp = await client.get(`${apiRoot}/api/provider/instagram/status`);
         const payload = resp?.data?.data || {};
@@ -168,7 +210,7 @@ export const IntegrationsTab: React.FC = () => {
         setIgConnectionDetails([]);
       }
     })();
-  }, [apiRoot]);
+  }, [apiRoot, resolveOrgContext]);
 
   const confirmBusiness = async () => {
     if (!waToken || !selectedBusiness) return;
@@ -208,7 +250,7 @@ export const IntegrationsTab: React.FC = () => {
 
   const finalizeConnect = async () => {
     if (!waToken || !selectedWaba || !selectedPhone) return;
-    const organizationId = getOrgId();
+    const organizationId = await resolveOrgContext();
     if (!organizationId) {
       notify.warning({
         key: 'integrations:whatsapp:select-org',
@@ -279,9 +321,8 @@ export const IntegrationsTab: React.FC = () => {
   const startWhatsAppConnect = async () => {
     setCtaLoading(true);
     try {
-      const resp = await client.get('/orgs');
-      const orgs = resp?.data?.data?.orgs || [];
-      if (!Array.isArray(orgs) || orgs.length === 0) {
+      const orgId = await resolveOrgContext();
+      if (!orgId) {
         setOrgDialogOpen(true);
         return;
       }
@@ -310,6 +351,7 @@ export const IntegrationsTab: React.FC = () => {
     try {
       await client.post('/orgs', { name: newOrgName.trim() });
       await refreshAuth();
+      await resolveOrgContext();
       setOrgDialogOpen(false);
       setNewOrgName('');
       window.location.href = `${apiRoot}/api/provider/whatsapp`;
