@@ -6,6 +6,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import LeadsboxToaster from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ConfirmProvider, NetworkBannerProvider, NetworkBannerSurface } from '@/ui/ux';
+import { initAnalytics } from './lib/analytics';
 
 const applyInitialThemePreference = () => {
   if (typeof window === 'undefined') return;
@@ -52,6 +53,7 @@ const applyInitialThemePreference = () => {
 };
 
 applyInitialThemePreference();
+initAnalytics();
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>

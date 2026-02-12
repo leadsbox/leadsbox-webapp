@@ -127,6 +127,8 @@ No global Redux; rely on contexts + hooks.
 - Build pipeline: `yarn build` (Vite). Outputs to `dist/`.
 - Type checking: TypeScript via build.
 - Linting: `yarn lint` (ESLint).
+- CI gate: `.github/workflows/frontend-ci.yml` runs `npm run build` on pull requests and pushes to `main`/`develop`.
+- Required check policy: in GitHub branch protection for `main` and `develop`, require status check `Frontend CI / build` before merge.
 - Testing: (roadmap) – currently minimal; plan to introduce React Testing Library and Cypress for E2E once flows stabilise.
 
 ---

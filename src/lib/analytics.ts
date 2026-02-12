@@ -1,7 +1,20 @@
 import posthog from 'posthog-js';
 import * as Sentry from '@sentry/react';
 
+let analyticsInitialized = false;
+
+const parseSampleRate = (rawValue: string | undefined, fallback: number): number => {
+  if (!rawValue) return fallback;
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return fallback;
+  return parsed;
+};
+
 export const initAnalytics = () => {
+  if (analyticsInitialized) {
+    return;
+  }
+
   try {
     // Initialize PostHog
     const posthogKey = import.meta.env.VITE_POSTHOG_KEY || import.meta.env.REACT_APP_POSTHOG_KEY;
@@ -28,12 +41,14 @@ export const initAnalytics = () => {
           Sentry.replayIntegration(),
         ],
         // Performance Monitoring
-        tracesSampleRate: 1.0, 
+        tracesSampleRate: parseSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE, 0.1),
         // Session Replay
-        replaysSessionSampleRate: 0.1, 
-        replaysOnErrorSampleRate: 1.0, 
+        replaysSessionSampleRate: parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE, 0.1),
+        replaysOnErrorSampleRate: parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ERROR_SAMPLE_RATE, 1.0),
       });
     }
+
+    analyticsInitialized = true;
   } catch (error) {
     console.error('Failed to initialize analytics:', error);
   }
