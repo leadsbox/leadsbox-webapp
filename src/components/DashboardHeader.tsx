@@ -12,12 +12,10 @@ import {
   MessageSquare,
   Users,
   BarChart3,
-  CheckSquare,
   ShoppingBag,
   ChevronDown,
   Check,
   PlusCircle,
-  Sparkles,
   Home,
   Gift,
 } from 'lucide-react';
@@ -143,9 +141,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
     { path: '/dashboard/inbox', label: 'Inbox', icon: MessageSquare, badge: 12 },
     { path: '/dashboard/leads', label: 'Leads', icon: Users },
     { path: '/dashboard/sales', label: 'Sales', icon: ShoppingBag },
-    { path: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, badge: 3 },
     { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
-    { path: '/dashboard/automations', label: 'Automations', icon: Sparkles },
     { path: '/dashboard/settings', label: 'Settings', icon: Settings },
   ];
 
@@ -278,7 +274,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           </Button>
 
           <Link
-            to='/dashboard/referrals'
+            to='/referral-program'
             className='hidden sm:flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors mr-2'
           >
             <Gift className='h-3.5 w-3.5' />

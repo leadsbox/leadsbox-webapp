@@ -872,7 +872,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
         <div className='container mx-auto px-4 text-center relative z-10 max-w-3xl'>
           <h2 className='text-4xl sm:text-6xl font-bold mb-8 tracking-tight'>Ready to grow?</h2>
-          <p className='text-xl text-white/90 max-w-2xl mx-auto mb-12'>Join the waitlist and get 3 months of LeadsBox Pro for free when we launch.</p>
+          <p className='text-xl text-white/90 max-w-2xl mx-auto mb-12'>Get product updates, growth playbooks, and early access to new features.</p>
 
           <div className='flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto'>
             <div className='relative flex-1 w-full'>
@@ -890,7 +890,7 @@ const Index = () => {
               disabled={state === 'loading'}
               className='w-full sm:w-auto h-14 px-8 rounded-full text-lg font-bold bg-black text-white hover:bg-black/80 shadow-xl'
             >
-              {state === 'loading' ? 'Joining...' : 'Join Waitlist'}
+              {state === 'loading' ? 'Submitting...' : 'Get Updates'}
             </Button>
           </div>
           <p className='text-sm text-white/70 mt-6'>No credit card required • Unsubscribe anytime</p>

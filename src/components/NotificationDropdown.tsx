@@ -208,7 +208,7 @@ const NotificationDropdown: React.FC = () => {
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild className='text-center justify-center cursor-pointer'>
-            <Link to='/dashboard/notifications'>View all notifications</Link>
+            <Link to='/dashboard/home'>Open dashboard</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

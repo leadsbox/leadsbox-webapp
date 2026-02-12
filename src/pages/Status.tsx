@@ -141,7 +141,7 @@ const StatusPage: React.FC = () => {
               <a href='/login'>Login</a>
             </Button>
             <Button size='sm' asChild>
-              <a href='/#waitlist'>Join Waitlist</a>
+              <a href='/register'>Start Free Trial</a>
             </Button>
           </div>
         </div>
