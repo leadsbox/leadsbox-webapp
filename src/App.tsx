@@ -68,6 +68,8 @@ const DashboardIndexGate = () => {
         const setupProgress = await import('./features/setup/setupProgress');
         const metrics = await setupProgress.fetchSetupMetrics();
         if (!isActive) return;
+        setupProgress.trackFunnelMilestones(metrics);
+        setupProgress.trackWeeklyFunnelSnapshot(metrics);
         setTargetPath(setupProgress.hasReachedFirstValue(metrics) ? 'home' : 'setup');
       } catch (error) {
         if (!isActive) return;

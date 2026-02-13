@@ -6,6 +6,7 @@ import { endpoints } from '../api/config';
 import { clearPendingInvite, loadPendingInvite } from '@/lib/inviteStorage';
 import { createAuthError } from '@/lib/auth-errors';
 import { AuthContext } from './useAuth';
+import { trackAppEvent } from '@/lib/productTelemetry';
 
 export type AuthState = {
   user: AuthUser | null;
@@ -19,6 +20,7 @@ export type AuthState = {
 };
 
 const USER_STORAGE_KEY = 'lb_user';
+const WEEK_TWO_KEY_PREFIX = 'lb_funnel_week2_returned:';
 
 const readCachedUser = (): AuthUser | null => {
   if (typeof window === 'undefined') return null;
@@ -216,6 +218,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkAuth();
   }, [acceptPendingInviteIfNeeded, setUser]);
 
+  useEffect(() => {
+    if (!user?.id || !user?.createdAt || typeof window === 'undefined') {
+      return;
+    }
+
+    const createdAt = new Date(user.createdAt).getTime();
+    if (!Number.isFinite(createdAt)) {
+      return;
+    }
+
+    const accountAgeMs = Date.now() - createdAt;
+    if (accountAgeMs < 14 * 24 * 60 * 60 * 1000) {
+      return;
+    }
+
+    const key = `${WEEK_TWO_KEY_PREFIX}${user.id}`;
+    if (window.localStorage.getItem(key)) {
+      return;
+    }
+
+    trackAppEvent('funnel_week_2_return_detected', {
+      userId: user.id,
+      accountAgeDays: Math.floor(accountAgeMs / (24 * 60 * 60 * 1000)),
+      orgId: user.currentOrgId || user.orgId || undefined,
+    });
+    window.localStorage.setItem(key, '1');
+  }, [user?.createdAt, user?.currentOrgId, user?.id, user?.orgId]);
+
   const login = async (email: string, password: string): Promise<void> => {
     setloading(true);
     try {
@@ -297,6 +327,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else if (profile.currentOrgId) {
           setOrg(profile.currentOrgId);
         }
+        trackAppEvent('funnel_signup_completed', {
+          userId: profile.id,
+          orgId: profile.currentOrgId || profile.orgId || undefined,
+        });
       } else {
         throw new Error('Registration failed');
       }

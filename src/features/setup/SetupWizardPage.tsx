@@ -5,7 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CheckCircle2, Circle, Sparkles, Zap } from 'lucide-react';
-import { defaultSetupMetrics, fetchSetupMetrics, type SetupMetrics } from './setupProgress';
+import {
+  defaultSetupMetrics,
+  fetchSetupMetrics,
+  hasReachedFirstValue,
+  trackFunnelMilestones,
+  trackWeeklyFunnelSnapshot,
+  type SetupMetrics,
+} from './setupProgress';
 
 const SetupWizardPage = () => {
   const [loading, setLoading] = useState(true);
@@ -17,6 +24,8 @@ const SetupWizardPage = () => {
       try {
         const nextMetrics = await fetchSetupMetrics();
         setMetrics(nextMetrics);
+        trackFunnelMilestones(nextMetrics);
+        trackWeeklyFunnelSnapshot(nextMetrics);
       } catch (error) {
         console.error('Failed to load setup wizard metrics', error);
       } finally {
@@ -31,46 +40,30 @@ const SetupWizardPage = () => {
     () => [
       {
         id: 'connect-channel',
-        title: 'Connect WhatsApp channel',
-        description: 'Connect your messaging channel so chats start flowing into LeadsBox.',
+        title: 'Connect a messaging channel',
+        description: 'Connect WhatsApp or Instagram so customer chats enter LeadsBox automatically.',
         href: '/dashboard/settings?tab=integrations',
-        cta: 'Connect channel',
-        completed: false,
+        cta: metrics.channelConnected ? 'Manage channels' : 'Connect channel',
+        completed: metrics.channelConnected,
       },
       {
         id: 'first-lead',
         title: 'Capture your first lead',
-        description: 'Import or create at least one lead to activate core sales workflows.',
+        description: 'Import or create at least one lead so AI can start tracking progress.',
         href: '/dashboard/leads',
         cta: 'Open leads',
         completed: metrics.leadsCount > 0,
       },
       {
-        id: 'clear-ai-review',
-        title: 'Clear AI decisions inbox',
-        description: 'Approve or reject AI-detected sales so your pipeline stays trustworthy.',
-        href: '/dashboard/sales',
-        cta: 'Review AI decisions',
-        completed: metrics.pendingAiReviews === 0,
-      },
-      {
         id: 'first-sale',
         title: 'Record first paid sale',
-        description: 'Use quick capture or invoice payment to validate your revenue flow.',
+        description: 'Use quick capture or invoice payment once to confirm your revenue workflow.',
         href: '/dashboard/sales',
         cta: 'Go to sales',
         completed: metrics.paidSalesCount > 0,
       },
-      {
-        id: 'follow-up',
-        title: 'Schedule a follow-up',
-        description: 'Set at least one follow-up so no active opportunity slips through.',
-        href: '/dashboard/home',
-        cta: 'Schedule follow-up',
-        completed: metrics.followUpsCount > 0,
-      },
     ],
-    [metrics.followUpsCount, metrics.leadsCount, metrics.paidSalesCount, metrics.pendingAiReviews]
+    [metrics.channelConnected, metrics.leadsCount, metrics.paidSalesCount]
   );
 
   const completedSteps = steps.filter((step) => step.completed).length;
@@ -96,6 +89,10 @@ const SetupWizardPage = () => {
         </CardHeader>
         <CardContent className='grid grid-cols-2 gap-3 text-sm md:grid-cols-4'>
           <div className='rounded-lg border bg-muted/30 p-3'>
+            <p className='text-muted-foreground'>Connected channels</p>
+            <p className='text-xl font-semibold'>{metrics.connectedChannels.length}</p>
+          </div>
+          <div className='rounded-lg border bg-muted/30 p-3'>
             <p className='text-muted-foreground'>Leads</p>
             <p className='text-xl font-semibold'>{metrics.leadsCount}</p>
           </div>
@@ -104,15 +101,21 @@ const SetupWizardPage = () => {
             <p className='text-xl font-semibold'>{metrics.paidSalesCount}</p>
           </div>
           <div className='rounded-lg border bg-muted/30 p-3'>
-            <p className='text-muted-foreground'>AI pending</p>
-            <p className='text-xl font-semibold'>{metrics.pendingAiReviews}</p>
-          </div>
-          <div className='rounded-lg border bg-muted/30 p-3'>
-            <p className='text-muted-foreground'>Follow-ups</p>
-            <p className='text-xl font-semibold'>{metrics.followUpsCount}</p>
+            <p className='text-muted-foreground'>First-value status</p>
+            <p className='text-xl font-semibold'>{hasReachedFirstValue(metrics) ? 'Done' : 'In progress'}</p>
           </div>
         </CardContent>
       </Card>
+
+      {metrics.connectedChannels.length > 0 && (
+        <div className='flex flex-wrap gap-2'>
+          {metrics.connectedChannels.map((channel) => (
+            <Badge key={channel} variant='outline' className='capitalize'>
+              {channel} connected
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className='space-y-3'>

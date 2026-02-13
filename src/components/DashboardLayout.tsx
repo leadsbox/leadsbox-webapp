@@ -1,6 +1,6 @@
 // Dashboard Layout Component for LeadsBox
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -38,6 +38,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { useSocketIO } from '../lib/socket';
 import { Message } from '@/types';
 import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
+import { notify } from '@/lib/toast';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -188,6 +189,17 @@ export const DashboardLayout: React.FC = () => {
     );
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
   const { socket } = useSocketIO();
+  const opsAlertRef = useRef<{
+    initialized: boolean;
+    pendingAiReviews: number;
+    dueFollowUps: number;
+    pendingPayments: number;
+  }>({
+    initialized: false,
+    pendingAiReviews: 0,
+    dueFollowUps: 0,
+    pendingPayments: 0,
+  });
 
   // Fetch actual inbox count
   useEffect(() => {
@@ -278,6 +290,103 @@ export const DashboardLayout: React.FC = () => {
       window.removeEventListener('leadsbox:thread-read', handleLocalRead);
     };
   }, [socket]);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchOpsAlerts = async () => {
+      try {
+        const [reviewRes, followUpsRes, pendingSalesRes] = await Promise.all([
+          client.get(endpoints.sales.reviewInbox, { params: { limit: 1 } }),
+          client.get(endpoints.followups, { params: { status: 'SCHEDULED' } }),
+          client.get(endpoints.sales.list, { params: { status: 'PENDING' } }),
+        ]);
+
+        const pendingAiReviews = Number(reviewRes?.data?.data?.summary?.pendingCount || 0);
+        const followUps = followUpsRes?.data?.data?.followUps || followUpsRes?.data?.followUps || [];
+        const dueFollowUps = Array.isArray(followUps)
+          ? followUps.filter((followUp) => {
+              const scheduled = new Date((followUp as { scheduledTime?: string }).scheduledTime || '');
+              return Number.isFinite(scheduled.getTime()) && scheduled.getTime() <= Date.now();
+            }).length
+          : 0;
+        const pendingPayments = Number((pendingSalesRes?.data?.data?.sales || pendingSalesRes?.data?.sales || []).length || 0);
+
+        if (!active) {
+          return;
+        }
+
+        const previous = opsAlertRef.current;
+        const countsChanged =
+          !previous.initialized ||
+          pendingAiReviews !== previous.pendingAiReviews ||
+          dueFollowUps !== previous.dueFollowUps ||
+          pendingPayments !== previous.pendingPayments;
+
+        if (previous.initialized) {
+          if (pendingAiReviews > previous.pendingAiReviews) {
+            notify.info({
+              key: 'ops:pending-ai-reviews',
+              title: 'AI decisions need review',
+              description: `${pendingAiReviews} sales are waiting for approval.`,
+              action: {
+                label: 'Review',
+                onClick: () => navigate('/dashboard/sales'),
+              },
+            });
+          }
+
+          if (dueFollowUps > previous.dueFollowUps) {
+            notify.info({
+              key: 'ops:due-followups',
+              title: 'Follow-ups are due',
+              description: `${dueFollowUps} scheduled follow-ups are ready to send.`,
+              action: {
+                label: 'Open inbox',
+                onClick: () => navigate('/dashboard/inbox'),
+              },
+            });
+          }
+
+          if (pendingPayments > previous.pendingPayments) {
+            notify.info({
+              key: 'ops:pending-payments',
+              title: 'Payments pending',
+              description: `${pendingPayments} sales are awaiting payment confirmation.`,
+              action: {
+                label: 'Open sales',
+                onClick: () => navigate('/dashboard/sales'),
+              },
+            });
+          }
+        }
+
+        opsAlertRef.current = {
+          initialized: true,
+          pendingAiReviews,
+          dueFollowUps,
+          pendingPayments,
+        };
+
+        if (countsChanged) {
+          trackAppEvent('ops_alert_snapshot', {
+            pendingAiReviews,
+            dueFollowUps,
+            pendingPayments,
+          });
+        }
+      } catch {
+        // Non-blocking polling path.
+      }
+    };
+
+    void fetchOpsAlerts();
+    const interval = window.setInterval(fetchOpsAlerts, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const handler = (event: Event) => {

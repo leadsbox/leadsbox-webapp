@@ -12,11 +12,13 @@ import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save, Cal
 import { WhatsAppIcon, TelegramIcon, InstagramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Skeleton } from '../../components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +38,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
 import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
+import { useAuth } from '@/context/useAuth';
+import templateApi from '@/api/templates';
 import confetti from 'canvas-confetti';
 
 const InboxPage: React.FC = () => {
@@ -43,6 +47,7 @@ const InboxPage: React.FC = () => {
 
   // ...other logic...
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
@@ -68,6 +73,12 @@ const InboxPage: React.FC = () => {
   const [savingContact, setSavingContact] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
   const [threadActionBusy, setThreadActionBusy] = useState<'follow_up' | null>(null);
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
+  const [followUpScheduledAt, setFollowUpScheduledAt] = useState('');
+  const [followUpMessage, setFollowUpMessage] = useState('');
+  const [followUpTemplateId, setFollowUpTemplateId] = useState('');
+  const [approvedTemplates, setApprovedTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Ref for auto-scrolling to bottom of messages
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -931,8 +942,68 @@ const InboxPage: React.FC = () => {
     setContactForm({ displayName: '', email: '', phone: '' });
   };
 
+  const toDateTimeLocal = (value: Date): string => {
+    const pad = (input: number) => String(input).padStart(2, '0');
+    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+  };
+
+  const getDefaultFollowUpTime = (): string => {
+    const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    date.setSeconds(0, 0);
+    return toDateTimeLocal(date);
+  };
+
+  const applyFollowUpStageLocally = (threadId: string) => {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === threadId
+          ? {
+              ...thread,
+              lead: {
+                ...thread.lead,
+                stage: 'FOLLOW_UP_REQUIRED',
+                tags: Array.from(new Set(['FOLLOW_UP_REQUIRED', ...thread.lead.tags.filter(Boolean)])),
+              },
+            }
+          : thread,
+      ),
+    );
+
+    setSelectedThread((prev) => {
+      if (!prev || prev.id !== threadId) {
+        return prev;
+      }
+      return {
+        ...prev,
+        lead: {
+          ...prev.lead,
+          stage: 'FOLLOW_UP_REQUIRED',
+          tags: Array.from(new Set(['FOLLOW_UP_REQUIRED', ...prev.lead.tags.filter(Boolean)])),
+        },
+      };
+    });
+  };
+
+  const ensureThreadHasLead = (action: 'quick_capture' | 'follow_up'): boolean => {
+    if (!selectedThread?.leadId) {
+      notify.error({
+        key: `inbox:${action}:no-lead`,
+        title: 'Lead required',
+        description: 'Create a lead from this conversation before running this action.',
+      });
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        trackMobileBlocked(action, 'missing_lead_id', {
+          threadId: selectedThread?.id,
+        });
+      }
+      return false;
+    }
+    return true;
+  };
+
   const navigateToSalesQuickCapture = (status: 'PENDING' | 'PAID') => {
     if (!selectedThread) return;
+    if (!ensureThreadHasLead('quick_capture')) return;
     const params = new URLSearchParams({
       quickCapture: '1',
       leadId: selectedThread.leadId,
@@ -950,64 +1021,120 @@ const InboxPage: React.FC = () => {
     navigate(`/dashboard/sales?${params.toString()}`);
   };
 
-  const handleMarkThreadFollowUp = async () => {
+  const handleOpenFollowUpDialog = async () => {
     if (!selectedThread || threadActionBusy) return;
-    if (!selectedThread.leadId) {
-      notify.error({
-        key: 'inbox:followup:no-lead',
-        title: 'Lead required',
-        description: 'Create a lead from this conversation before setting follow-up.',
-      });
+    if (!ensureThreadHasLead('follow_up')) return;
+
+    setFollowUpScheduledAt((prev) => prev || getDefaultFollowUpTime());
+    setFollowUpMessage((prev) => prev || `Hi ${selectedThread.lead.name || 'there'}, just checking in on your request.`);
+    setFollowUpDialogOpen(true);
+
+    if (approvedTemplates.length > 0 || loadingTemplates) {
       return;
     }
 
     setThreadActionBusy('follow_up');
+    setLoadingTemplates(true);
     try {
+      const templates = await templateApi.list({ status: 'APPROVED' });
+      const list = Array.isArray(templates) ? templates : [];
+      setApprovedTemplates(
+        list.map((template) => ({
+          id: template.id,
+          name: template.name,
+        })),
+      );
+    } catch {
+      notify.warning({
+        key: 'inbox:followup:templates',
+        title: 'Templates unavailable',
+        description: 'You can still schedule a plain-text follow-up.',
+      });
+    } finally {
+      setLoadingTemplates(false);
+      setThreadActionBusy(null);
+    }
+  };
+
+  const handleScheduleFollowUp = async () => {
+    if (!selectedThread || savingContact || threadActionBusy) return;
+    if (!ensureThreadHasLead('follow_up')) return;
+
+    const scheduledDate = new Date(followUpScheduledAt);
+    if (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      notify.warning({
+        key: 'inbox:followup:invalid-time',
+        title: 'Choose a valid time',
+        description: 'Follow-up time must be in the future.',
+      });
+      return;
+    }
+
+    if (!followUpTemplateId && !followUpMessage.trim()) {
+      notify.warning({
+        key: 'inbox:followup:missing-message',
+        title: 'Message required',
+        description: 'Enter a message or select an approved template.',
+      });
+      return;
+    }
+
+    const orgId = user?.currentOrgId || user?.orgId || getOrgId();
+    if (!user?.id || !orgId) {
+      notify.error({
+        key: 'inbox:followup:missing-context',
+        title: 'Missing account context',
+        description: 'Please refresh the page and try again.',
+      });
+      return;
+    }
+
+    const providerMap: Record<Thread['channel'], 'whatsapp' | 'instagram' | 'telegram'> = {
+      whatsapp: 'whatsapp',
+      instagram: 'instagram',
+      telegram: 'telegram',
+      sms: 'whatsapp',
+      email: 'whatsapp',
+    };
+
+    setThreadActionBusy('follow_up');
+    try {
+      await client.post(endpoints.followups, {
+        conversationId: selectedThread.id,
+        provider: providerMap[selectedThread.channel] || 'whatsapp',
+        scheduledTime: scheduledDate.toISOString(),
+        message: followUpTemplateId ? undefined : followUpMessage.trim(),
+        userId: user.id,
+        organizationId: orgId,
+        leadId: selectedThread.leadId,
+        templateId: followUpTemplateId || undefined,
+        metadata: {
+          source: 'inbox_quick_action',
+          threadId: selectedThread.id,
+        },
+      });
+
       await client.put(endpoints.updateLead(selectedThread.leadId), {
         label: 'FOLLOW_UP_REQUIRED',
       });
+      applyFollowUpStageLocally(selectedThread.id);
 
-      setThreads((prev) =>
-        prev.map((thread) =>
-          thread.id === selectedThread.id
-            ? {
-                ...thread,
-                lead: {
-                  ...thread.lead,
-                  stage: 'FOLLOW_UP_REQUIRED',
-                  tags: Array.from(new Set(['FOLLOW_UP_REQUIRED', ...thread.lead.tags.filter(Boolean)])),
-                },
-              }
-            : thread,
-        ),
-      );
-
-      setSelectedThread((prev) => {
-        if (!prev || prev.id !== selectedThread.id) {
-          return prev;
-        }
-        return {
-          ...prev,
-          lead: {
-            ...prev.lead,
-            stage: 'FOLLOW_UP_REQUIRED',
-            tags: Array.from(new Set(['FOLLOW_UP_REQUIRED', ...prev.lead.tags.filter(Boolean)])),
-          },
-        };
-      });
-
-      trackAppEvent('inbox_follow_up_marked', {
+      trackAppEvent('inbox_follow_up_scheduled', {
         threadId: selectedThread.id,
         leadId: selectedThread.leadId,
+        scheduledAt: scheduledDate.toISOString(),
+        templateUsed: Boolean(followUpTemplateId),
       });
 
       notify.success({
         key: `inbox:followup:${selectedThread.id}`,
-        title: 'Follow-up queued',
-        description: 'Lead moved to Follow-up Required.',
+        title: 'Follow-up scheduled',
+        description: 'Reminder saved and lead moved to Follow-up Required.',
       });
+      setFollowUpDialogOpen(false);
+      setFollowUpTemplateId('');
     } catch (error) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to mark follow-up.';
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to schedule follow-up.';
       notify.error({
         key: `inbox:followup:${selectedThread.id}:error`,
         title: 'Follow-up failed',
@@ -1449,35 +1576,27 @@ const InboxPage: React.FC = () => {
                 </div>
               </div>
               {!editingContact && (
-                <div className='mt-3 flex flex-wrap items-center gap-2'>
-                  <Button
-                    size='sm'
-                    onClick={() => navigateToSalesQuickCapture('PENDING')}
-                    disabled={!selectedThread.leadId}
-                  >
+                <div className='mt-3 flex items-center gap-2 overflow-x-auto pb-1'>
+                  <Button size='sm' className='shrink-0' onClick={() => navigateToSalesQuickCapture('PENDING')}>
                     <ReceiptText className='mr-1 h-4 w-4' />
                     Record sale
                   </Button>
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    onClick={() => navigateToSalesQuickCapture('PAID')}
-                    disabled={!selectedThread.leadId}
-                  >
+                  <Button size='sm' variant='outline' className='shrink-0' onClick={() => navigateToSalesQuickCapture('PAID')}>
                     Mark paid
                   </Button>
                   <Button
                     size='sm'
                     variant='outline'
-                    onClick={handleMarkThreadFollowUp}
-                    disabled={!selectedThread.leadId || threadActionBusy === 'follow_up'}
+                    className='shrink-0'
+                    onClick={handleOpenFollowUpDialog}
+                    disabled={threadActionBusy === 'follow_up'}
                   >
                     {threadActionBusy === 'follow_up' ? (
                       <Loader2 className='mr-1 h-4 w-4 animate-spin' />
                     ) : (
                       <CalendarPlus className='mr-1 h-4 w-4' />
                     )}
-                    Follow-up
+                    Schedule follow-up
                   </Button>
                 </div>
               )}
@@ -1605,6 +1724,71 @@ const InboxPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader>
+            <DialogTitle>Schedule follow-up</DialogTitle>
+            <DialogDescription>
+              Plan the next message for {selectedThread?.lead?.name || 'this contact'} and keep the pipeline moving.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Send at</label>
+              <Input
+                type='datetime-local'
+                value={followUpScheduledAt}
+                onChange={(event) => setFollowUpScheduledAt(event.target.value)}
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Approved template (optional)</label>
+              <div className='rounded-md border bg-background px-3 py-2'>
+                <select
+                  value={followUpTemplateId}
+                  onChange={(event) => setFollowUpTemplateId(event.target.value)}
+                  className='w-full bg-transparent text-sm outline-none'
+                >
+                  <option value=''>Use plain text message</option>
+                  {approvedTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {loadingTemplates && (
+                <p className='flex items-center text-xs text-muted-foreground'>
+                  <Loader2 className='mr-1 h-3.5 w-3.5 animate-spin' />
+                  Loading approved templates...
+                </p>
+              )}
+            </div>
+
+            {!followUpTemplateId && (
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Message</label>
+                <Textarea
+                  rows={4}
+                  value={followUpMessage}
+                  onChange={(event) => setFollowUpMessage(event.target.value)}
+                  placeholder='Type your follow-up message'
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setFollowUpDialogOpen(false)} disabled={threadActionBusy === 'follow_up'}>
+              Cancel
+            </Button>
+            <Button onClick={handleScheduleFollowUp} disabled={threadActionBusy === 'follow_up'}>
+              {threadActionBusy === 'follow_up' ? 'Scheduling...' : 'Schedule follow-up'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile Threads Drawer */}
       <div
