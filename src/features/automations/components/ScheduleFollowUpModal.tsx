@@ -20,6 +20,13 @@ export interface ConversationOption {
   contactName?: string | null;
 }
 
+export interface FollowUpPrefill {
+  conversationId?: string;
+  provider?: string;
+  message?: string;
+  scheduledTime?: string;
+}
+
 interface ScheduleFollowUpModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +37,7 @@ interface ScheduleFollowUpModalProps {
   templateOptions: Template[];
   conversationsLoading?: boolean;
   followUp?: FollowUpRule | null;
+  prefill?: FollowUpPrefill | null;
   onCompleted?: (followUp: FollowUpRule, meta: { mode: 'create' | 'update' }) => void;
   onCancelled?: (followUpId: string) => void;
 }
@@ -86,6 +94,7 @@ const ScheduleFollowUpModal = ({
   onOpenChange,
   mode,
   followUp,
+  prefill,
   userId,
   organizationId,
   conversationOptions,
@@ -137,16 +146,16 @@ const ScheduleFollowUpModal = ({
       });
     } else {
       setForm({
-        conversationId: '',
-        provider: DEFAULT_PROVIDER,
-        scheduledTime: '',
-        message: '',
+        conversationId: prefill?.conversationId ?? '',
+        provider: prefill?.provider ?? DEFAULT_PROVIDER,
+        scheduledTime: prefill?.scheduledTime ?? '',
+        message: prefill?.message ?? '',
         templateId: '',
         status: 'SCHEDULED',
         variables: {},
       });
     }
-  }, [open, mode, followUp, templateVariableNames]);
+  }, [open, mode, followUp, templateVariableNames, prefill]);
 
   useEffect(() => {
     if (!selectedTemplate) return;
@@ -158,8 +167,6 @@ const ScheduleFollowUpModal = ({
       return { ...prev, variables: nextVariables };
     });
   }, [selectedTemplate, templateVariableNames]);
-
-  if (!open) return null;
 
   const requiresTemplate = useMemo(() => {
     if (form.provider !== 'whatsapp') return false;
@@ -175,6 +182,8 @@ const ScheduleFollowUpModal = ({
     }
     return form.message;
   }, [selectedTemplate, form.message, form.variables]);
+
+  if (!open) return null;
 
   const handleChange = <Key extends keyof FollowUpFormState>(key: Key, value: FollowUpFormState[Key]) => {
     setForm((prev) => ({

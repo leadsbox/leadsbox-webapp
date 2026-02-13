@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { endpoints } from '@/api/config';
 import type { FollowUpRule, FollowUpStatus, Template, TemplateStatus } from '@/types';
 import templateApi from '@/api/templates';
 import { useAuth } from '@/context/useAuth';
-import ScheduleFollowUpModal, { ConversationOption } from './components/ScheduleFollowUpModal';
+import ScheduleFollowUpModal, { ConversationOption, FollowUpPrefill } from './components/ScheduleFollowUpModal';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
 import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './builder/utils';
@@ -154,6 +155,7 @@ const AutomationsPage: React.FC = () => {
   const { user } = useAuth();
   const organizationId = user?.orgId || user?.currentOrgId || getOrgId();
   const userId = user?.id;
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [followUpTemplates, setFollowUpTemplates] = useState<Template[]>([]);
 
@@ -166,6 +168,11 @@ const AutomationsPage: React.FC = () => {
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [followUpMode, setFollowUpMode] = useState<'create' | 'edit'>('create');
   const [activeFollowUp, setActiveFollowUp] = useState<FollowUpRule | null>(null);
+  const [followUpPrefill, setFollowUpPrefill] = useState<FollowUpPrefill | null>(null);
+  const [followUpLeadContext, setFollowUpLeadContext] = useState<{
+    leadId: string;
+    leadName?: string;
+  } | null>(null);
 
   const [flows, setFlows] = useLocalStorage<AutomationFlow[]>(FLOWS_COLLECTION_KEY, []);
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -234,6 +241,68 @@ const AutomationsPage: React.FC = () => {
     loadConversations();
   }, [loadTemplates, loadFollowUps, loadConversations]);
 
+  const hasOrgContext = Boolean(userId && organizationId);
+
+  useEffect(() => {
+    if (searchParams.get('quickFollowUp') !== '1') {
+      return;
+    }
+
+    const leadId = (searchParams.get('leadId') || '').trim();
+    const leadName = (searchParams.get('leadName') || '').trim();
+    const providerRaw = (searchParams.get('provider') || 'whatsapp').trim().toLowerCase();
+    const provider =
+      providerRaw === 'whatsapp' || providerRaw === 'instagram' || providerRaw === 'telegram'
+        ? providerRaw
+        : 'whatsapp';
+    const conversationId = (searchParams.get('conversationId') || '').trim();
+    const phone = (searchParams.get('phone') || '').trim();
+
+    const defaultMessage = leadName
+      ? `Hi ${leadName}, just checking in on your request.`
+      : 'Hi there, just checking in on your request.';
+    const scheduledAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const scheduledTime = `${scheduledAt.getFullYear()}-${pad(
+      scheduledAt.getMonth() + 1,
+    )}-${pad(scheduledAt.getDate())}T${pad(scheduledAt.getHours())}:${pad(
+      scheduledAt.getMinutes(),
+    )}`;
+
+    setFollowUpPrefill({
+      conversationId: conversationId || '',
+      provider: provider || 'whatsapp',
+      message: defaultMessage,
+      scheduledTime,
+    });
+    setFollowUpLeadContext({
+      leadId,
+      leadName: leadName || undefined,
+    });
+
+    if (hasOrgContext) {
+      setFollowUpMode('create');
+      setActiveFollowUp(null);
+      setFollowUpModalOpen(true);
+    }
+
+    if (!conversationId) {
+      notify.info({
+        key: 'automations:quick-followup:conversation-missing',
+        title: 'Choose a conversation',
+        description: phone
+          ? `No existing thread found for ${phone}. Send a first reply in Inbox, then schedule this follow-up.`
+          : 'Send a first reply in Inbox first, then schedule this follow-up.',
+      });
+    }
+
+    const next = new URLSearchParams(searchParams);
+    ['quickFollowUp', 'leadId', 'leadName', 'provider', 'conversationId', 'phone'].forEach((key) =>
+      next.delete(key),
+    );
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, hasOrgContext]);
+
   const conversationMap = useMemo(() => {
     const map = new Map<string, ConversationOption>();
     conversations.forEach((option) => {
@@ -243,8 +312,6 @@ const AutomationsPage: React.FC = () => {
     });
     return map;
   }, [conversations]);
-
-  const hasOrgContext = Boolean(userId && organizationId);
 
   const flowsSummary = useMemo(() => {
     if (!flows.length) return 'No automations yet';
@@ -455,6 +522,7 @@ const AutomationsPage: React.FC = () => {
               }}
               mode={followUpMode}
               followUp={activeFollowUp}
+              prefill={followUpMode === 'create' ? followUpPrefill : null}
               conversationOptions={conversations}
               templateOptions={followUpTemplates}
               conversationsLoading={conversationsLoading}
@@ -469,6 +537,14 @@ const AutomationsPage: React.FC = () => {
               <div>
                 <CardTitle>Follow-up Messages</CardTitle>
                 <CardDescription>Schedule automatic messages to continue conversations.</CardDescription>
+                {followUpLeadContext ? (
+                  <p className='mt-1 text-xs text-muted-foreground'>
+                    Lead context:{' '}
+                    <span className='font-medium text-foreground'>
+                      {followUpLeadContext.leadName || followUpLeadContext.leadId}
+                    </span>
+                  </p>
+                ) : null}
               </div>
               <Button onClick={() => openFollowUpModal('create')}>
                 <Plus className='mr-2 h-4 w-4' />

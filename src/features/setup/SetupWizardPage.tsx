@@ -50,8 +50,8 @@ const SetupWizardPage = () => {
         id: 'first-lead',
         title: 'Capture your first lead',
         description: 'Import or create at least one lead so AI can start tracking progress.',
-        href: '/dashboard/leads',
-        cta: 'Open leads',
+        href: '/dashboard/leads?quickAdd=1',
+        cta: 'Add lead',
         completed: metrics.leadsCount > 0,
       },
       {

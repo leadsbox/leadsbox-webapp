@@ -24,6 +24,7 @@ const Login = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [showHeroImage, setShowHeroImage] = useState(true);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -305,12 +306,25 @@ const Login = () => {
 
         {/* Right Side - Image */}
         <div className='hidden lg:block lg:w-1/2 relative bg-[#F3F4F6]'>
-          <img
-            src='https://leadsboxapp.s3.us-east-1.amazonaws.com/loginleadsbox.webp'
-            alt='LeadsBox Login'
-            crossOrigin='anonymous'
-            className='absolute inset-0 w-full h-full object-cover'
-          />
+          {showHeroImage ? (
+            <img
+              src='https://leadsboxapp.s3.us-east-1.amazonaws.com/loginleadsbox.webp'
+              alt='LeadsBox Login'
+              crossOrigin='anonymous'
+              className='absolute inset-0 w-full h-full object-cover'
+              onError={() => setShowHeroImage(false)}
+            />
+          ) : (
+            <div className='absolute inset-0 flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-[#EFF6FF] via-[#F8FAFC] to-[#E5E7EB] p-10 text-center'>
+              <img src='/leadboxlogo.webp' alt='LeadsBox' className='h-20 w-20 rounded-2xl object-cover shadow-sm' />
+              <div className='space-y-2'>
+                <h2 className='text-2xl font-semibold text-[#111827]'>Welcome to LeadsBox</h2>
+                <p className='text-sm text-[#4B5563] max-w-sm'>
+                  Capture WhatsApp leads, follow up automatically, and close sales without losing conversation context.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

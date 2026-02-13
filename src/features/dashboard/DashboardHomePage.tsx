@@ -37,6 +37,8 @@ import { useAuth } from '@/context/useAuth';
 import { extractFollowUps } from '@/utils/apiData';
 import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils';
 import OnboardingChecklist, { OnboardingStep } from './components/OnboardingChecklist';
+import { getApiMonitoringSnapshot, subscribeApiMonitoringAlerts } from '@/lib/apiMonitoring';
+import { trackAppEvent } from '@/lib/productTelemetry';
 
 // Custom WhatsApp Icon Component
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -92,6 +94,31 @@ type ApiError = {
       message?: string;
     };
   };
+};
+
+type ActivationFunnelStep = {
+  id: string;
+  label: string;
+  count: number;
+  conversionFromPreviousPct: number;
+};
+
+type ActivationDropOff = {
+  from: string;
+  to: string;
+  lost: number;
+  dropOffPct: number;
+};
+
+type ActivationFunnelSnapshot = {
+  range: {
+    days: number;
+    from: string;
+    to: string;
+  };
+  steps: ActivationFunnelStep[];
+  dropOff: ActivationDropOff[];
+  generatedAt: string;
 };
 
 const quickActions = [
@@ -153,6 +180,10 @@ export default function DashboardHomePage() {
   const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails | null>(null);
   const [templatesCount, setTemplatesCount] = useState<number | null>(null);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [apiMonitoring, setApiMonitoring] = useState(() => getApiMonitoringSnapshot());
+  const [pmfReportLoading, setPmfReportLoading] = useState(false);
+  const [activationFunnel, setActivationFunnel] = useState<ActivationFunnelSnapshot | null>(null);
+  const [activationFunnelLoading, setActivationFunnelLoading] = useState(false);
 
   const taskBuckets = useMemo(() => categoriseTasks(tasks), [tasks]);
   const todayTasks = taskBuckets.today;
@@ -165,6 +196,32 @@ export default function DashboardHomePage() {
   };
 
   const analyticsLoading = isAnalyticsPending || isLeadsPending;
+  const reliabilityRows = useMemo(
+    () => [
+      {
+        key: 'inbox_send',
+        label: 'Inbox send',
+        data: apiMonitoring.flows.inbox_send,
+      },
+      {
+        key: 'sales_quick_capture',
+        label: 'Quick capture',
+        data: apiMonitoring.flows.sales_quick_capture,
+      },
+      {
+        key: 'followup_schedule',
+        label: 'Follow-up scheduling',
+        data: apiMonitoring.flows.followup_schedule,
+      },
+    ],
+    [apiMonitoring],
+  );
+
+  const getReliabilityStatus = (errorRate: number, p95Ms: number): 'healthy' | 'watch' | 'critical' => {
+    if (errorRate >= 0.3 || p95Ms >= 5000) return 'critical';
+    if (errorRate >= 0.15 || p95Ms >= 2500) return 'watch';
+    return 'healthy';
+  };
 
   const organizationProfileComplete = useMemo(() => {
     const isFilled = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
@@ -225,7 +282,7 @@ export default function DashboardHomePage() {
         id: 'leads',
         title: 'Bring in your first leads',
         description: 'Import a CSV or add one manually to start filling your pipeline.',
-        href: '/dashboard/leads',
+        href: '/dashboard/leads?quickAdd=1',
         ctaLabel: 'Add lead',
         icon: UploadCloud,
         completed: hasLeads,
@@ -280,6 +337,39 @@ export default function DashboardHomePage() {
 
   const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
+  const PMF_REPORT_KEY = 'lb_last_pmf_weekly_report_at';
+
+  const downloadPmfReport = React.useCallback(async (days = 7) => {
+    setPmfReportLoading(true);
+    try {
+      const response = await client.get(endpoints.analytics.pmfWeekly(days));
+      const report = response?.data?.data?.report || response?.data?.report || null;
+      if (!report) {
+        throw new Error('PMF report payload not available');
+      }
+
+      const generatedAt = new Date().toISOString().slice(0, 10);
+      const filename = `pmf-weekly-report-${generatedAt}.json`;
+      const blob = new Blob([JSON.stringify(report, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      localStorage.setItem(PMF_REPORT_KEY, String(Date.now()));
+      trackAppEvent('pmf_weekly_report_downloaded', { days });
+    } catch (error) {
+      console.error('Failed to download PMF weekly report:', error);
+    } finally {
+      setPmfReportLoading(false);
+    }
+  }, []);
 
   // Helper function to refresh dashboard data (memoized to avoid dependency issues)
   const fetchDashboardData = React.useCallback(async () => {
@@ -422,6 +512,72 @@ export default function DashboardHomePage() {
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  useEffect(() => {
+    setApiMonitoring(getApiMonitoringSnapshot());
+    const interval = window.setInterval(() => {
+      setApiMonitoring(getApiMonitoringSnapshot());
+    }, 30000);
+
+    const unsubscribe = subscribeApiMonitoringAlerts(() => {
+      setApiMonitoring(getApiMonitoringSnapshot());
+    });
+
+    return () => {
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const lastGeneratedAt = Number(localStorage.getItem(PMF_REPORT_KEY) || 0);
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    if (Number.isFinite(lastGeneratedAt) && Date.now() - lastGeneratedAt < weekMs) {
+      return;
+    }
+
+    (async () => {
+      try {
+        const response = await client.get(endpoints.analytics.pmfWeekly(7));
+        const report = response?.data?.data?.report || response?.data?.report || null;
+        if (!report) {
+          return;
+        }
+        localStorage.setItem('lb_cached_pmf_weekly_report', JSON.stringify(report));
+        localStorage.setItem(PMF_REPORT_KEY, String(Date.now()));
+        trackAppEvent('pmf_weekly_report_cached');
+      } catch {
+        // Keep background automation best effort.
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setActivationFunnelLoading(true);
+        const response = await client.get(endpoints.analytics.activationFunnel(30));
+        const funnel = response?.data?.data?.funnel || response?.data?.funnel || null;
+        if (!cancelled) {
+          setActivationFunnel(funnel);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load activation funnel:', error);
+          setActivationFunnel(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setActivationFunnelLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchTemplatesCount = async () => {
@@ -962,12 +1118,76 @@ export default function DashboardHomePage() {
               <div className='text-sm font-medium'>{countsLoading ? '...' : actualThreadsCount}</div>
             </div>
 
+            <div className='rounded-lg border bg-muted/20 p-3 space-y-2'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm font-medium'>Core Flow Reliability</span>
+                <Badge variant='outline'>Auto-monitored</Badge>
+              </div>
+              {reliabilityRows.map((row) => {
+                const status = getReliabilityStatus(row.data.errorRate, row.data.p95Ms);
+                const statusVariant =
+                  status === 'critical' ? 'destructive' : status === 'watch' ? 'secondary' : 'outline';
+                return (
+                  <div key={row.key} className='flex items-center justify-between gap-2 text-xs'>
+                    <span className='text-muted-foreground'>{row.label}</span>
+                    <div className='flex items-center gap-2'>
+                      <span>p95 {row.data.p95Ms || 0}ms</span>
+                      <span>{Math.round((row.data.errorRate || 0) * 100)}% err</span>
+                      <Badge variant={statusVariant}>{status}</Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className='rounded-lg border bg-muted/20 p-3 space-y-2'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm font-medium'>Activation Funnel (30d)</span>
+                <Badge variant='outline'>Launch KPI</Badge>
+              </div>
+              {activationFunnelLoading ? (
+                <div className='space-y-2'>
+                  <Skeleton className='h-4 w-full' />
+                  <Skeleton className='h-4 w-full' />
+                  <Skeleton className='h-4 w-full' />
+                  <Skeleton className='h-4 w-full' />
+                </div>
+              ) : activationFunnel?.steps?.length ? (
+                <>
+                  {activationFunnel.steps.map((step, index) => (
+                    <div key={step.id} className='flex items-center justify-between gap-2 text-xs'>
+                      <span className='text-muted-foreground'>{index + 1}. {step.label}</span>
+                      <div className='flex items-center gap-2'>
+                        <span>{step.count}</span>
+                        {index > 0 ? <span>{step.conversionFromPreviousPct.toFixed(1)}%</span> : null}
+                      </div>
+                    </div>
+                  ))}
+                  {activationFunnel.dropOff.length > 0 ? (
+                    <div className='pt-1 text-xs text-muted-foreground'>
+                      Biggest drop-off:{' '}
+                      {activationFunnel.dropOff
+                        .slice()
+                        .sort((a, b) => b.dropOffPct - a.dropOffPct)[0]
+                        ?.dropOffPct.toFixed(1)}
+                      %
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className='text-xs text-muted-foreground'>No activation funnel data yet.</p>
+              )}
+            </div>
+
             <div className='pt-2'>
               <Button asChild className='w-full' variant='outline'>
                 <Link to='/dashboard/analytics'>
                   <TrendingUp className='h-4 w-4 mr-2' />
                   View Detailed Analytics
                 </Link>
+              </Button>
+              <Button className='w-full mt-2' variant='secondary' onClick={() => downloadPmfReport(7)} disabled={pmfReportLoading}>
+                {pmfReportLoading ? 'Preparing report...' : 'Download PMF Weekly Report'}
               </Button>
             </div>
           </CardContent>

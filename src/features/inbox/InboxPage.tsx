@@ -7,7 +7,7 @@ import { Select } from '../../components/ui/select';
 // ...existing imports...
 
 // Remove broken duplicate InboxPage definition and move all template/followup logic into the main component below.
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save, CalendarPlus, Loader2, ReceiptText } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
@@ -47,6 +47,7 @@ const InboxPage: React.FC = () => {
 
   // ...other logic...
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
@@ -115,6 +116,37 @@ const InboxPage: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [mobileThreadsOpen]);
+
+  useEffect(() => {
+    if (searchParams.get('startChat') !== '1') {
+      return;
+    }
+
+    const prefillPhone = (searchParams.get('phone') || '').trim();
+    const prefillText = (searchParams.get('text') || '').trim();
+    const leadId = (searchParams.get('leadId') || '').trim();
+    const leadName = (searchParams.get('leadName') || '').trim();
+
+    if (prefillPhone) {
+      setNewPhone(prefillPhone);
+    }
+    if (prefillText) {
+      setNewText(prefillText);
+    }
+    setShowNewChat(true);
+
+    trackAppEvent('inbox_start_chat_prefilled', {
+      leadId: leadId || undefined,
+      leadName: leadName || undefined,
+      hasPhone: Boolean(prefillPhone),
+    });
+
+    const nextParams = new URLSearchParams(searchParams);
+    ['startChat', 'phone', 'text', 'leadId', 'leadName'].forEach((key) =>
+      nextParams.delete(key),
+    );
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Allow the global header hamburger to control the inbox threads drawer on mobile
   useEffect(() => {
@@ -198,7 +230,7 @@ const InboxPage: React.FC = () => {
     const leadLabel = leadData?.label || 'NEW_LEAD';
 
     return {
-      id: leadData?.id || api.contact.id,
+      id: leadData?.id || '',
       name,
       email: email || '',
       phone: phone || undefined,
@@ -209,13 +241,26 @@ const InboxPage: React.FC = () => {
       createdAt: api.lastMessageAt,
       updatedAt: api.lastMessageAt,
       contactId: api.contact.id,
+      providerId:
+        api.contact.waId ||
+        api.contact.phone ||
+        api.contact.igUsername ||
+        api.contact.fbPsid ||
+        api.contact.id,
+      conversationId: api.id,
+      from:
+        api.contact.waId ||
+        api.contact.phone ||
+        api.contact.igUsername ||
+        api.contact.fbPsid ||
+        api.contact.id,
     };
   };
   const toUiThread = (api: ApiThread): Thread => {
     const leadData = api.Lead?.[0];
     return {
       id: api.id,
-      leadId: leadData?.id || api.contact.id, // Use actual lead ID if available
+      leadId: leadData?.id || '', // Keep empty when no lead exists yet
       lead: toUiLead(api),
       channel: mapChannel(api.channel.type),
       status: 'OPEN',
@@ -984,29 +1029,97 @@ const InboxPage: React.FC = () => {
     });
   };
 
-  const ensureThreadHasLead = (action: 'quick_capture' | 'follow_up'): boolean => {
-    if (!selectedThread?.leadId) {
-      notify.error({
-        key: `inbox:${action}:no-lead`,
-        title: 'Lead required',
-        description: 'Create a lead from this conversation before running this action.',
-      });
-      if (window.matchMedia('(max-width: 768px)').matches) {
-        trackMobileBlocked(action, 'missing_lead_id', {
-          threadId: selectedThread?.id,
-        });
-      }
-      return false;
+  const createLeadForThread = async (thread: Thread): Promise<string> => {
+    const organizationId = user?.currentOrgId || user?.orgId || getOrgId();
+    const providerId =
+      thread.lead.providerId ||
+      thread.lead.from ||
+      thread.lead.phone ||
+      thread.lead.contactId;
+    const provider =
+      thread.channel === 'whatsapp' ||
+      thread.channel === 'instagram' ||
+      thread.channel === 'telegram'
+        ? thread.channel
+        : 'whatsapp';
+
+    if (!organizationId || !providerId) {
+      throw new Error('Missing organization or provider context for lead creation');
     }
-    return true;
+
+    const response = await client.post(endpoints.leads, {
+      conversationId: thread.id,
+      provider,
+      providerId,
+      organizationId,
+      label: 'NEW_LEAD',
+      lastMessageAt: thread.updatedAt,
+    });
+
+    const payload = response?.data?.data || response?.data;
+    const leadId = payload?.id as string | undefined;
+
+    if (!leadId) {
+      throw new Error('Lead creation response missing lead ID');
+    }
+
+    const applyLeadLink = (targetThread: Thread): Thread => ({
+      ...targetThread,
+      leadId,
+      lead: {
+        ...targetThread.lead,
+        id: leadId,
+      },
+    });
+
+    setThreads((prev) => prev.map((candidate) => (candidate.id === thread.id ? applyLeadLink(candidate) : candidate)));
+    setSelectedThread((prev) => (prev && prev.id === thread.id ? applyLeadLink(prev) : prev));
+
+    trackAppEvent('inbox_lead_auto_created', {
+      threadId: thread.id,
+      leadId,
+      provider,
+    });
+
+    notify.success({
+      key: `inbox:auto-lead:${thread.id}`,
+      title: 'Lead created',
+      description: 'Conversation is now linked to a lead automatically.',
+    });
+
+    return leadId;
   };
 
-  const navigateToSalesQuickCapture = (status: 'PENDING' | 'PAID') => {
+  const ensureLeadForThread = async (action: 'quick_capture' | 'follow_up'): Promise<string | null> => {
+    if (!selectedThread) return null;
+    if (selectedThread.leadId) {
+      return selectedThread.leadId;
+    }
+
+    try {
+      return await createLeadForThread(selectedThread);
+    } catch (error) {
+      notify.error({
+        key: `inbox:${action}:lead-create-failed`,
+        title: 'Lead creation failed',
+        description: 'We could not create a lead for this conversation automatically.',
+      });
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        trackMobileBlocked(action, 'lead_auto_create_failed', {
+          threadId: selectedThread.id,
+        });
+      }
+      return null;
+    }
+  };
+
+  const navigateToSalesQuickCapture = async (status: 'PENDING' | 'PAID') => {
     if (!selectedThread) return;
-    if (!ensureThreadHasLead('quick_capture')) return;
+    const leadId = await ensureLeadForThread('quick_capture');
+    if (!leadId) return;
     const params = new URLSearchParams({
       quickCapture: '1',
-      leadId: selectedThread.leadId,
+      leadId,
       status,
       customer: selectedThread.lead.name || 'Customer',
     });
@@ -1016,14 +1129,15 @@ const InboxPage: React.FC = () => {
     trackAppEvent('inbox_sales_quick_action', {
       action: status === 'PAID' ? 'mark_paid' : 'record_sale',
       threadId: selectedThread.id,
-      leadId: selectedThread.leadId,
+      leadId,
     });
     navigate(`/dashboard/sales?${params.toString()}`);
   };
 
   const handleOpenFollowUpDialog = async () => {
     if (!selectedThread || threadActionBusy) return;
-    if (!ensureThreadHasLead('follow_up')) return;
+    const leadId = await ensureLeadForThread('follow_up');
+    if (!leadId) return;
 
     setFollowUpScheduledAt((prev) => prev || getDefaultFollowUpTime());
     setFollowUpMessage((prev) => prev || `Hi ${selectedThread.lead.name || 'there'}, just checking in on your request.`);
@@ -1058,7 +1172,8 @@ const InboxPage: React.FC = () => {
 
   const handleScheduleFollowUp = async () => {
     if (!selectedThread || savingContact || threadActionBusy) return;
-    if (!ensureThreadHasLead('follow_up')) return;
+    const leadId = await ensureLeadForThread('follow_up');
+    if (!leadId) return;
 
     const scheduledDate = new Date(followUpScheduledAt);
     if (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
@@ -1106,7 +1221,7 @@ const InboxPage: React.FC = () => {
         message: followUpTemplateId ? undefined : followUpMessage.trim(),
         userId: user.id,
         organizationId: orgId,
-        leadId: selectedThread.leadId,
+        leadId,
         templateId: followUpTemplateId || undefined,
         metadata: {
           source: 'inbox_quick_action',
@@ -1114,14 +1229,14 @@ const InboxPage: React.FC = () => {
         },
       });
 
-      await client.put(endpoints.updateLead(selectedThread.leadId), {
+      await client.put(endpoints.updateLead(leadId), {
         label: 'FOLLOW_UP_REQUIRED',
       });
       applyFollowUpStageLocally(selectedThread.id);
 
       trackAppEvent('inbox_follow_up_scheduled', {
         threadId: selectedThread.id,
-        leadId: selectedThread.leadId,
+        leadId,
         scheduledAt: scheduledDate.toISOString(),
         templateUsed: Boolean(followUpTemplateId),
       });
@@ -1466,8 +1581,14 @@ const InboxPage: React.FC = () => {
                       <div>
                         <div className='flex items-center gap-2 mb-1'>
                           <h2
-                            className='text-lg font-semibold text-foreground cursor-pointer hover:text-primary transition-colors'
-                            onClick={() => navigate(`/dashboard/leads/${selectedThread.leadId}`)}
+                            className={`text-lg font-semibold text-foreground transition-colors ${
+                              selectedThread.leadId ? 'cursor-pointer hover:text-primary' : ''
+                            }`}
+                            onClick={() => {
+                              if (selectedThread.leadId) {
+                                navigate(`/dashboard/leads/${selectedThread.leadId}`);
+                              }
+                            }}
                           >
                             {selectedThread.lead.name}
                           </h2>

@@ -1,7 +1,7 @@
 // Leads Page Component for LeadsBox Dashboard
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
@@ -33,6 +34,7 @@ import {
 } from '../../components/ui/dropdown-menu';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -46,6 +48,7 @@ import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { notify } from '@/lib/toast';
+import { trackAppEvent } from '@/lib/productTelemetry';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 
@@ -54,6 +57,7 @@ interface BackendLead {
   id: string;
   organizationId: string;
   conversationId?: string;
+  threadId?: string;
   providerId?: string;
   provider?: string;
   label?: string;
@@ -65,6 +69,12 @@ interface BackendLead {
     lastName?: string | null;
     username?: string | null;
     profileImage?: string | null;
+  };
+  contact?: {
+    id: string;
+    displayName?: string | null;
+    phone?: string | null;
+    email?: string | null;
   };
   notes?: Array<{
     id: string;
@@ -107,8 +117,17 @@ const LeadsPage: React.FC = () => {
   const [stageFilter, setStageFilter] = useState<Stage | 'ALL'>('ALL');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
+  const [isCreatingLead, setIsCreatingLead] = useState(false);
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [newLeadEmail, setNewLeadEmail] = useState('');
+  const [newLeadSource, setNewLeadSource] = useState<Lead['source']>('whatsapp');
+  const [newLeadStage, setNewLeadStage] = useState<Stage>('NEW_LEAD');
+  const [createdLeadForNextSteps, setCreatedLeadForNextSteps] = useState<Lead | null>(null);
   const { members, isLoading: membersLoading, getMemberByUserId } = useOrgMembers();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const stageFilters = useMemo(
     () => [
@@ -133,7 +152,7 @@ const LeadsPage: React.FC = () => {
     return counts;
   }, [leads]);
 
-  const labelToStage = (label?: string): Stage => {
+  const labelToStage = useCallback((label?: string): Stage => {
     if (!label) return 'NEW_LEAD';
     const normalized = label.toUpperCase();
     if (PIPELINE_STAGES.includes(normalized as Stage)) {
@@ -143,9 +162,9 @@ const LeadsPage: React.FC = () => {
       return LEGACY_STAGE_MAP[normalized];
     }
     return 'NEW_LEAD';
-  };
+  }, []);
 
-  const labelToPriority = (label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  const labelToPriority = useCallback((label?: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
     const labelUpper = (label || '').toUpperCase();
 
     // High priority labels that need immediate attention
@@ -165,66 +184,265 @@ const LeadsPage: React.FC = () => {
 
     // Default to medium for everything else
     return 'MEDIUM';
-  };
+  }, []);
+
+  const resolveSource = useCallback((provider?: string): Lead['source'] => {
+    const normalized = String(provider || 'manual').toLowerCase();
+    if (
+      normalized === 'whatsapp' ||
+      normalized === 'telegram' ||
+      normalized === 'instagram' ||
+      normalized === 'website' ||
+      normalized === 'manual'
+    ) {
+      return normalized;
+    }
+    return 'manual';
+  }, []);
+
+  const mapBackendLeadToUi = useCallback(
+    (lead: BackendLead): Lead => {
+      const normalizedLabel = lead.label
+        ? (lead.label.toUpperCase() as LeadLabel)
+        : undefined;
+      const stage = labelToStage(lead.label);
+      const assignedUserId = lead.user?.id || lead.userId || '';
+      const displayName =
+        lead.contact?.displayName ||
+        (lead.providerId
+          ? `Lead ${String(lead.providerId).slice(0, 6)}`
+          : lead.conversationId || 'Lead');
+
+      return {
+        id: lead.id,
+        name: displayName,
+        email: lead.contact?.email || lead.user?.email || '',
+        phone: lead.contact?.phone || undefined,
+        company: undefined,
+        source: resolveSource(lead.provider),
+        stage,
+        priority: labelToPriority(lead.label),
+        tags: normalizedLabel ? [normalizedLabel] : [],
+        assignedTo: assignedUserId,
+        value: undefined,
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
+        lastActivity: lead.lastMessageAt,
+        conversationId: lead.conversationId,
+        threadId: lead.threadId,
+        providerId: lead.providerId,
+        contactId: lead.contact?.id,
+        from:
+          lead.contact?.phone ||
+          lead.contact?.email ||
+          lead.providerId ||
+          lead.conversationId,
+        label: normalizedLabel,
+        notes: lead.notes?.[0]?.note || '',
+        noteHistory:
+          lead.notes?.map((note) => ({
+            id: note.id,
+            note: note.note,
+            createdAt: note.createdAt,
+            author: note.author
+              ? {
+                  id: note.author.id,
+                  email: note.author.email ?? null,
+                  firstName: note.author.firstName ?? null,
+                  lastName: note.author.lastName ?? null,
+                  username: note.author.username ?? null,
+                  profileImage: note.author.profileImage ?? null,
+                }
+              : undefined,
+          })) || [],
+      };
+    },
+    [labelToPriority, labelToStage, resolveSource]
+  );
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const resp = await client.get(endpoints.leads);
+      const list: BackendLead[] = resp?.data?.data?.leads || resp?.data || [];
+      const mapped = list.map(mapBackendLeadToUi);
+      setLeads(mapped);
+    } catch (error) {
+      console.error('Failed to load leads', error);
+      setLeads([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mapBackendLeadToUi]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        setIsLoading(true);
-        const resp = await client.get(endpoints.leads);
-        const list: BackendLead[] = resp?.data?.data?.leads || resp?.data || [];
-        const mapped: Lead[] = list.map((l: BackendLead) => {
-          const normalizedLabel = l.label ? (l.label.toUpperCase() as LeadLabel) : undefined;
-          const stage = labelToStage(l.label);
-          const assignedUserId = l.user?.id || l.userId || '';
+    void fetchLeads();
+  }, [fetchLeads]);
 
-          return {
-            id: l.id,
-            name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
-            email: l.user?.email || '',
-            phone: undefined,
-            company: undefined,
-            source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
-            stage,
-            priority: labelToPriority(l.label),
-            tags: normalizedLabel ? [normalizedLabel] : [],
-            assignedTo: assignedUserId,
-            value: undefined,
-            createdAt: l.createdAt,
-            updatedAt: l.updatedAt,
-            lastActivity: l.lastMessageAt,
-            conversationId: l.conversationId,
-            providerId: l.providerId,
-            from: l.providerId || l.conversationId,
-            label: normalizedLabel,
-            notes: l.notes?.[0]?.note || '',
-            noteHistory:
-              l.notes?.map((note) => ({
-                id: note.id,
-                note: note.note,
-                createdAt: note.createdAt,
-                author: note.author
-                  ? {
-                      id: note.author.id,
-                      email: note.author.email ?? null,
-                      firstName: note.author.firstName ?? null,
-                      lastName: note.author.lastName ?? null,
-                      username: note.author.username ?? null,
-                      profileImage: note.author.profileImage ?? null,
-                    }
-                  : undefined,
-              })) || [],
-          };
-        });
-        setLeads(mapped);
-      } catch (e) {
-        console.error('Failed to load leads', e);
-        setLeads([]);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+  useEffect(() => {
+    if (searchParams.get('quickAdd') !== '1') {
+      return;
+    }
+
+    setIsCreateLeadOpen(true);
+    setCreatedLeadForNextSteps(null);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('quickAdd');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const resetCreateLeadForm = useCallback(() => {
+    setNewLeadName('');
+    setNewLeadPhone('');
+    setNewLeadEmail('');
+    setNewLeadSource('whatsapp');
+    setNewLeadStage('NEW_LEAD');
   }, []);
+
+  const closeCreateLeadModal = useCallback(() => {
+    setIsCreateLeadOpen(false);
+    resetCreateLeadForm();
+    setCreatedLeadForNextSteps(null);
+  }, [resetCreateLeadForm]);
+
+  const openSendFirstReply = useCallback(
+    (lead: Lead) => {
+      const phoneSeed = lead.phone || '';
+      if (!phoneSeed) {
+        notify.warning({
+          key: `leads:${lead.id}:missing-contact`,
+          title: 'Phone number required',
+          description: 'Add a phone number to start a chat from inbox.',
+        });
+        return;
+      }
+      const greetingName = lead.name?.trim() || 'there';
+      const suggestedMessage = `Hi ${greetingName}, thanks for reaching out to us. How can we help you today?`;
+      const params = new URLSearchParams({
+        startChat: '1',
+        phone: phoneSeed,
+        text: suggestedMessage,
+        leadId: lead.id,
+        leadName: lead.name || 'Customer',
+      });
+      navigate(`/dashboard/inbox?${params.toString()}`);
+      closeCreateLeadModal();
+    },
+    [closeCreateLeadModal, navigate]
+  );
+
+  const openScheduleFollowUp = useCallback(
+    (lead: Lead) => {
+      const providerSeed =
+        lead.source === 'whatsapp' || lead.source === 'instagram' || lead.source === 'telegram'
+          ? lead.source
+          : 'whatsapp';
+      const params = new URLSearchParams({
+        quickFollowUp: '1',
+        leadId: lead.id,
+        leadName: lead.name || 'Customer',
+        provider: providerSeed,
+        conversationId: lead.threadId || lead.conversationId || '',
+        phone: lead.phone || '',
+      });
+      navigate(`/dashboard/automations?${params.toString()}`);
+      closeCreateLeadModal();
+    },
+    [closeCreateLeadModal, navigate]
+  );
+
+  const openQuickCapture = useCallback(
+    (lead: Lead) => {
+      const params = new URLSearchParams({
+        quickCapture: '1',
+        leadId: lead.id,
+        status: 'PAID',
+        customer: lead.name || 'Customer',
+      });
+      navigate(`/dashboard/sales?${params.toString()}`);
+      closeCreateLeadModal();
+    },
+    [closeCreateLeadModal, navigate]
+  );
+
+  const handleCreateLead = useCallback(async () => {
+    const normalizedName = newLeadName.trim();
+    const normalizedPhone = newLeadPhone.trim();
+    const normalizedEmail = newLeadEmail.trim().toLowerCase();
+    if (!normalizedPhone && !normalizedEmail) {
+      notify.error({
+        key: 'leads:create:missing-contact',
+        title: 'Phone or email required',
+        description: 'Add at least a phone number or email so the lead can be contacted.',
+      });
+      return;
+    }
+
+    const seed =
+      normalizedPhone ||
+      normalizedEmail ||
+      normalizedName.toLowerCase().replace(/\s+/g, '-') ||
+      `lead-${Date.now()}`;
+    const conversationId = `manual:${newLeadSource}:${seed}:${Date.now()}`;
+
+    try {
+      setIsCreatingLead(true);
+      const response = await client.post(endpoints.leads, {
+        conversationId,
+        provider: newLeadSource,
+        providerId: seed,
+        label: newLeadStage,
+        lastMessageAt: new Date().toISOString(),
+        contactName: normalizedName || undefined,
+        contactPhone: normalizedPhone || undefined,
+        contactEmail: normalizedEmail || undefined,
+      });
+
+      const payload = response?.data?.data || response?.data;
+      if (payload?.id) {
+        const createdLead = mapBackendLeadToUi(payload as BackendLead);
+        setLeads((prev) => [createdLead, ...prev.filter((lead) => lead.id !== createdLead.id)]);
+        setCreatedLeadForNextSteps(createdLead);
+      } else {
+        await fetchLeads();
+        setCreatedLeadForNextSteps(null);
+      }
+
+      trackAppEvent('manual_lead_created', {
+        source: newLeadSource,
+        stage: newLeadStage,
+        hasPhone: Boolean(normalizedPhone),
+        hasEmail: Boolean(normalizedEmail),
+      });
+      notify.success({
+        key: 'leads:create:success',
+        title: 'Lead added',
+        description: 'Your lead is now in pipeline and ready for follow-up.',
+      });
+      resetCreateLeadForm();
+    } catch (error) {
+      console.error('Failed to create lead', error);
+      trackAppEvent('manual_lead_create_failed', {
+        source: newLeadSource,
+      });
+      notify.error({
+        key: 'leads:create:failed',
+        title: 'Could not add lead',
+        description: 'Please try again in a moment.',
+      });
+    } finally {
+      setIsCreatingLead(false);
+    }
+  }, [
+    fetchLeads,
+    mapBackendLeadToUi,
+    newLeadEmail,
+    newLeadName,
+    newLeadPhone,
+    newLeadSource,
+    newLeadStage,
+    resetCreateLeadForm,
+  ]);
 
   const isDataLoading = isLoading || membersLoading;
 
@@ -395,7 +613,12 @@ const LeadsPage: React.FC = () => {
           <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Leads</h1>
           <p className='text-sm sm:text-base text-muted-foreground'>Manage and track your leads</p>
         </div>
-        <Button>
+        <Button
+          onClick={() => {
+            setCreatedLeadForNextSteps(null);
+            setIsCreateLeadOpen(true);
+          }}
+        >
           <Plus className='h-4 w-4 mr-2' />
           Add Lead
         </Button>
@@ -565,8 +788,20 @@ const LeadsPage: React.FC = () => {
                 ))
               ) : filteredLeads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className='h-24 text-center text-muted-foreground'>
-                    No leads match your filters yet.
+                  <TableCell colSpan={9} className='h-36 text-center text-muted-foreground'>
+                    <div className='space-y-2'>
+                      <p>No leads match your filters yet.</p>
+                      <Button
+                        size='sm'
+                        onClick={() => {
+                          setCreatedLeadForNextSteps(null);
+                          setIsCreateLeadOpen(true);
+                        }}
+                      >
+                        <Plus className='mr-2 h-4 w-4' />
+                        Add your first lead
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -666,6 +901,152 @@ const LeadsPage: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={isCreateLeadOpen}
+        onOpenChange={(open) => {
+          if (!isCreatingLead) {
+            if (!open) {
+              setCreatedLeadForNextSteps(null);
+            }
+            setIsCreateLeadOpen(open);
+          }
+        }}
+      >
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader>
+            <DialogTitle>{createdLeadForNextSteps ? 'Lead created' : 'Add lead manually'}</DialogTitle>
+            <DialogDescription>
+              {createdLeadForNextSteps
+                ? 'Keep momentum. Complete one of these actions to reach first value quickly.'
+                : 'Add a lead instantly so your team can follow up and record sales from day one.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdLeadForNextSteps ? (
+            <div className='space-y-3'>
+              <div className='rounded-lg border bg-muted/30 p-3 text-sm'>
+                <div className='font-medium'>{createdLeadForNextSteps.name || 'Lead'}</div>
+                <div className='text-muted-foreground'>
+                  {createdLeadForNextSteps.phone || createdLeadForNextSteps.email || createdLeadForNextSteps.providerId || 'No contact details'}
+                </div>
+              </div>
+              <div className='grid grid-cols-1 gap-2'>
+                <Button onClick={() => openSendFirstReply(createdLeadForNextSteps)}>Send first reply</Button>
+                <Button variant='secondary' onClick={() => openScheduleFollowUp(createdLeadForNextSteps)}>
+                  Schedule follow-up
+                </Button>
+                <Button variant='outline' onClick={() => openQuickCapture(createdLeadForNextSteps)}>
+                  Record first sale
+                </Button>
+                <Button variant='ghost' onClick={() => navigate(`/dashboard/leads/${createdLeadForNextSteps.id}`)}>
+                  View lead details
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className='space-y-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='manual-lead-name'>Customer name (optional)</Label>
+                <Input
+                  id='manual-lead-name'
+                  placeholder='Jane Doe'
+                  value={newLeadName}
+                  onChange={(event) => setNewLeadName(event.target.value)}
+                  disabled={isCreatingLead}
+                />
+              </div>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                <div className='space-y-2'>
+                  <Label htmlFor='manual-lead-phone'>Phone number</Label>
+                  <Input
+                    id='manual-lead-phone'
+                    placeholder='+2348012345678'
+                    value={newLeadPhone}
+                    onChange={(event) => setNewLeadPhone(event.target.value)}
+                    disabled={isCreatingLead}
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='manual-lead-email'>Email</Label>
+                  <Input
+                    id='manual-lead-email'
+                    type='email'
+                    placeholder='customer@example.com'
+                    value={newLeadEmail}
+                    onChange={(event) => setNewLeadEmail(event.target.value)}
+                    disabled={isCreatingLead}
+                  />
+                </div>
+              </div>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                <div className='space-y-2'>
+                  <Label htmlFor='manual-lead-source'>Source</Label>
+                  <Select
+                    value={newLeadSource}
+                    onValueChange={(value) => setNewLeadSource(value as Lead['source'])}
+                    disabled={isCreatingLead}
+                  >
+                    <SelectTrigger id='manual-lead-source'>
+                      <SelectValue placeholder='Select source' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='whatsapp'>WhatsApp</SelectItem>
+                      <SelectItem value='instagram'>Instagram</SelectItem>
+                      <SelectItem value='telegram'>Telegram</SelectItem>
+                      <SelectItem value='website'>Website</SelectItem>
+                      <SelectItem value='manual'>Manual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='manual-lead-stage'>Starting stage</Label>
+                  <Select
+                    value={newLeadStage}
+                    onValueChange={(value) => setNewLeadStage(value as Stage)}
+                    disabled={isCreatingLead}
+                  >
+                    <SelectTrigger id='manual-lead-stage'>
+                      <SelectValue placeholder='Select stage' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PIPELINE_STAGES.map((stage) => (
+                        <SelectItem key={stage} value={stage}>
+                          {leadLabelUtils.getDisplayName(stage as LeadLabel)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className='text-xs text-muted-foreground'>
+                Add at least phone or email. We use this to keep your pipeline and follow-ups reliable.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            {createdLeadForNextSteps ? (
+              <Button variant='outline' onClick={closeCreateLeadModal}>
+                Done
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant='outline'
+                  onClick={closeCreateLeadModal}
+                  disabled={isCreatingLead}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={() => void handleCreateLead()} disabled={isCreatingLead}>
+                  {isCreatingLead ? 'Adding lead...' : 'Add lead'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

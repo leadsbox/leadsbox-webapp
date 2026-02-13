@@ -111,6 +111,8 @@ export const endpoints = {
       return `/analytics/overview${query ? `?${query}` : ''}`;
     },
     events: '/analytics/events',
+    pmfWeekly: (days?: number) => `/analytics/pmf-weekly${days ? `?days=${days}` : ''}`,
+    activationFunnel: (days?: number) => `/analytics/activation-funnel${days ? `?days=${days}` : ''}`,
   },
 
   billing: {

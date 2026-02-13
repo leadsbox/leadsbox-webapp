@@ -1,10 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE } from './config';
 import { publishNetworkBanner } from '@/ui/ux/network-events';
+import { getMonitoredFlow, recordApiFlowResult } from '@/lib/apiMonitoring';
 
 // Extend the axios request config to include our custom _retry property
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
+  _startedAt?: number;
 }
 
 // Token and organization management
@@ -51,6 +53,7 @@ const client = axios.create({
 // Ensure credentials are sent with all requests
 client.interceptors.request.use((config) => {
   config.withCredentials = true;
+  (config as InternalAxiosRequestConfig & { _startedAt?: number })._startedAt = Date.now();
 
   if (!config.headers['x-request-id']) {
     const requestId = buildRequestId();
@@ -125,6 +128,17 @@ const showBanner = (
 
 client.interceptors.response.use(
   (response) => {
+    const config = response.config as InternalAxiosRequestConfig & { _startedAt?: number };
+    const flow = getMonitoredFlow(config?.url, config?.method);
+    if (flow) {
+      recordApiFlowResult({
+        flow,
+        durationMs: config._startedAt ? Date.now() - config._startedAt : 0,
+        status: response.status,
+        ok: true,
+      });
+    }
+
     if (response.status < 400) {
       dismissBanner(SERVER_ERROR_BANNER_ID);
       dismissBanner(NETWORK_FAILURE_BANNER_ID);
@@ -135,6 +149,15 @@ client.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as ExtendedAxiosRequestConfig;
     const status = error?.response?.status;
+    const flow = getMonitoredFlow(originalRequest?.url, originalRequest?.method);
+    if (flow) {
+      recordApiFlowResult({
+        flow,
+        durationMs: originalRequest?._startedAt ? Date.now() - (originalRequest._startedAt as number) : 0,
+        status,
+        ok: false,
+      });
+    }
 
     // Handle 401 Unauthorized
     if (status === 401 && !originalRequest._retry) {

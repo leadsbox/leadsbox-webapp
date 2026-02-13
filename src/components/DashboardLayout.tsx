@@ -39,6 +39,7 @@ import { useSocketIO } from '../lib/socket';
 import { Message } from '@/types';
 import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
 import { notify } from '@/lib/toast';
+import { subscribeApiMonitoringAlerts } from '@/lib/apiMonitoring';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -387,6 +388,26 @@ export const DashboardLayout: React.FC = () => {
       window.clearInterval(interval);
     };
   }, [navigate]);
+
+  useEffect(() => {
+    return subscribeApiMonitoringAlerts((alert) => {
+      const title = alert.title;
+      const description = alert.description;
+      if (alert.severity === 'error') {
+        notify.error({
+          key: `api-monitoring:${alert.flow}:${alert.reason}`,
+          title,
+          description,
+        });
+      } else {
+        notify.warning({
+          key: `api-monitoring:${alert.flow}:${alert.reason}`,
+          title,
+          description,
+        });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const handler = (event: Event) => {
