@@ -110,6 +110,7 @@ export const endpoints = {
       const query = params.toString();
       return `/analytics/overview${query ? `?${query}` : ''}`;
     },
+    events: '/analytics/events',
   },
 
   billing: {
@@ -144,6 +145,9 @@ export const endpoints = {
     list: '/sales',
     detail: (id: string) => `/sales/${id}`,
     approve: (id: string) => `/sales/${id}/approve`,
+    reject: (id: string) => `/sales/${id}/reject`,
+    reviewInbox: '/sales/review/inbox',
+    quickCapture: '/sales/quick-capture',
     update: (id: string) => `/sales/${id}`,
     remove: (id: string) => `/sales/${id}`,
     pendingCount: '/sales/pending/count',

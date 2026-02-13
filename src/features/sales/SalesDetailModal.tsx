@@ -14,16 +14,18 @@ interface SalesDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onApprove?: (id: string) => void | Promise<void>;
+  onReject?: (id: string) => void | Promise<void>;
   onUpdate?: (id: string, data: UpdateSaleInput) => void | Promise<void>;
   onDelete?: (id: string) => void | Promise<void>;
 }
 
-const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClose, onApprove, onUpdate, onDelete }) => {
+const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClose, onApprove, onReject, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItems, setEditedItems] = useState<SaleItem[]>([]);
   const [editedCurrency, setEditedCurrency] = useState('NGN');
   const [isApproving, setIsApproving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
@@ -36,6 +38,9 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
   }, [sale]);
 
   if (!sale) return null;
+  const isPendingDecision = sale.reviewStatus
+    ? sale.reviewStatus === 'PENDING_REVIEW'
+    : !sale.approvedAt;
 
   const calculateTotal = (items: SaleItem[]) => {
     return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -96,6 +101,35 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!window.confirm('Reject this AI-detected sale?')) return;
+    try {
+      setIsRejecting(true);
+      if (onReject) {
+        await onReject(sale.id);
+      } else {
+        await salesApi.reject(sale.id);
+        notify.success({
+          key: `sale-rejected-${sale.id}`,
+          title: 'Sale rejected',
+          description: 'The sale has been removed from AI review queue.',
+        });
+      }
+      onClose();
+    } catch (error) {
+      console.error('Failed to reject sale:', error);
+      if (!onReject) {
+        notify.error({
+          key: `sale-reject-error-${sale.id}`,
+          title: 'Rejection failed',
+          description: 'Failed to reject this sale. Please try again.',
+        });
+      }
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -198,7 +232,7 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
             )}
           </DialogTitle>
           <DialogDescription>
-            {sale.isAutoDetected && !sale.approvedAt ? 'Review and approve this auto-detected sale' : 'View sale details'}
+            {sale.isAutoDetected && isPendingDecision ? 'Review and approve this auto-detected sale' : 'View sale details'}
           </DialogDescription>
         </DialogHeader>
 
@@ -326,10 +360,13 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
                   {isMarkingPaid ? 'Marking...' : 'Mark as Paid'}
                 </Button>
               )}
-              {sale.isAutoDetected && !sale.approvedAt ? (
+              {sale.isAutoDetected && isPendingDecision ? (
                 <>
                   <Button variant='outline' onClick={() => setIsEditing(true)}>
                     Edit First
+                  </Button>
+                  <Button variant='outline' onClick={handleReject} disabled={isRejecting}>
+                    {isRejecting ? 'Rejecting...' : 'Reject'}
                   </Button>
                   <Button variant='destructive' onClick={handleDelete} disabled={isDeleting} className='gap-2'>
                     <Trash2 className='h-4 w-4' />

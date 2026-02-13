@@ -20,6 +20,8 @@ import {
   Package,
   BookOpen,
   FileSpreadsheet,
+  BellRing,
+  Download,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -35,6 +37,12 @@ import { endpoints } from '../api/config';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { useSocketIO } from '../lib/socket';
 import { Message } from '@/types';
+import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
 
 interface SidebarItem {
   title: string;
@@ -50,6 +58,12 @@ const sidebarItems: SidebarItem[] = [
     href: '/dashboard/home',
     icon: Home,
     description: 'Command center overview',
+  },
+  {
+    title: 'Setup',
+    href: '/dashboard/setup',
+    icon: Sparkles,
+    description: 'Launch checklist and first-value steps',
   },
   {
     title: 'Inbox',
@@ -164,6 +178,14 @@ export const DashboardLayout: React.FC = () => {
   const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false));
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>(
+      typeof window !== 'undefined' && 'Notification' in window
+        ? Notification.permission
+        : 'default',
+    );
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
   const { socket } = useSocketIO();
 
@@ -195,6 +217,41 @@ export const DashboardLayout: React.FC = () => {
       // If new inbound message, increment count
       if (data?.message?.sender === 'LEAD') {
         setInboxCount((prev) => prev + 1);
+
+        if (
+          typeof window !== 'undefined' &&
+          document.hidden &&
+          'Notification' in window &&
+          Notification.permission === 'granted'
+        ) {
+          const title = 'New message in LeadsBox';
+          const body =
+            data?.message?.content?.slice(0, 120) ||
+            'You have a new inbound message.';
+
+          if ('serviceWorker' in navigator) {
+            void navigator.serviceWorker
+              .getRegistration()
+              .then((registration) => {
+                if (registration) {
+                  return registration.showNotification(title, {
+                    body,
+                    icon: '/favicon.ico',
+                    badge: '/favicon.ico',
+                    tag: `message-${data.message.id}`,
+                    data: { url: '/dashboard/inbox' },
+                  });
+                }
+
+                new Notification(title, { body, icon: '/favicon.ico' });
+              })
+              .catch(() => {
+                new Notification(title, { body, icon: '/favicon.ico' });
+              });
+          } else {
+            new Notification(title, { body, icon: '/favicon.ico' });
+          }
+        }
       }
     };
 
@@ -221,6 +278,56 @@ export const DashboardLayout: React.FC = () => {
       window.removeEventListener('leadsbox:thread-read', handleLocalRead);
     };
   }, [socket]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+      trackAppEvent('pwa_install_prompt_available');
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredInstallPrompt) return;
+    try {
+      await deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      trackAppEvent('pwa_install_prompt_choice', { outcome: choice.outcome });
+      if (
+        choice.outcome === 'dismissed' &&
+        window.matchMedia('(max-width: 768px)').matches
+      ) {
+        trackMobileBlocked('pwa_install', 'dismissed_prompt');
+      }
+    } finally {
+      setDeferredInstallPrompt(null);
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return;
+    }
+
+    const result = await Notification.requestPermission();
+    setNotificationPermission(result);
+    trackAppEvent('notification_permission_result', {
+      permission: result,
+    });
+    if (
+      result !== 'granted' &&
+      window.matchMedia('(max-width: 768px)').matches
+    ) {
+      trackMobileBlocked('push_notifications', 'permission_not_granted', {
+        permission: result,
+      });
+    }
+  };
 
   const toggleSidebar = () => {
     if (isMobile) {
@@ -481,6 +588,33 @@ export const DashboardLayout: React.FC = () => {
 
       {/* Main content area */}
       <div className='flex-1 flex flex-col overflow-hidden'>
+        {(deferredInstallPrompt || notificationPermission !== 'granted') && (
+          <div className='border-b bg-muted/40 px-4 py-2'>
+            <div className='mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-sm'>
+              <p className='text-muted-foreground'>
+                Install LeadsBox and enable alerts for faster mobile response.
+              </p>
+              <div className='flex flex-wrap gap-2'>
+                {deferredInstallPrompt && (
+                  <Button size='sm' variant='outline' onClick={handleInstallApp}>
+                    <Download className='mr-1 h-4 w-4' />
+                    Install app
+                  </Button>
+                )}
+                {notificationPermission !== 'granted' && (
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    onClick={handleEnableNotifications}
+                  >
+                    <BellRing className='mr-1 h-4 w-4' />
+                    Enable alerts
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <DashboardHeader onSidebarToggle={toggleSidebar} sidebarOpen={isMobile ? mobileOpen : !sidebarCollapsed} />
 

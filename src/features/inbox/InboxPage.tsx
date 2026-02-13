@@ -35,6 +35,7 @@ import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
+import { trackMobileBlocked } from '@/lib/productTelemetry';
 import confetti from 'canvas-confetti';
 
 const InboxPage: React.FC = () => {
@@ -582,7 +583,15 @@ const InboxPage: React.FC = () => {
 
   // REST API message sending (reliable fallback from Socket.IO issues)
   const handleSendMessage = async () => {
-    if (!selectedThread || !composer.trim()) return;
+    if (!selectedThread || !composer.trim()) {
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        trackMobileBlocked('inbox_send', 'missing_thread_or_message', {
+          hasThread: Boolean(selectedThread),
+          hasMessage: Boolean(composer.trim()),
+        });
+      }
+      return;
+    }
 
     const messageText = composer.trim();
     setComposer('');

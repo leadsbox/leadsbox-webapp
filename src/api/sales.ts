@@ -50,6 +50,7 @@ export interface Sale {
 
 export interface ListSalesParams {
   status?: 'PENDING' | 'PAID' | 'PARTIAL' | 'REFUNDED' | 'VOID';
+  reviewStatus?: 'NOT_REQUIRED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
   isAutoDetected?: boolean;
   leadId?: string;
 }
@@ -59,6 +60,25 @@ export interface UpdateSaleInput {
   currency?: string;
   amount?: number;
   status?: 'PENDING' | 'PAID' | 'PARTIAL' | 'REFUNDED' | 'VOID';
+}
+
+export interface QuickCaptureSaleInput {
+  leadId: string;
+  amount: number;
+  currency?: string;
+  status?: 'PENDING' | 'PAID' | 'PARTIAL' | 'REFUNDED' | 'VOID';
+  note?: string;
+}
+
+export interface ReviewInboxResponse {
+  data: {
+    sales: Sale[];
+    summary: {
+      pendingCount: number;
+      highRiskCount: number;
+      averageConfidence: number;
+    };
+  };
 }
 
 export const salesApi = {
@@ -83,6 +103,21 @@ export const salesApi = {
    */
   approve: async (id: string): Promise<{ data: { sale: Sale } }> => {
     const response = await client.post(endpoints.sales.approve(id));
+    return response.data;
+  },
+
+  reject: async (
+    id: string,
+    payload?: { reason?: string }
+  ): Promise<{ data: { sale: Sale } }> => {
+    const response = await client.post(endpoints.sales.reject(id), payload || {});
+    return response.data;
+  },
+
+  reviewInbox: async (limit = 25): Promise<ReviewInboxResponse> => {
+    const response = await client.get(endpoints.sales.reviewInbox, {
+      params: { limit },
+    });
     return response.data;
   },
 
@@ -121,6 +156,13 @@ export const salesApi = {
     isManual: boolean;
   }): Promise<{ data: { sale: Sale } }> => {
     const response = await client.post(endpoints.sales.list, data);
+    return response.data;
+  },
+
+  quickCapture: async (
+    data: QuickCaptureSaleInput
+  ): Promise<{ data: { sale: Sale } }> => {
+    const response = await client.post(endpoints.sales.quickCapture, data);
     return response.data;
   },
 

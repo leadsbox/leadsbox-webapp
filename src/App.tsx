@@ -35,6 +35,7 @@ const TasksPage = lazy(() => import('./features/tasks/TasksPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const DashboardHomePage = lazy(() => import('./features/dashboard/DashboardHomePage'));
+const SetupWizardPage = lazy(() => import('./features/setup/SetupWizardPage'));
 const InvoicesPage = lazy(() => import('./features/invoices/InvoicesPage'));
 const InvoiceDetailPage = lazy(() => import('./features/invoices/InvoiceDetailPage'));
 const CreateInvoicePage = lazy(() => import('./features/invoices/CreateInvoicePage'));
@@ -116,6 +117,7 @@ const App = () => {
                   }
                 >
                   <Route path='home' element={<DashboardHomePage />} />
+                  <Route path='setup' element={<SetupWizardPage />} />
                   <Route path='invoices' element={<InvoicesPage />} />
                   <Route path='invoices/create' element={<CreateInvoicePage />} />
                   <Route path='invoices/new' element={<CreateInvoicePage />} />

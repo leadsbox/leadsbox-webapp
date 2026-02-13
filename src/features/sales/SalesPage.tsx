@@ -4,11 +4,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Filter, MessageSquare, Search, ShoppingBag, User, Sparkles } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertTriangle, DollarSign, Filter, MessageSquare, Search, ShieldCheck, ShoppingBag, Sparkles, User, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
@@ -18,6 +20,7 @@ import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useNavigate } from 'react-router-dom';
 import { salesApi, Sale, UpdateSaleInput } from '@/api/sales';
 import SalesDetailModal from './SalesDetailModal';
+import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
 
 interface BackendLead {
   id: string;
@@ -143,6 +146,19 @@ const statusOptions: Array<{ value: SalesBucketKey; label: string }> = [
   { value: 'CLOSED', label: 'Closed or lost' },
 ];
 
+const getConfidenceRisk = (confidence?: number): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  const score = Number(confidence || 0);
+  if (score >= 0.85) return 'LOW';
+  if (score >= 0.65) return 'MEDIUM';
+  return 'HIGH';
+};
+
+const getRiskBadgeClass = (risk: 'HIGH' | 'MEDIUM' | 'LOW'): string => {
+  if (risk === 'HIGH') return 'border-red-200 bg-red-50 text-red-700';
+  if (risk === 'MEDIUM') return 'border-amber-200 bg-amber-50 text-amber-700';
+  return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+};
+
 const SalesPage: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,16 +170,24 @@ const SalesPage: React.FC = () => {
 
   // Sales-specific state
   const [sales, setSales] = useState<Sale[]>([]);
+  const [reviewInboxSales, setReviewInboxSales] = useState<Sale[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<{
+    pendingCount: number;
+    highRiskCount: number;
+    averageConfidence: number;
+  }>({
+    pendingCount: 0,
+    highRiskCount: 0,
+    averageConfidence: 0,
+  });
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isSalesLoading, setIsSalesLoading] = useState(false);
-
-  const isPendingReviewSale = useCallback(
-    (sale: Sale) =>
-      sale.reviewStatus
-        ? sale.reviewStatus === 'PENDING_REVIEW'
-        : sale.status === 'PENDING',
-    [],
-  );
+  const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
+  const [quickCaptureLeadId, setQuickCaptureLeadId] = useState('');
+  const [quickCaptureAmount, setQuickCaptureAmount] = useState('');
+  const [quickCaptureCurrency, setQuickCaptureCurrency] = useState('NGN');
+  const [quickCaptureNote, setQuickCaptureNote] = useState('');
+  const [isQuickCapturing, setIsQuickCapturing] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -243,10 +267,33 @@ const SalesPage: React.FC = () => {
     }
   }, []);
 
+  const fetchReviewInbox = useCallback(async () => {
+    try {
+      const response = await salesApi.reviewInbox(50);
+      setReviewInboxSales(response?.data?.sales || []);
+      setReviewSummary(
+        response?.data?.summary || {
+          pendingCount: 0,
+          highRiskCount: 0,
+          averageConfidence: 0,
+        }
+      );
+    } catch (error) {
+      console.error('Failed to load sales review inbox:', error);
+      setReviewInboxSales([]);
+      setReviewSummary({
+        pendingCount: 0,
+        highRiskCount: 0,
+        averageConfidence: 0,
+      });
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeads();
     fetchSales();
-  }, [fetchLeads, fetchSales]);
+    fetchReviewInbox();
+  }, [fetchLeads, fetchSales, fetchReviewInbox]);
 
   const handleUpdateStatus = useCallback(
     async (leadId: string, newLabel: LeadLabel) => {
@@ -266,6 +313,12 @@ const SalesPage: React.FC = () => {
         await fetchLeads();
       } catch (error) {
         console.error('Failed to update lead status:', error);
+        if (window.matchMedia('(max-width: 768px)').matches) {
+          trackMobileBlocked('lead_stage_update', 'update_failed', {
+            leadId,
+            newLabel,
+          });
+        }
         notify.error({
           key: `lead-update-error-${leadId}`,
           title: 'Update failed',
@@ -282,15 +335,20 @@ const SalesPage: React.FC = () => {
     async (saleId: string) => {
       try {
         await salesApi.approve(saleId);
+        trackAppEvent('sales_review_approved', { saleId });
         notify.success({
           key: `sale-approve-${saleId}`,
           title: 'Sale approved',
           description: 'The auto-detected sale has been approved.',
         });
         await fetchSales();
+        await fetchReviewInbox();
         setSelectedSale(null);
       } catch (error) {
         console.error('Failed to approve sale:', error);
+        if (window.matchMedia('(max-width: 768px)').matches) {
+          trackMobileBlocked('sales_review', 'approve_failed', { saleId });
+        }
         notify.error({
           key: `sale-approve-error-${saleId}`,
           title: 'Approval failed',
@@ -298,7 +356,7 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchSales],
+    [fetchReviewInbox, fetchSales],
   );
 
   const handleUpdateSale = useCallback(
@@ -311,6 +369,7 @@ const SalesPage: React.FC = () => {
           description: 'The sale details have been updated.',
         });
         await fetchSales();
+        await fetchReviewInbox();
         setSelectedSale(null);
       } catch (error) {
         console.error('Failed to update sale:', error);
@@ -321,7 +380,7 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchSales],
+    [fetchReviewInbox, fetchSales],
   );
 
   const handleMarkSalePaid = useCallback(
@@ -334,6 +393,7 @@ const SalesPage: React.FC = () => {
           description: 'Payment status has been updated.',
         });
         await fetchSales();
+        await fetchReviewInbox();
         setSelectedSale(null);
       } catch (error) {
         console.error('Failed to mark sale as paid:', error);
@@ -344,7 +404,7 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchSales],
+    [fetchReviewInbox, fetchSales],
   );
 
   const handleDeleteSale = useCallback(
@@ -357,6 +417,7 @@ const SalesPage: React.FC = () => {
           description: 'The sale has been removed.',
         });
         await fetchSales();
+        await fetchReviewInbox();
         setSelectedSale(null);
       } catch (error) {
         console.error('Failed to delete sale:', error);
@@ -367,8 +428,98 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchSales],
+    [fetchReviewInbox, fetchSales],
   );
+
+  const handleRejectSale = useCallback(
+    async (saleId: string) => {
+      try {
+        await salesApi.reject(saleId);
+        trackAppEvent('sales_review_rejected', { saleId });
+        notify.success({
+          key: `sale-reject-${saleId}`,
+          title: 'Sale rejected',
+          description: 'The AI-detected sale has been removed from review queue.',
+        });
+        await fetchSales();
+        await fetchReviewInbox();
+        if (selectedSale?.id === saleId) {
+          setSelectedSale(null);
+        }
+      } catch (error) {
+        console.error('Failed to reject sale:', error);
+        notify.error({
+          key: `sale-reject-error-${saleId}`,
+          title: 'Rejection failed',
+          description: 'Unable to reject sale. Please try again.',
+        });
+      }
+    },
+    [fetchReviewInbox, fetchSales, selectedSale?.id],
+  );
+
+  const handleQuickCaptureSale = useCallback(async () => {
+    const normalizedLeadId = quickCaptureLeadId.trim();
+    const normalizedAmount = Number(quickCaptureAmount);
+
+    if (!normalizedLeadId || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      notify.error({
+        key: 'sale-quick-capture-invalid',
+        title: 'Missing details',
+        description: 'Lead ID and a valid amount are required.',
+      });
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        trackMobileBlocked('quick_capture', 'missing_fields');
+      }
+      return;
+    }
+
+    try {
+      setIsQuickCapturing(true);
+      await salesApi.quickCapture({
+        leadId: normalizedLeadId,
+        amount: normalizedAmount,
+        currency: quickCaptureCurrency.trim() || 'NGN',
+        note: quickCaptureNote.trim() || undefined,
+        status: 'PAID',
+      });
+
+      trackAppEvent('sales_quick_capture_created', {
+        leadId: normalizedLeadId,
+        amount: normalizedAmount,
+        currency: quickCaptureCurrency.trim() || 'NGN',
+      });
+
+      notify.success({
+        key: 'sale-quick-capture-created',
+        title: 'Sale recorded',
+        description: 'Quick payment capture saved successfully.',
+      });
+
+      setIsQuickCaptureOpen(false);
+      setQuickCaptureLeadId('');
+      setQuickCaptureAmount('');
+      setQuickCaptureNote('');
+      await fetchSales();
+      await fetchReviewInbox();
+    } catch (error) {
+      console.error('Failed to quick-capture sale:', error);
+      notify.error({
+        key: 'sale-quick-capture-error',
+        title: 'Capture failed',
+        description: 'Unable to record quick sale right now.',
+      });
+    } finally {
+      setIsQuickCapturing(false);
+    }
+  }, [
+    fetchReviewInbox,
+    fetchSales,
+    quickCaptureAmount,
+    quickCaptureCurrency,
+    quickCaptureLeadId,
+    quickCaptureNote,
+  ]);
 
   const resolveAssignedUser = useCallback(
     (userId?: string | null): PipelineAssignedUser | undefined => {
@@ -422,11 +573,10 @@ const SalesPage: React.FC = () => {
   }, [groupedLeads, statusFilter, channelFilter, searchQuery]);
 
   const stats = useMemo(() => {
-    const totalSales = groupedLeads.SALES.length;
     const inquiries = groupedLeads.INQUIRIES.length;
     const pending = groupedLeads.PENDING.length;
     const closed = groupedLeads.CLOSED.length;
-    const pendingReview = sales.filter(isPendingReviewSale).length;
+    const pendingReview = reviewSummary.pendingCount;
     return [
       {
         label: 'Total sales',
@@ -461,7 +611,7 @@ const SalesPage: React.FC = () => {
         icon: User,
       },
     ];
-  }, [groupedLeads, sales, isPendingReviewSale]);
+  }, [groupedLeads, reviewSummary.pendingCount, sales]);
 
   const renderTableBody = () => {
     if (isLoading) {
@@ -566,10 +716,22 @@ const SalesPage: React.FC = () => {
             Sort WhatsApp and Telegram chats into sales made, inquiries, and deals that still need your attention.
           </p>
         </div>
-        <Button variant='outline' onClick={fetchLeads} disabled={isLoading && leads.length === 0}>
-          <Filter className='h-4 w-4 mr-2' />
-          Refresh data
-        </Button>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button variant='secondary' onClick={() => setIsQuickCaptureOpen(true)}>
+            <Zap className='h-4 w-4 mr-2' />
+            Quick capture
+          </Button>
+          <Button
+            variant='outline'
+            onClick={async () => {
+              await Promise.all([fetchLeads(), fetchSales(), fetchReviewInbox()]);
+            }}
+            disabled={isLoading && leads.length === 0}
+          >
+            <Filter className='h-4 w-4 mr-2' />
+            Refresh data
+          </Button>
+        </div>
       </div>
 
       <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
@@ -594,15 +756,36 @@ const SalesPage: React.FC = () => {
         })}
       </div>
 
-      {/* Pending Review Section */}
-      {sales.filter(isPendingReviewSale).length > 0 && (
+      {/* AI Review Inbox */}
+      {(reviewInboxSales.length > 0 || isSalesLoading) && (
         <Card className='border-primary/20 bg-primary/5'>
           <CardHeader>
-            <div className='flex items-center gap-2'>
-              <Sparkles className='h-5 w-5 text-primary' />
-              <div>
-                <CardTitle>Pending Review - AI-Detected Sales</CardTitle>
-                <CardDescription>Review, approve, edit, or delete sales automatically detected from customer conversations</CardDescription>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='flex items-center gap-2'>
+                <Sparkles className='h-5 w-5 text-primary' />
+                <div>
+                  <CardTitle>AI Decisions Inbox</CardTitle>
+                  <CardDescription>Review, approve, or reject AI-detected sales before they affect reporting.</CardDescription>
+                </div>
+              </div>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Badge variant='secondary' className='gap-1'>
+                  <ShieldCheck className='h-3.5 w-3.5' />
+                  {reviewSummary.pendingCount} pending
+                </Badge>
+                <Badge
+                  variant='outline'
+                  className={cn(
+                    reviewSummary.highRiskCount > 0
+                      ? 'border-amber-200 bg-amber-50 text-amber-700'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  )}
+                >
+                  {reviewSummary.highRiskCount} high-risk
+                </Badge>
+                <Badge variant='outline'>
+                  Avg confidence {(reviewSummary.averageConfidence * 100).toFixed(0)}%
+                </Badge>
               </div>
             </div>
           </CardHeader>
@@ -621,72 +804,119 @@ const SalesPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              sales
-                .filter(isPendingReviewSale)
-                .map((sale) => {
-                  const leadContact = sale.lead?.contact;
-                  const displayName = leadContact?.displayName || leadContact?.phone || 'Unknown';
-                  const confidence = sale.detectionConfidence ? Math.round(sale.detectionConfidence * 100) : 0;
+              reviewInboxSales.map((sale) => {
+                const leadContact = sale.lead?.contact;
+                const displayName =
+                  leadContact?.displayName || leadContact?.phone || 'Unknown';
+                const confidence = sale.detectionConfidence
+                  ? Math.round(sale.detectionConfidence * 100)
+                  : 0;
+                const risk = getConfidenceRisk(sale.detectionConfidence);
+                const reasoning = sale.detectionReasoning?.trim();
 
-                  return (
-                    <div
-                      key={sale.id}
-                      className='flex items-center justify-between gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors'
-                    >
-                      <div className='flex items-center gap-3 flex-1 min-w-0'>
-                        <Avatar className='h-10 w-10 shrink-0'>
-                          <AvatarFallback className='bg-primary/10 text-primary'>
-                            {displayName
-                              .split(' ')
-                              .map((n) => n[0])
-                              .slice(0, 2)
-                              .join('')
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className='flex-1 min-w-0'>
-                          <div className='flex items-center gap-2 flex-wrap'>
-                            <p className='font-medium truncate'>{displayName}</p>
-                            <Badge variant='outline' className='text-xs shrink-0'>
-                              {confidence}% confidence
-                            </Badge>
-                          </div>
-                          <div className='flex items-center gap-2 text-sm text-muted-foreground mt-1'>
-                            <span className='font-semibold'>
-                              {sale.currency} {sale.amount.toLocaleString()}
-                            </span>
-                            <span>•</span>
-                            <span className='truncate'>
-                              {sale.items.length} item{sale.items.length !== 1 ? 's' : ''}
-                            </span>
-                            {sale.detectionMetadata?.deliveryAddress && (
-                              <>
-                                <span>•</span>
-                                <span className='truncate text-xs'>{sale.detectionMetadata.deliveryAddress}</span>
-                              </>
-                            )}
-                          </div>
+                return (
+                  <div
+                    key={sale.id}
+                    className='flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50 lg:flex-row lg:items-center lg:justify-between'
+                  >
+                    <div className='flex items-start gap-3 min-w-0'>
+                      <Avatar className='h-10 w-10 shrink-0'>
+                        <AvatarFallback className='bg-primary/10 text-primary'>
+                          {displayName
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className='min-w-0 space-y-1'>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <p className='font-medium truncate'>{displayName}</p>
+                          <Badge variant='outline' className='text-xs'>
+                            {confidence}% confidence
+                          </Badge>
+                          <Badge
+                            variant='outline'
+                            className={cn('text-xs', getRiskBadgeClass(risk))}
+                          >
+                            {risk} risk
+                          </Badge>
                         </div>
-                      </div>
-                      <div className='flex items-center gap-2 shrink-0'>
-                        <Button size='sm' variant='outline' onClick={() => setSelectedSale(sale)}>
-                          View Details
-                        </Button>
-                        {sale.status !== 'PAID' && (
-                          <Button size='sm' variant='outline' onClick={() => handleMarkSalePaid(sale.id)}>
-                            Mark Paid
-                          </Button>
+                        <div className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
+                          <span className='font-semibold'>
+                            {sale.currency} {sale.amount.toLocaleString()}
+                          </span>
+                          <span>•</span>
+                          <span>
+                            {sale.items.length} item
+                            {sale.items.length !== 1 ? 's' : ''}
+                          </span>
+                          {sale.detectionMetadata?.deliveryAddress && (
+                            <>
+                              <span>•</span>
+                              <span className='truncate text-xs'>
+                                {sale.detectionMetadata.deliveryAddress}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {reasoning && (
+                          <p className='line-clamp-2 text-xs text-muted-foreground'>
+                            AI reason: {reasoning}
+                          </p>
                         )}
-                        <Button size='sm' onClick={() => handleApproveSale(sale.id)} className='bg-primary hover:bg-primary/90'>
-                          Approve
-                        </Button>
                       </div>
                     </div>
-                  );
-                })
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => setSelectedSale(sale)}
+                      >
+                        View Details
+                      </Button>
+                      {sale.status !== 'PAID' && (
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          onClick={() => handleMarkSalePaid(sale.id)}
+                        >
+                          Mark Paid
+                        </Button>
+                      )}
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => handleRejectSale(sale.id)}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        size='sm'
+                        onClick={() => handleApproveSale(sale.id)}
+                        className='bg-primary hover:bg-primary/90'
+                      >
+                        Approve
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </CardContent>
         </Card>
+      )}
+
+      {reviewSummary.highRiskCount > 0 && (
+        <div className='flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800'>
+          <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0' />
+          <p>
+            {reviewSummary.highRiskCount} AI-detected sale
+            {reviewSummary.highRiskCount === 1 ? '' : 's'} have low confidence.
+            Prioritize manual review before approving.
+          </p>
+        </div>
       )}
 
       <Card>
@@ -734,21 +964,91 @@ const SalesPage: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className='p-0'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead className='hidden md:table-cell'>Stage</TableHead>
-                <TableHead className='hidden lg:table-cell'>Channel</TableHead>
-                <TableHead className='hidden md:table-cell'>Value</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead>Owner</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>{renderTableBody()}</TableBody>
-          </Table>
+          <div className='overflow-x-auto'>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead className='hidden md:table-cell'>Stage</TableHead>
+                  <TableHead className='hidden lg:table-cell'>Channel</TableHead>
+                  <TableHead className='hidden md:table-cell'>Value</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead>Owner</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>{renderTableBody()}</TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isQuickCaptureOpen} onOpenChange={setIsQuickCaptureOpen}>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader>
+            <DialogTitle>Quick capture sale</DialogTitle>
+            <DialogDescription>
+              Record a payment fast when a customer pays via chat and no invoice
+              was created.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Lead ID</label>
+              <Input
+                value={quickCaptureLeadId}
+                onChange={(event) => setQuickCaptureLeadId(event.target.value)}
+                placeholder='Paste lead ID'
+              />
+            </div>
+            <div className='grid grid-cols-2 gap-3'>
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Amount</label>
+                <Input
+                  type='number'
+                  min='0'
+                  step='0.01'
+                  value={quickCaptureAmount}
+                  onChange={(event) => setQuickCaptureAmount(event.target.value)}
+                  placeholder='0.00'
+                />
+              </div>
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Currency</label>
+                <Input
+                  value={quickCaptureCurrency}
+                  onChange={(event) =>
+                    setQuickCaptureCurrency(event.target.value.toUpperCase())
+                  }
+                  placeholder='NGN'
+                />
+              </div>
+            </div>
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Note (optional)</label>
+              <Textarea
+                value={quickCaptureNote}
+                onChange={(event) => setQuickCaptureNote(event.target.value)}
+                placeholder='Example: Paid via bank transfer'
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setIsQuickCaptureOpen(false)}
+              disabled={isQuickCapturing}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleQuickCaptureSale} disabled={isQuickCapturing}>
+              {isQuickCapturing ? 'Saving...' : 'Save as paid'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Sales Detail Modal */}
       <SalesDetailModal
@@ -756,6 +1056,7 @@ const SalesPage: React.FC = () => {
         isOpen={selectedSale !== null}
         onClose={() => setSelectedSale(null)}
         onApprove={handleApproveSale}
+        onReject={handleRejectSale}
         onUpdate={handleUpdateSale}
         onDelete={handleDeleteSale}
       />
