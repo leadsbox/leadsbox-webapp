@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 
-import client, { getOrgId } from '@/api/client';
+import client, { getOrgId, setOrgId } from '@/api/client';
 import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
 import { notify } from '@/lib/toast';
@@ -638,6 +638,17 @@ const InboxPage: React.FC = () => {
     };
   }, [composer, selectedThread?.id, isConnected, startTyping, stopTyping]);
 
+  const resolveOrgContext = () => {
+    const storedOrgId = getOrgId();
+    if (storedOrgId) return storedOrgId;
+
+    const fallbackOrgId = user?.currentOrgId || user?.orgId || '';
+    if (fallbackOrgId) {
+      setOrgId(fallbackOrgId);
+    }
+    return fallbackOrgId;
+  };
+
   // REST API message sending (reliable fallback from Socket.IO issues)
   const handleSendMessage = async () => {
     if (!selectedThread || !composer.trim()) {
@@ -655,23 +666,29 @@ const InboxPage: React.FC = () => {
 
     try {
       // Use REST API for reliable message sending
-      const token = localStorage.getItem('lb_access_token');
-      const orgId = localStorage.getItem('lb_org_id');
-
-      if (!token || !orgId) {
-        notify.error({
-          key: 'inbox:send:auth',
-          title: 'Sign in required',
-          description: 'Please sign in again to continue this conversation.',
+      const orgId = resolveOrgContext();
+      if (!orgId) {
+        notify.warning({
+          key: 'inbox:send:org-missing',
+          title: 'Organization required',
+          description: 'Select your organization, then try sending again.',
         });
         setComposer(messageText);
         return;
       }
 
       // Use the client instance instead of fetch to get proper base URL and error handling
-      const response = await client.post(endpoints.threadReply(selectedThread.id), {
-        text: messageText,
-      });
+      const response = await client.post(
+        endpoints.threadReply(selectedThread.id),
+        {
+          text: messageText,
+        },
+        {
+          headers: {
+            'x-org-id': orgId,
+          },
+        },
+      );
 
       // Check the response structure: { message: "Reply sent", data: { ok: true, externalMsgId: "..." } }
       if (response.data && response.data.data && response.data.data.ok) {
@@ -693,10 +710,15 @@ const InboxPage: React.FC = () => {
 
       // Check if it's an axios error with response
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string } } };
+        const axiosError = error as AxiosError<{ message?: string }>;
+        const status = axiosError.response?.status;
         const errorMessage = axiosError.response?.data?.message;
 
-        if (errorMessage && errorMessage.includes('Recipient phone number not in allowed list')) {
+        if (status === 401) {
+          userFriendlyMessage = 'Your session expired. Please sign in again.';
+        } else if (status === 403) {
+          userFriendlyMessage = 'You no longer have access to this organization. Switch org and try again.';
+        } else if (errorMessage && errorMessage.includes('Recipient phone number not in allowed list')) {
           userFriendlyMessage =
             'This phone number is not in your WhatsApp Business allowed list. Please add it to your recipient list in Facebook Business Manager.';
         } else if (errorMessage && errorMessage.includes('WhatsApp')) {
@@ -1432,11 +1454,11 @@ const InboxPage: React.FC = () => {
             </div>
 
             {/* Composer for initial message */}
-            <div className='p-3 sm:p-4 border-t border-border bg-card/50'>
+            <div className='p-3 sm:p-4 border-t border-border bg-card'>
               <div className='flex items-center space-x-2'>
                 <Input
                   placeholder='Type your message...'
-                  className='flex-1'
+                  className='flex-1 h-11 rounded-xl border-border bg-background'
                   value={newText}
                   onChange={(e) => setNewText(e.target.value)}
                   onKeyDown={(e) => {
@@ -1480,6 +1502,7 @@ const InboxPage: React.FC = () => {
                   }}
                 />
                 <Button
+                  className='h-11 rounded-xl px-4'
                   disabled={sendingNew || !newPhone.trim() || !newText.trim()}
                   onClick={async () => {
                     try {
@@ -1761,7 +1784,7 @@ const InboxPage: React.FC = () => {
             </div>
 
             {/* Message Input */}
-            <div className='p-3 sm:p-4 border-t border-border bg-card/50'>
+            <div className='p-3 sm:p-4 border-t border-border bg-card'>
               {/* Typing indicators */}
               {typingUsers.size > 0 && (
                 <div className='mb-2 text-xs text-muted-foreground flex items-center gap-1'>
@@ -1799,7 +1822,7 @@ const InboxPage: React.FC = () => {
               <div className='flex items-center space-x-2'>
                 <Input
                   placeholder='Type your message...'
-                  className='flex-1'
+                  className='flex-1 h-11 rounded-xl border-border bg-background shadow-sm'
                   value={composer}
                   onChange={(e) => setComposer(e.target.value)}
                   onKeyDown={(e) => {
@@ -1812,7 +1835,7 @@ const InboxPage: React.FC = () => {
                 <Button
                   disabled={!selectedThread || !composer.trim()}
                   onClick={handleSendMessage}
-                  className={isConnected ? 'bg-green-600 hover:bg-green-700' : ''}
+                  className={`h-11 rounded-xl px-4 ${isConnected ? 'bg-green-600 hover:bg-green-700' : ''}`}
                 >
                   {isConnected ? '⚡ Send' : 'Send'}
                 </Button>

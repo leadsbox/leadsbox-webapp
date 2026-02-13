@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leadsbox-v1';
+const CACHE_NAME = 'leadsbox-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.ico'];
 
 self.addEventListener('install', (event) => {
@@ -25,11 +25,42 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
 
+  // Never cache API requests; always hit network.
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // For navigations, prefer fresh HTML and update cache.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy)));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // For static assets, serve cached first and revalidate in background.
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).catch(() => caches.match('/index.html'));
+      const networkFetch = fetch(event.request)
+        .then((response) => {
+          if (!response || response.status !== 200 || response.type === 'opaque') {
+            return response;
+          }
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)));
+          return response;
+        })
+        .catch(() => cached);
+
+      return cached || networkFetch;
     })
   );
 });
@@ -74,4 +105,3 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
-

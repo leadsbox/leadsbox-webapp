@@ -55,12 +55,36 @@ const applyInitialThemePreference = () => {
 applyInitialThemePreference();
 initAnalytics();
 
+const isLocalhost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === '[::1]');
+
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.warn('Service worker registration failed', error);
+  if (import.meta.env.DEV || isLocalhost) {
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch((error) => {
+        console.warn('Service worker cleanup failed in local/dev mode', error);
+      });
+
+    if ('caches' in window) {
+      void caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .catch((error) => {
+          console.warn('Cache cleanup failed in local/dev mode', error);
+        });
+    }
+  } else {
+    window.addEventListener('load', () => {
+      void navigator.serviceWorker.register('/sw.js').catch((error) => {
+        console.warn('Service worker registration failed', error);
+      });
     });
-  });
+  }
 }
 
 createRoot(document.getElementById('root')!).render(
