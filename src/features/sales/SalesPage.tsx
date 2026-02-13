@@ -16,7 +16,7 @@ import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useNavigate } from 'react-router-dom';
-import { salesApi, Sale, SaleItem } from '@/api/sales';
+import { salesApi, Sale, UpdateSaleInput } from '@/api/sales';
 import SalesDetailModal from './SalesDetailModal';
 
 interface BackendLead {
@@ -157,6 +157,14 @@ const SalesPage: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isSalesLoading, setIsSalesLoading] = useState(false);
 
+  const isPendingReviewSale = useCallback(
+    (sale: Sale) =>
+      sale.reviewStatus
+        ? sale.reviewStatus === 'PENDING_REVIEW'
+        : sale.status === 'PENDING',
+    [],
+  );
+
   const fetchLeads = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -294,7 +302,7 @@ const SalesPage: React.FC = () => {
   );
 
   const handleUpdateSale = useCallback(
-    async (saleId: string, data: { amount?: number; items?: SaleItem[]; paidAt?: Date; notes?: string }) => {
+    async (saleId: string, data: UpdateSaleInput) => {
       try {
         await salesApi.update(saleId, data);
         notify.success({
@@ -310,6 +318,29 @@ const SalesPage: React.FC = () => {
           key: `sale-update-error-${saleId}`,
           title: 'Update failed',
           description: 'Unable to update sale. Please try again.',
+        });
+      }
+    },
+    [fetchSales],
+  );
+
+  const handleMarkSalePaid = useCallback(
+    async (saleId: string) => {
+      try {
+        await salesApi.update(saleId, { status: 'PAID' });
+        notify.success({
+          key: `sale-mark-paid-${saleId}`,
+          title: 'Sale marked as paid',
+          description: 'Payment status has been updated.',
+        });
+        await fetchSales();
+        setSelectedSale(null);
+      } catch (error) {
+        console.error('Failed to mark sale as paid:', error);
+        notify.error({
+          key: `sale-mark-paid-error-${saleId}`,
+          title: 'Update failed',
+          description: 'Unable to mark this sale as paid.',
         });
       }
     },
@@ -395,7 +426,7 @@ const SalesPage: React.FC = () => {
     const inquiries = groupedLeads.INQUIRIES.length;
     const pending = groupedLeads.PENDING.length;
     const closed = groupedLeads.CLOSED.length;
-    const pendingReview = sales.filter((s) => s.status === 'PENDING').length;
+    const pendingReview = sales.filter(isPendingReviewSale).length;
     return [
       {
         label: 'Total sales',
@@ -430,7 +461,7 @@ const SalesPage: React.FC = () => {
         icon: User,
       },
     ];
-  }, [groupedLeads, sales]);
+  }, [groupedLeads, sales, isPendingReviewSale]);
 
   const renderTableBody = () => {
     if (isLoading) {
@@ -564,7 +595,7 @@ const SalesPage: React.FC = () => {
       </div>
 
       {/* Pending Review Section */}
-      {sales.filter((s) => s.status === 'PENDING').length > 0 && (
+      {sales.filter(isPendingReviewSale).length > 0 && (
         <Card className='border-primary/20 bg-primary/5'>
           <CardHeader>
             <div className='flex items-center gap-2'>
@@ -591,7 +622,7 @@ const SalesPage: React.FC = () => {
               </div>
             ) : (
               sales
-                .filter((sale) => sale.status === 'PENDING')
+                .filter(isPendingReviewSale)
                 .map((sale) => {
                   const leadContact = sale.lead?.contact;
                   const displayName = leadContact?.displayName || leadContact?.phone || 'Unknown';
@@ -641,6 +672,11 @@ const SalesPage: React.FC = () => {
                         <Button size='sm' variant='outline' onClick={() => setSelectedSale(sale)}>
                           View Details
                         </Button>
+                        {sale.status !== 'PAID' && (
+                          <Button size='sm' variant='outline' onClick={() => handleMarkSalePaid(sale.id)}>
+                            Mark Paid
+                          </Button>
+                        )}
                         <Button size='sm' onClick={() => handleApproveSale(sale.id)} className='bg-primary hover:bg-primary/90'>
                           Approve
                         </Button>

@@ -18,6 +18,9 @@ export interface Sale {
   isAutoDetected: boolean;
   isManual?: boolean;
   isImported?: boolean;
+  reviewStatus?: 'NOT_REQUIRED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  reviewedBy?: string;
+  reviewedAt?: string;
   detectionConfidence?: number;
   detectionReasoning?: string;
   detectionMetadata?: {

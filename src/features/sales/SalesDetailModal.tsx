@@ -25,6 +25,7 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
   const [isApproving, setIsApproving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
   React.useEffect(() => {
     if (sale) {
@@ -130,6 +131,35 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (sale.status === 'PAID') return;
+    try {
+      setIsMarkingPaid(true);
+      if (onUpdate) {
+        await onUpdate(sale.id, { status: 'PAID' });
+      } else {
+        await salesApi.update(sale.id, { status: 'PAID' });
+        notify.success({
+          key: `sale-mark-paid-${sale.id}`,
+          title: 'Sale marked as paid',
+          description: 'Payment status has been updated.',
+        });
+      }
+      onClose();
+    } catch (error) {
+      console.error('Failed to mark sale as paid:', error);
+      if (!onUpdate) {
+        notify.error({
+          key: `sale-mark-paid-error-${sale.id}`,
+          title: 'Update Failed',
+          description: 'Unable to mark this sale as paid.',
+        });
+      }
+    } finally {
+      setIsMarkingPaid(false);
     }
   };
 
@@ -291,6 +321,11 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
               <Button variant='outline' onClick={onClose}>
                 Close
               </Button>
+              {sale.status !== 'PAID' && (
+                <Button variant='secondary' onClick={handleMarkAsPaid} disabled={isMarkingPaid}>
+                  {isMarkingPaid ? 'Marking...' : 'Mark as Paid'}
+                </Button>
+              )}
               {sale.isAutoDetected && !sale.approvedAt ? (
                 <>
                   <Button variant='outline' onClick={() => setIsEditing(true)}>
