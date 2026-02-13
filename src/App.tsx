@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import SubscriptionGuard from './components/SubscriptionGuard';
@@ -57,6 +57,37 @@ const RouteLoader = () => <div className='flex min-h-screen items-center justify
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 
+const DashboardIndexGate = () => {
+  const [targetPath, setTargetPath] = useState<'home' | 'setup' | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const resolveEntryRoute = async () => {
+      try {
+        const setupProgress = await import('./features/setup/setupProgress');
+        const metrics = await setupProgress.fetchSetupMetrics();
+        if (!isActive) return;
+        setTargetPath(setupProgress.hasReachedFirstValue(metrics) ? 'home' : 'setup');
+      } catch (error) {
+        if (!isActive) return;
+        setTargetPath('setup');
+      }
+    };
+
+    void resolveEntryRoute();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  if (!targetPath) {
+    return <RouteLoader />;
+  }
+
+  return <Navigate to={targetPath} replace />;
+};
+
 const App = () => {
   return (
     <ErrorBoundary>
@@ -103,7 +134,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to='home' replace />} />
+                <Route index element={<DashboardIndexGate />} />
 
                 {/* Billing is ALWAYS accessible for authenticated users */}
                 <Route path='billing' element={<PaymentPlansPage />} />

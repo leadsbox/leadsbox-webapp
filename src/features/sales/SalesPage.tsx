@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ import { endpoints } from '@/api/config';
 import { Lead, LeadLabel, leadLabelUtils } from '@/types';
 import { notify } from '@/lib/toast';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { salesApi, Sale, UpdateSaleInput } from '@/api/sales';
 import SalesDetailModal from './SalesDetailModal';
 import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
@@ -63,6 +63,7 @@ interface PipelineAssignedUser {
 }
 
 type SalesBucketKey = 'SALES' | 'INQUIRIES' | 'PENDING' | 'CLOSED';
+type QuickCaptureStatus = 'PENDING' | 'PAID';
 
 const PIPELINE_LABELS: LeadLabel[] = [
   'NEW_LEAD',
@@ -159,6 +160,12 @@ const getRiskBadgeClass = (risk: 'HIGH' | 'MEDIUM' | 'LOW'): string => {
   return 'border-emerald-200 bg-emerald-50 text-emerald-700';
 };
 
+const formatQuickCaptureLeadLabel = (lead: Lead): string => {
+  const primary = lead.name || 'Lead';
+  const secondary = lead.email || lead.providerId || lead.conversationId || lead.id.slice(0, 8);
+  return `${primary} (${secondary})`;
+};
+
 const SalesPage: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +174,8 @@ const SalesPage: React.FC = () => {
   const [channelFilter, setChannelFilter] = useState<'ALL' | Lead['source']>('ALL');
   const { getMemberByUserId } = useOrgMembers();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const quickCapturePrefillAppliedRef = useRef(false);
 
   // Sales-specific state
   const [sales, setSales] = useState<Sale[]>([]);
@@ -184,8 +193,10 @@ const SalesPage: React.FC = () => {
   const [isSalesLoading, setIsSalesLoading] = useState(false);
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [quickCaptureLeadId, setQuickCaptureLeadId] = useState('');
+  const [quickCaptureLeadSearch, setQuickCaptureLeadSearch] = useState('');
   const [quickCaptureAmount, setQuickCaptureAmount] = useState('');
   const [quickCaptureCurrency, setQuickCaptureCurrency] = useState('NGN');
+  const [quickCaptureStatus, setQuickCaptureStatus] = useState<QuickCaptureStatus>('PAID');
   const [quickCaptureNote, setQuickCaptureNote] = useState('');
   const [isQuickCapturing, setIsQuickCapturing] = useState(false);
 
@@ -294,6 +305,84 @@ const SalesPage: React.FC = () => {
     fetchSales();
     fetchReviewInbox();
   }, [fetchLeads, fetchSales, fetchReviewInbox]);
+
+  const clearQuickCaptureQueryParams = useCallback(() => {
+    const trackedKeys = ['quickCapture', 'leadId', 'status', 'amount', 'currency', 'note', 'customer'];
+    const nextParams = new URLSearchParams(searchParams);
+    let changed = false;
+
+    trackedKeys.forEach((key) => {
+      if (nextParams.has(key)) {
+        nextParams.delete(key);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const resetQuickCaptureForm = useCallback(() => {
+    setQuickCaptureLeadId('');
+    setQuickCaptureLeadSearch('');
+    setQuickCaptureAmount('');
+    setQuickCaptureCurrency('NGN');
+    setQuickCaptureStatus('PAID');
+    setQuickCaptureNote('');
+  }, []);
+
+  const handleQuickCaptureDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setIsQuickCaptureOpen(open);
+      if (!open) {
+        resetQuickCaptureForm();
+        clearQuickCaptureQueryParams();
+      }
+    },
+    [clearQuickCaptureQueryParams, resetQuickCaptureForm],
+  );
+
+  useEffect(() => {
+    const shouldOpenQuickCapture = searchParams.get('quickCapture') === '1';
+    if (!shouldOpenQuickCapture) {
+      quickCapturePrefillAppliedRef.current = false;
+      return;
+    }
+
+    if (quickCapturePrefillAppliedRef.current) {
+      return;
+    }
+
+    const leadId = searchParams.get('leadId');
+    const amount = searchParams.get('amount');
+    const currency = searchParams.get('currency');
+    const note = searchParams.get('note');
+    const customer = searchParams.get('customer');
+    const status = searchParams.get('status');
+
+    if (leadId) {
+      setQuickCaptureLeadId(leadId);
+    }
+    if (amount) {
+      setQuickCaptureAmount(amount);
+    }
+    if (currency) {
+      setQuickCaptureCurrency(currency.toUpperCase());
+    }
+    if (note) {
+      setQuickCaptureNote(note);
+    }
+    if (customer) {
+      setQuickCaptureLeadSearch(customer);
+    }
+    if (status === 'PENDING' || status === 'PAID') {
+      setQuickCaptureStatus(status);
+    }
+
+    setIsQuickCaptureOpen(true);
+    quickCapturePrefillAppliedRef.current = true;
+  }, [searchParams]);
 
   const handleUpdateStatus = useCallback(
     async (leadId: string, newLabel: LeadLabel) => {
@@ -461,12 +550,13 @@ const SalesPage: React.FC = () => {
   const handleQuickCaptureSale = useCallback(async () => {
     const normalizedLeadId = quickCaptureLeadId.trim();
     const normalizedAmount = Number(quickCaptureAmount);
+    const normalizedCurrency = quickCaptureCurrency.trim() || 'NGN';
 
     if (!normalizedLeadId || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
       notify.error({
         key: 'sale-quick-capture-invalid',
         title: 'Missing details',
-        description: 'Lead ID and a valid amount are required.',
+        description: 'Select a customer and enter a valid amount.',
       });
       if (window.matchMedia('(max-width: 768px)').matches) {
         trackMobileBlocked('quick_capture', 'missing_fields');
@@ -479,27 +569,27 @@ const SalesPage: React.FC = () => {
       await salesApi.quickCapture({
         leadId: normalizedLeadId,
         amount: normalizedAmount,
-        currency: quickCaptureCurrency.trim() || 'NGN',
+        currency: normalizedCurrency,
         note: quickCaptureNote.trim() || undefined,
-        status: 'PAID',
+        status: quickCaptureStatus,
       });
 
       trackAppEvent('sales_quick_capture_created', {
         leadId: normalizedLeadId,
         amount: normalizedAmount,
-        currency: quickCaptureCurrency.trim() || 'NGN',
+        currency: normalizedCurrency,
+        status: quickCaptureStatus,
       });
 
       notify.success({
         key: 'sale-quick-capture-created',
         title: 'Sale recorded',
-        description: 'Quick payment capture saved successfully.',
+        description: quickCaptureStatus === 'PAID' ? 'Payment captured as paid.' : 'Sale recorded and pending payment.',
       });
 
       setIsQuickCaptureOpen(false);
-      setQuickCaptureLeadId('');
-      setQuickCaptureAmount('');
-      setQuickCaptureNote('');
+      resetQuickCaptureForm();
+      clearQuickCaptureQueryParams();
       await fetchSales();
       await fetchReviewInbox();
     } catch (error) {
@@ -519,6 +609,9 @@ const SalesPage: React.FC = () => {
     quickCaptureCurrency,
     quickCaptureLeadId,
     quickCaptureNote,
+    quickCaptureStatus,
+    clearQuickCaptureQueryParams,
+    resetQuickCaptureForm,
   ]);
 
   const resolveAssignedUser = useCallback(
@@ -554,6 +647,42 @@ const SalesPage: React.FC = () => {
     });
     return initial;
   }, [leads]);
+
+  const quickCaptureLeadOptions = useMemo(
+    () =>
+      [...leads].sort(
+        (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime(),
+      ),
+    [leads],
+  );
+
+  const filteredQuickCaptureLeads = useMemo(() => {
+    const search = quickCaptureLeadSearch.trim().toLowerCase();
+    if (!search) {
+      return quickCaptureLeadOptions.slice(0, 8);
+    }
+    return quickCaptureLeadOptions
+      .filter((lead) => {
+        const values = [lead.name, lead.email, lead.phone, lead.providerId, lead.conversationId, lead.id];
+        return values.some((value) => value?.toLowerCase().includes(search));
+      })
+      .slice(0, 8);
+  }, [quickCaptureLeadOptions, quickCaptureLeadSearch]);
+
+  const selectedQuickCaptureLead = useMemo(
+    () => quickCaptureLeadOptions.find((lead) => lead.id === quickCaptureLeadId) || null,
+    [quickCaptureLeadId, quickCaptureLeadOptions],
+  );
+
+  useEffect(() => {
+    if (!quickCaptureLeadId) {
+      return;
+    }
+    const lead = quickCaptureLeadOptions.find((candidate) => candidate.id === quickCaptureLeadId);
+    if (lead) {
+      setQuickCaptureLeadSearch(formatQuickCaptureLeadLabel(lead));
+    }
+  }, [quickCaptureLeadId, quickCaptureLeadOptions]);
 
   const filteredLeads = useMemo(() => {
     const dataset = groupedLeads[statusFilter];
@@ -717,7 +846,7 @@ const SalesPage: React.FC = () => {
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-2'>
-          <Button variant='secondary' onClick={() => setIsQuickCaptureOpen(true)}>
+          <Button onClick={() => setIsQuickCaptureOpen(true)}>
             <Zap className='h-4 w-4 mr-2' />
             Quick capture
           </Button>
@@ -982,7 +1111,7 @@ const SalesPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={isQuickCaptureOpen} onOpenChange={setIsQuickCaptureOpen}>
+      <Dialog open={isQuickCaptureOpen} onOpenChange={handleQuickCaptureDialogOpenChange}>
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
             <DialogTitle>Quick capture sale</DialogTitle>
@@ -994,14 +1123,49 @@ const SalesPage: React.FC = () => {
 
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <label className='text-sm font-medium'>Lead ID</label>
+              <label className='text-sm font-medium'>Customer</label>
               <Input
-                value={quickCaptureLeadId}
-                onChange={(event) => setQuickCaptureLeadId(event.target.value)}
-                placeholder='Paste lead ID'
+                value={quickCaptureLeadSearch}
+                onChange={(event) => {
+                  setQuickCaptureLeadSearch(event.target.value);
+                  setQuickCaptureLeadId('');
+                }}
+                placeholder='Search by name, email, phone, or lead ID'
               />
+              <div className='max-h-44 overflow-auto rounded-md border'>
+                {filteredQuickCaptureLeads.length > 0 ? (
+                  filteredQuickCaptureLeads.map((lead) => (
+                    <button
+                      key={lead.id}
+                      type='button'
+                      onClick={() => {
+                        setQuickCaptureLeadId(lead.id);
+                        setQuickCaptureLeadSearch(formatQuickCaptureLeadLabel(lead));
+                      }}
+                      className={cn(
+                        'w-full px-3 py-2 text-left transition-colors hover:bg-muted/50',
+                        lead.id === quickCaptureLeadId && 'bg-primary/10',
+                      )}
+                    >
+                      <p className='text-sm font-medium'>{lead.name || 'Lead'}</p>
+                      <p className='text-xs text-muted-foreground'>
+                        {lead.email || lead.phone || lead.providerId || lead.conversationId || lead.id}
+                      </p>
+                    </button>
+                  ))
+                ) : (
+                  <p className='px-3 py-2 text-sm text-muted-foreground'>
+                    {quickCaptureLeadOptions.length === 0 ? 'No customers yet. Add a lead first.' : 'No customer matches this search.'}
+                  </p>
+                )}
+              </div>
+              <p className='text-xs text-muted-foreground'>
+                {selectedQuickCaptureLead
+                  ? `Selected: ${selectedQuickCaptureLead.name || 'Lead'} (${selectedQuickCaptureLead.id})`
+                  : 'Select one customer before saving.'}
+              </p>
             </div>
-            <div className='grid grid-cols-2 gap-3'>
+            <div className='grid gap-3 sm:grid-cols-3'>
               <div className='space-y-2'>
                 <label className='text-sm font-medium'>Amount</label>
                 <Input
@@ -1017,11 +1181,21 @@ const SalesPage: React.FC = () => {
                 <label className='text-sm font-medium'>Currency</label>
                 <Input
                   value={quickCaptureCurrency}
-                  onChange={(event) =>
-                    setQuickCaptureCurrency(event.target.value.toUpperCase())
-                  }
+                  onChange={(event) => setQuickCaptureCurrency(event.target.value.toUpperCase())}
                   placeholder='NGN'
                 />
+              </div>
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Status</label>
+                <Select value={quickCaptureStatus} onValueChange={(value) => setQuickCaptureStatus(value as QuickCaptureStatus)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='PENDING'>Pending</SelectItem>
+                    <SelectItem value='PAID'>Paid</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className='space-y-2'>
@@ -1038,13 +1212,13 @@ const SalesPage: React.FC = () => {
           <DialogFooter>
             <Button
               variant='outline'
-              onClick={() => setIsQuickCaptureOpen(false)}
+              onClick={() => handleQuickCaptureDialogOpenChange(false)}
               disabled={isQuickCapturing}
             >
               Cancel
             </Button>
             <Button onClick={handleQuickCaptureSale} disabled={isQuickCapturing}>
-              {isQuickCapturing ? 'Saving...' : 'Save as paid'}
+              {isQuickCapturing ? 'Saving...' : quickCaptureStatus === 'PAID' ? 'Save as paid' : 'Save sale'}
             </Button>
           </DialogFooter>
         </DialogContent>

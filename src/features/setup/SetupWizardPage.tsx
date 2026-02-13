@@ -4,51 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, Circle, MessageSquare, ShoppingBag, Sparkles, Zap } from 'lucide-react';
-import client from '@/api/client';
-import { endpoints } from '@/api/config';
-import { salesApi } from '@/api/sales';
-
-type SetupMetrics = {
-  leadsCount: number;
-  paidSalesCount: number;
-  pendingAiReviews: number;
-  followUpsCount: number;
-};
-
-const defaultMetrics: SetupMetrics = {
-  leadsCount: 0,
-  paidSalesCount: 0,
-  pendingAiReviews: 0,
-  followUpsCount: 0,
-};
+import { CheckCircle2, Circle, Sparkles, Zap } from 'lucide-react';
+import { defaultSetupMetrics, fetchSetupMetrics, type SetupMetrics } from './setupProgress';
 
 const SetupWizardPage = () => {
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState<SetupMetrics>(defaultMetrics);
+  const [metrics, setMetrics] = useState<SetupMetrics>(defaultSetupMetrics);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [leadsRes, paidSalesRes, reviewInboxRes, followUpsRes] = await Promise.all([
-          client.get(endpoints.leads),
-          salesApi.list({ status: 'PAID' }),
-          salesApi.reviewInbox(1),
-          client.get(endpoints.followups),
-        ]);
-
-        const leads = leadsRes?.data?.data?.leads || leadsRes?.data || [];
-        const paidSales = paidSalesRes?.data?.sales || [];
-        const pendingAiReviews = reviewInboxRes?.data?.summary?.pendingCount || 0;
-        const followUps = followUpsRes?.data?.data?.followUps || followUpsRes?.data?.followUps || [];
-
-        setMetrics({
-          leadsCount: Array.isArray(leads) ? leads.length : 0,
-          paidSalesCount: Array.isArray(paidSales) ? paidSales.length : 0,
-          pendingAiReviews,
-          followUpsCount: Array.isArray(followUps) ? followUps.length : 0,
-        });
+        const nextMetrics = await fetchSetupMetrics();
+        setMetrics(nextMetrics);
       } catch (error) {
         console.error('Failed to load setup wizard metrics', error);
       } finally {
@@ -107,6 +75,7 @@ const SetupWizardPage = () => {
 
   const completedSteps = steps.filter((step) => step.completed).length;
   const progress = Math.round((completedSteps / steps.length) * 100);
+  const nextStep = steps.find((step) => !step.completed) || null;
 
   return (
     <div className='space-y-6 p-4 sm:p-6'>
@@ -170,7 +139,11 @@ const SetupWizardPage = () => {
                     <p className='text-sm text-muted-foreground'>{step.description}</p>
                   </div>
                 </div>
-                <Button asChild size='sm' variant={step.completed ? 'secondary' : 'default'}>
+                <Button
+                  asChild
+                  size='sm'
+                  variant={step.completed ? 'secondary' : step.id === nextStep?.id ? 'default' : 'outline'}
+                >
                   <Link to={step.href}>{step.completed ? 'Completed' : step.cta}</Link>
                 </Button>
               </CardContent>
@@ -183,25 +156,13 @@ const SetupWizardPage = () => {
         <CardContent className='flex flex-col gap-2 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex items-center gap-2'>
             <Sparkles className='h-4 w-4 text-primary' />
-            <span>Need the fastest path? Start with Sales quick capture and AI Decisions Inbox.</span>
+            <span>Stay focused: finish the next incomplete setup step before switching screens.</span>
           </div>
           <div className='flex gap-2'>
-            <Button asChild size='sm' variant='outline'>
-              <Link to='/dashboard/inbox'>
-                <MessageSquare className='mr-1 h-4 w-4' />
-                Inbox
-              </Link>
-            </Button>
-            <Button asChild size='sm' variant='outline'>
-              <Link to='/dashboard/sales'>
-                <ShoppingBag className='mr-1 h-4 w-4' />
-                Sales
-              </Link>
-            </Button>
             <Button asChild size='sm'>
-              <Link to='/dashboard/sales'>
+              <Link to={nextStep?.href || '/dashboard/home'}>
                 <Zap className='mr-1 h-4 w-4' />
-                Quick capture
+                {nextStep ? nextStep.cta : 'Open dashboard'}
               </Link>
             </Button>
           </div>

@@ -8,7 +8,7 @@ import { Select } from '../../components/ui/select';
 
 // Remove broken duplicate InboxPage definition and move all template/followup logic into the main component below.
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Phone, Clock, X, ChevronLeft, Save, CalendarPlus, Loader2, ReceiptText } from 'lucide-react';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon } from '@/components/brand-icons';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -35,7 +35,7 @@ import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
-import { trackMobileBlocked } from '@/lib/productTelemetry';
+import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
 import confetti from 'canvas-confetti';
 
 const InboxPage: React.FC = () => {
@@ -67,6 +67,7 @@ const InboxPage: React.FC = () => {
   }>({ displayName: '', email: '', phone: '' });
   const [savingContact, setSavingContact] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+  const [threadActionBusy, setThreadActionBusy] = useState<'follow_up' | null>(null);
 
   // Ref for auto-scrolling to bottom of messages
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -930,6 +931,93 @@ const InboxPage: React.FC = () => {
     setContactForm({ displayName: '', email: '', phone: '' });
   };
 
+  const navigateToSalesQuickCapture = (status: 'PENDING' | 'PAID') => {
+    if (!selectedThread) return;
+    const params = new URLSearchParams({
+      quickCapture: '1',
+      leadId: selectedThread.leadId,
+      status,
+      customer: selectedThread.lead.name || 'Customer',
+    });
+    if (status === 'PAID') {
+      params.set('note', 'Marked paid from inbox');
+    }
+    trackAppEvent('inbox_sales_quick_action', {
+      action: status === 'PAID' ? 'mark_paid' : 'record_sale',
+      threadId: selectedThread.id,
+      leadId: selectedThread.leadId,
+    });
+    navigate(`/dashboard/sales?${params.toString()}`);
+  };
+
+  const handleMarkThreadFollowUp = async () => {
+    if (!selectedThread || threadActionBusy) return;
+    if (!selectedThread.leadId) {
+      notify.error({
+        key: 'inbox:followup:no-lead',
+        title: 'Lead required',
+        description: 'Create a lead from this conversation before setting follow-up.',
+      });
+      return;
+    }
+
+    setThreadActionBusy('follow_up');
+    try {
+      await client.put(endpoints.updateLead(selectedThread.leadId), {
+        label: 'FOLLOW_UP_REQUIRED',
+      });
+
+      setThreads((prev) =>
+        prev.map((thread) =>
+          thread.id === selectedThread.id
+            ? {
+                ...thread,
+                lead: {
+                  ...thread.lead,
+                  stage: 'FOLLOW_UP_REQUIRED',
+                  tags: Array.from(new Set(['FOLLOW_UP_REQUIRED', ...thread.lead.tags.filter(Boolean)])),
+                },
+              }
+            : thread,
+        ),
+      );
+
+      setSelectedThread((prev) => {
+        if (!prev || prev.id !== selectedThread.id) {
+          return prev;
+        }
+        return {
+          ...prev,
+          lead: {
+            ...prev.lead,
+            stage: 'FOLLOW_UP_REQUIRED',
+            tags: Array.from(new Set(['FOLLOW_UP_REQUIRED', ...prev.lead.tags.filter(Boolean)])),
+          },
+        };
+      });
+
+      trackAppEvent('inbox_follow_up_marked', {
+        threadId: selectedThread.id,
+        leadId: selectedThread.leadId,
+      });
+
+      notify.success({
+        key: `inbox:followup:${selectedThread.id}`,
+        title: 'Follow-up queued',
+        description: 'Lead moved to Follow-up Required.',
+      });
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to mark follow-up.';
+      notify.error({
+        key: `inbox:followup:${selectedThread.id}:error`,
+        title: 'Follow-up failed',
+        description: message,
+      });
+    } finally {
+      setThreadActionBusy(null);
+    }
+  };
+
   return (
     <div className='flex h-full bg-background relative'>
       {/* WhatsApp Connection Error */}
@@ -1360,6 +1448,39 @@ const InboxPage: React.FC = () => {
                   )}
                 </div>
               </div>
+              {!editingContact && (
+                <div className='mt-3 flex flex-wrap items-center gap-2'>
+                  <Button
+                    size='sm'
+                    onClick={() => navigateToSalesQuickCapture('PENDING')}
+                    disabled={!selectedThread.leadId}
+                  >
+                    <ReceiptText className='mr-1 h-4 w-4' />
+                    Record sale
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    onClick={() => navigateToSalesQuickCapture('PAID')}
+                    disabled={!selectedThread.leadId}
+                  >
+                    Mark paid
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    onClick={handleMarkThreadFollowUp}
+                    disabled={!selectedThread.leadId || threadActionBusy === 'follow_up'}
+                  >
+                    {threadActionBusy === 'follow_up' ? (
+                      <Loader2 className='mr-1 h-4 w-4 animate-spin' />
+                    ) : (
+                      <CalendarPlus className='mr-1 h-4 w-4' />
+                    )}
+                    Follow-up
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Messages */}
