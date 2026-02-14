@@ -430,6 +430,7 @@ const SalesPage: React.FC = () => {
           title: 'Sale approved',
           description: 'The auto-detected sale has been approved.',
         });
+        await fetchLeads();
         await fetchSales();
         await fetchReviewInbox();
         setSelectedSale(null);
@@ -445,7 +446,7 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchReviewInbox, fetchSales],
+    [fetchLeads, fetchReviewInbox, fetchSales],
   );
 
   const handleUpdateSale = useCallback(
@@ -457,6 +458,7 @@ const SalesPage: React.FC = () => {
           title: 'Sale updated',
           description: 'The sale details have been updated.',
         });
+        await fetchLeads();
         await fetchSales();
         await fetchReviewInbox();
         setSelectedSale(null);
@@ -469,7 +471,7 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchReviewInbox, fetchSales],
+    [fetchLeads, fetchReviewInbox, fetchSales],
   );
 
   const handleMarkSalePaid = useCallback(
@@ -481,6 +483,7 @@ const SalesPage: React.FC = () => {
           title: 'Sale marked as paid',
           description: 'Payment status has been updated.',
         });
+        await fetchLeads();
         await fetchSales();
         await fetchReviewInbox();
         setSelectedSale(null);
@@ -493,7 +496,7 @@ const SalesPage: React.FC = () => {
         });
       }
     },
-    [fetchReviewInbox, fetchSales],
+    [fetchLeads, fetchReviewInbox, fetchSales],
   );
 
   const handleDeleteSale = useCallback(
@@ -590,6 +593,7 @@ const SalesPage: React.FC = () => {
       setIsQuickCaptureOpen(false);
       resetQuickCaptureForm();
       clearQuickCaptureQueryParams();
+      await fetchLeads();
       await fetchSales();
       await fetchReviewInbox();
     } catch (error) {
@@ -604,6 +608,7 @@ const SalesPage: React.FC = () => {
     }
   }, [
     fetchReviewInbox,
+    fetchLeads,
     fetchSales,
     quickCaptureAmount,
     quickCaptureCurrency,
