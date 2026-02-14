@@ -26,6 +26,7 @@ interface BackendLead {
   id: string;
   organizationId: string;
   conversationId?: string;
+  threadId?: string;
   providerId?: string;
   provider?: string;
   label?: string;
@@ -51,6 +52,18 @@ interface BackendLead {
       profileImage?: string | null;
     };
   }>;
+  contact?: {
+    id: string;
+    displayName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  };
+  thread?: {
+    id: string;
+    channel?: {
+      type?: string | null;
+    } | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt?: string;
@@ -131,6 +144,44 @@ const normalizeLabelToStage = (label?: string): LeadLabel => {
   return 'NEW_LEAD';
 };
 
+const normalizeSourceValue = (value?: string | null): Lead['source'] | null => {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  if (!normalized) return null;
+  if (normalized === 'whatsapp' || normalized.includes('whatsapp')) return 'whatsapp';
+  if (normalized === 'telegram' || normalized.includes('telegram')) return 'telegram';
+  if (normalized === 'instagram' || normalized.includes('instagram')) return 'instagram';
+  if (normalized === 'website' || normalized === 'web' || normalized.includes('website')) return 'website';
+  if (normalized === 'manual') return 'manual';
+  return null;
+};
+
+const resolveLeadSource = (provider?: string | null, channelType?: string | null): Lead['source'] => {
+  return normalizeSourceValue(provider) || normalizeSourceValue(channelType) || 'manual';
+};
+
+const formatMoney = (amount: number, currency: string): string => {
+  const normalizedCurrency = String(currency || 'NGN').toUpperCase();
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: normalizedCurrency,
+      maximumFractionDigits: normalizedCurrency === 'NGN' ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${normalizedCurrency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  }
+};
+
+const formatSalesTotalByCurrency = (totals?: Map<string, number>): string => {
+  if (!totals || totals.size === 0) return '—';
+  return Array.from(totals.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([currency, amount]) => formatMoney(amount, currency))
+    .join(' + ');
+};
+
 const channelOptions: Array<{ value: 'ALL' | Lead['source']; label: string }> = [
   { value: 'ALL', label: 'All channels' },
   { value: 'whatsapp', label: 'WhatsApp' },
@@ -208,13 +259,19 @@ const SalesPage: React.FC = () => {
 
       const mapped: Lead[] = list.map((l) => {
         const normalizedLabel = normalizeLabelToStage(l.label);
+        const displayName =
+          l.contact?.displayName ||
+          l.contact?.phone ||
+          l.contact?.email ||
+          (l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead');
+
         return {
           id: l.id,
-          name: l.providerId ? `Lead ${String(l.providerId).slice(0, 6)}` : l.conversationId || 'Lead',
-          email: l.user?.email || '',
-          phone: undefined,
+          name: displayName,
+          email: l.contact?.email || l.user?.email || '',
+          phone: l.contact?.phone || undefined,
           company: undefined,
-          source: (String(l.provider || 'manual').toLowerCase() as Lead['source']) || 'manual',
+          source: resolveLeadSource(l.provider, l.thread?.channel?.type),
           stage: normalizedLabel,
           priority: 'MEDIUM',
           tags: normalizedLabel ? [normalizedLabel] : [],
@@ -224,8 +281,10 @@ const SalesPage: React.FC = () => {
           updatedAt: l.updatedAt,
           lastActivity: l.lastMessageAt,
           conversationId: l.conversationId,
+          threadId: l.threadId || l.thread?.id,
           providerId: l.providerId,
-          from: l.providerId || l.conversationId,
+          contactId: l.contact?.id,
+          from: l.contact?.phone || l.contact?.email || l.providerId || l.conversationId,
           label: normalizedLabel,
           notes: l.notes?.[0]?.note || '',
           noteHistory:
@@ -763,6 +822,40 @@ const SalesPage: React.FC = () => {
     ];
   }, [groupedLeads, reviewSummary.pendingCount, sales]);
 
+  const threadSalesTotals = useMemo(() => {
+    const totals = new Map<string, Map<string, number>>();
+    sales.forEach((sale) => {
+      const threadId = sale.lead?.thread?.id;
+      if (!threadId) return;
+      const currency = String(sale.currency || 'NGN').toUpperCase();
+      const amount = Number(sale.amount || 0);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      if (!totals.has(threadId)) {
+        totals.set(threadId, new Map<string, number>());
+      }
+      const threadCurrencyTotals = totals.get(threadId)!;
+      threadCurrencyTotals.set(currency, (threadCurrencyTotals.get(currency) || 0) + amount);
+    });
+    return totals;
+  }, [sales]);
+
+  const leadSalesTotals = useMemo(() => {
+    const totals = new Map<string, Map<string, number>>();
+    sales.forEach((sale) => {
+      const leadId = sale.leadId;
+      if (!leadId) return;
+      const currency = String(sale.currency || 'NGN').toUpperCase();
+      const amount = Number(sale.amount || 0);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      if (!totals.has(leadId)) {
+        totals.set(leadId, new Map<string, number>());
+      }
+      const leadCurrencyTotals = totals.get(leadId)!;
+      leadCurrencyTotals.set(currency, (leadCurrencyTotals.get(currency) || 0) + amount);
+    });
+    return totals;
+  }, [sales]);
+
   const renderTableBody = () => {
     if (isLoading) {
       return Array.from({ length: 4 }).map((_, index) => (
@@ -788,6 +881,9 @@ const SalesPage: React.FC = () => {
 
     return filteredLeads.map((lead) => {
       const assigned = resolveAssignedUser(lead.assignedTo);
+      const totalsForLead =
+        (lead.threadId ? threadSalesTotals.get(lead.threadId) : undefined) ||
+        leadSalesTotals.get(lead.id);
       return (
         <TableRow
           key={lead.id}
@@ -827,7 +923,9 @@ const SalesPage: React.FC = () => {
           <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>
             {lead.source === 'manual' ? 'Manual entry' : lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
           </TableCell>
-          <TableCell className='hidden md:table-cell text-sm'>{lead.value ? `$${lead.value.toLocaleString()}` : '—'}</TableCell>
+          <TableCell className='hidden md:table-cell text-sm'>
+            {formatSalesTotalByCurrency(totalsForLead)}
+          </TableCell>
           <TableCell className='text-sm text-muted-foreground whitespace-nowrap'>
             {formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}
           </TableCell>
@@ -1153,7 +1251,7 @@ const SalesPage: React.FC = () => {
                   <TableHead>Customer</TableHead>
                   <TableHead className='hidden md:table-cell'>Stage</TableHead>
                   <TableHead className='hidden lg:table-cell'>Channel</TableHead>
-                  <TableHead className='hidden md:table-cell'>Value</TableHead>
+                  <TableHead className='hidden md:table-cell'>Thread total</TableHead>
                   <TableHead>Updated</TableHead>
                   <TableHead>Owner</TableHead>
                 </TableRow>
