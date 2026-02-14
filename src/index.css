@@ -86,6 +86,16 @@
     --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.05), 0 2px 4px -1px hsl(var(--shadow-color) / 0.05);
     --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.05), 0 4px 6px -2px hsl(var(--shadow-color) / 0.025);
     --shadow-brand: 0 20px 40px -12px hsl(var(--primary) / 0.25);
+
+    /* Sidebar tokens */
+    --sidebar-background: 220 24% 96%;
+    --sidebar-foreground: 220 22% 16%;
+    --sidebar-primary: 216 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 22% 91%;
+    --sidebar-accent-foreground: 220 22% 14%;
+    --sidebar-border: 220 18% 82%;
+    --sidebar-ring: 216 100% 50%;
   }
 
   .dark {
@@ -124,6 +134,15 @@
     --ring: 216 100% 50%;
 
     --shadow-color: 0 0% 0%;
+
+    --sidebar-background: 224 22% 11%;
+    --sidebar-foreground: 220 18% 93%;
+    --sidebar-primary: 216 100% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 18% 18%;
+    --sidebar-accent-foreground: 220 18% 96%;
+    --sidebar-border: 220 18% 25%;
+    --sidebar-ring: 216 100% 56%;
   }
 
   * {
@@ -189,7 +208,29 @@
   }
 
   .dashboard-sidebar {
-    @apply border-r bg-card;
+    border-right: 1px solid hsl(var(--sidebar-border) / 0.6);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--sidebar-background) / 0.9) 0%,
+      hsl(var(--sidebar-background) / 0.78) 100%
+    );
+    backdrop-filter: blur(20px) saturate(135%);
+    -webkit-backdrop-filter: blur(20px) saturate(135%);
+    box-shadow:
+      14px 0 34px hsl(var(--shadow-color) / 0.2),
+      inset -1px 0 0 hsl(0 0% 100% / 0.14);
+  }
+
+  .dark .dashboard-sidebar {
+    border-right: 1px solid hsl(var(--sidebar-border) / 0.9);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--sidebar-background) / 0.88) 0%,
+      hsl(var(--sidebar-background) / 0.76) 100%
+    );
+    box-shadow:
+      16px 0 40px hsl(220 45% 2% / 0.55),
+      inset -1px 0 0 hsl(220 20% 98% / 0.08);
   }
 
   .dashboard-main {

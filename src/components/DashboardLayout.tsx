@@ -492,7 +492,7 @@ export const DashboardLayout: React.FC = () => {
       <ConnectionStatus />
       {/* Desktop Sidebar */}
       <aside
-        className={cn('dashboard-sidebar hidden md:flex flex-col border-r bg-sidebar transition-[width] duration-300 ease-in-out', sidebarWidth)}
+        className={cn('dashboard-sidebar hidden md:flex flex-col transition-[width] duration-300 ease-in-out', sidebarWidth)}
         aria-label='Sidebar'
       >
         {/* Sidebar header */}
@@ -632,7 +632,7 @@ export const DashboardLayout: React.FC = () => {
         {/* Drawer */}
         <aside
           className={cn(
-            'absolute inset-y-0 left-0 w-64 bg-sidebar border-r border-sidebar-border shadow-lg',
+            'dashboard-sidebar absolute inset-y-0 left-0 w-64 shadow-2xl',
             'transition-transform duration-300 ease-in-out will-change-transform',
             mobileOpen ? 'translate-x-0' : '-translate-x-full',
           )}
