@@ -32,6 +32,17 @@ export interface ServerToClientEvents {
   // Dashboard Events
   'dashboard:stats': (data: { totalLeads: number; activeThreads: number; [key: string]: any }) => void;
   'analytics:overview': (data: Analytics) => void;
+  'nlp:small': (data: {
+    messageId: string;
+    externalMsgId: string;
+    leadId?: string;
+    dealId?: string;
+    invoiceId?: string;
+    saleId?: string;
+    receiptId?: string;
+    leadLabel?: string;
+    dealStage?: string;
+  }) => void;
 
   // System Events
   connected: () => void;
@@ -333,6 +344,7 @@ export class SocketIOService {
     // Dashboard events
     this.socket.on('dashboard:stats', (data) => this.emitToListeners('dashboard:stats', data));
     this.socket.on('analytics:overview', (data) => this.emitToListeners('analytics:overview', data));
+    this.socket.on('nlp:small', (data) => this.emitToListeners('nlp:small', data));
   }
 
   // Handle disconnection with reconnection logic

@@ -1,6 +1,6 @@
 // Dashboard Layout Component for LeadsBox
 
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -179,6 +179,9 @@ export const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false));
   const [inboxCount, setInboxCount] = useState<number>(0);
+  const [salesAiCount, setSalesAiCount] = useState<number>(0);
+  const [productsAiCount, setProductsAiCount] = useState<number>(0);
+  const [catalogsAiCount, setCatalogsAiCount] = useState<number>(0);
   const [inboxLoading, setInboxLoading] = useState(true);
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
@@ -190,6 +193,43 @@ export const DashboardLayout: React.FC = () => {
     );
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
   const { socket } = useSocketIO();
+
+  const fetchAiSidebarCounts = useCallback(async () => {
+    try {
+      const [salesPendingRes, productsPendingRes, catalogsRes] = await Promise.all([
+        client.get(endpoints.sales.pendingCount),
+        client.get('/products/pending'),
+        client.get('/catalogs'),
+      ]);
+
+      const pendingSalesCount = Number(salesPendingRes?.data?.data?.count ?? 0);
+      const pendingProducts = productsPendingRes?.data?.data?.products ?? [];
+      const catalogs = catalogsRes?.data?.data?.catalogs ?? [];
+
+      const pendingProductsCount = Array.isArray(pendingProducts)
+        ? pendingProducts.length
+        : 0;
+      const aiCatalogsCount = Array.isArray(catalogs)
+        ? catalogs.filter((catalog: any) =>
+            Array.isArray(catalog?.items) &&
+            catalog.items.some(
+              (item: any) =>
+                item?.product?.isAutoDetected === true &&
+                item?.product?.status === 'PENDING',
+            ),
+          ).length
+        : 0;
+
+      setSalesAiCount(pendingSalesCount);
+      setProductsAiCount(pendingProductsCount);
+      setCatalogsAiCount(aiCatalogsCount);
+    } catch (error) {
+      console.error('Failed to fetch AI sidebar counts:', error);
+      setSalesAiCount(0);
+      setProductsAiCount(0);
+      setCatalogsAiCount(0);
+    }
+  }, []);
   const opsAlertRef = useRef<{
     initialized: boolean;
     pendingAiReviews: number;
@@ -221,6 +261,23 @@ export const DashboardLayout: React.FC = () => {
 
     fetchInboxCount();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const refreshCounts = async () => {
+      if (!active) return;
+      await fetchAiSidebarCounts();
+    };
+
+    void refreshCounts();
+    const interval = window.setInterval(refreshCounts, 60000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [fetchAiSidebarCounts]);
 
   // Listen for real-time updates to inbox count
   useEffect(() => {
@@ -276,9 +333,14 @@ export const DashboardLayout: React.FC = () => {
         .catch(console.error);
     };
 
+    const handleNlpSmall = () => {
+      void fetchAiSidebarCounts();
+    };
+
     socket.on('message:new', handleMessageNew);
     socket.on('thread:updated', handleRefresh);
     socket.on('thread:read', handleRefresh); // Just in case backend emits this
+    socket.on('nlp:small', handleNlpSmall);
 
     // Listen for custom event from InboxPage
     const handleLocalRead = () => handleRefresh();
@@ -288,9 +350,10 @@ export const DashboardLayout: React.FC = () => {
       socket.off('message:new', handleMessageNew);
       socket.off('thread:updated', handleRefresh);
       socket.off('thread:read', handleRefresh);
+      socket.off('nlp:small', handleNlpSmall);
       window.removeEventListener('leadsbox:thread-read', handleLocalRead);
     };
-  }, [socket]);
+  }, [socket, fetchAiSidebarCounts]);
 
   useEffect(() => {
     let active = true;
@@ -468,6 +531,20 @@ export const DashboardLayout: React.FC = () => {
   };
 
   const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
+  const getSidebarDynamicCount = useCallback((title: string): number => {
+    switch (title) {
+      case 'Inbox':
+        return inboxCount;
+      case 'Sales':
+        return salesAiCount;
+      case 'Products':
+        return productsAiCount;
+      case 'Catalogs':
+        return catalogsAiCount;
+      default:
+        return 0;
+    }
+  }, [catalogsAiCount, inboxCount, productsAiCount, salesAiCount]);
   const formattedRenewal = trialEndsAt
     ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
@@ -555,9 +632,9 @@ export const DashboardLayout: React.FC = () => {
                     {!sidebarCollapsed && (
                       <>
                         <span className='ml-3 flex-1'>{item.title}</span>
-                        {item.title === 'Inbox' && inboxCount > 0 && (
+                        {getSidebarDynamicCount(item.title) > 0 && (
                           <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
-                            {inboxLoading ? '...' : inboxCount}
+                            {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
                           </Badge>
                         )}
                         {item.title === 'Tasks' && item.badge && (
@@ -568,9 +645,9 @@ export const DashboardLayout: React.FC = () => {
                       </>
                     )}
 
-                    {sidebarCollapsed && item.title === 'Inbox' && inboxCount > 0 && (
+                    {sidebarCollapsed && getSidebarDynamicCount(item.title) > 0 && (
                       <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
-                        {inboxLoading ? '...' : inboxCount}
+                        {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
                       </Badge>
                     )}
                     {sidebarCollapsed && item.title === 'Tasks' && item.badge && (
@@ -687,7 +764,12 @@ export const DashboardLayout: React.FC = () => {
                         className={cn('h-5 w-5 flex-shrink-0 transition-colors', isActive ? 'text-primary' : 'text-sidebar-foreground/60')}
                       />
                       <span className='ml-3 flex-1'>{item.title}</span>
-                      {item.badge && (
+                      {getSidebarDynamicCount(item.title) > 0 && (
+                        <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
+                          {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
+                        </Badge>
+                      )}
+                      {item.badge && getSidebarDynamicCount(item.title) === 0 && (
                         <Badge variant={isActive ? 'secondary' : 'outline'} className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                           {item.badge}
                         </Badge>
