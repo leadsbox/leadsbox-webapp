@@ -374,6 +374,7 @@ const ProductsPage = () => {
               <TableHead>Name</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead>Category</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead className='text-right'>Actions</TableHead>
@@ -393,6 +394,9 @@ const ProductsPage = () => {
                     <Skeleton className='h-4 w-[100px]' />
                   </TableCell>
                   <TableCell>
+                    <Skeleton className='h-4 w-[90px]' />
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className='h-4 w-[80px]' />
                   </TableCell>
                   <TableCell>
@@ -408,7 +412,7 @@ const ProductsPage = () => {
               ))
             ) : products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className='text-center py-8'>
+                <TableCell colSpan={7} className='text-center py-8'>
                   <Package className='h-12 w-12 mx-auto text-muted-foreground mb-2' />
                   <p className='text-muted-foreground'>No products found</p>
                   <Button variant='link' onClick={() => openDialog()}>
@@ -422,6 +426,20 @@ const ProductsPage = () => {
                   <TableCell className='font-medium'>{product.name}</TableCell>
                   <TableCell>{product.sku || '—'}</TableCell>
                   <TableCell>{product.category || '—'}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant='outline'
+                      className={
+                        product.status === 'APPROVED'
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : product.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                            : 'bg-red-100 text-red-700 border-red-300'
+                      }
+                    >
+                      {product.status}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {product.unitPrice.toLocaleString()} {product.currency}
                   </TableCell>
