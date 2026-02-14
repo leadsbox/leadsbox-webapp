@@ -81,13 +81,73 @@ export interface ReviewInboxResponse {
   };
 }
 
+type RawSaleItem = {
+  name?: unknown;
+  quantity?: unknown;
+  qty?: unknown;
+  unitPrice?: unknown;
+  unit_price?: unknown;
+  line_total?: unknown;
+};
+
+const toFiniteNumber = (value: unknown): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeSaleItem = (item: unknown): SaleItem | null => {
+  if (!item || typeof item !== 'object') return null;
+  const raw = item as RawSaleItem;
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  if (!name) return null;
+
+  const quantity =
+    toFiniteNumber(raw.quantity) ??
+    toFiniteNumber(raw.qty) ??
+    1;
+  const safeQuantity = quantity > 0 ? quantity : 1;
+  const lineTotal = toFiniteNumber(raw.line_total);
+  const explicitUnitPrice =
+    toFiniteNumber(raw.unitPrice) ??
+    toFiniteNumber(raw.unit_price);
+  const unitPrice =
+    explicitUnitPrice ??
+    (lineTotal !== null ? lineTotal / safeQuantity : 0);
+
+  return {
+    name,
+    quantity: safeQuantity,
+    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+  };
+};
+
+const normalizeSale = (sale: Sale): Sale => {
+  const rawItems = Array.isArray((sale as any)?.items) ? (sale as any).items : [];
+  return {
+    ...sale,
+    items: rawItems
+      .map((item: unknown) => normalizeSaleItem(item))
+      .filter((item: SaleItem | null): item is SaleItem => Boolean(item)),
+  };
+};
+
 export const salesApi = {
   /**
    * List all sales for the organization
    */
   list: async (params?: ListSalesParams) => {
     const response = await client.get(endpoints.sales.list, { params });
-    return response.data;
+    const payload = response.data;
+    const sales = Array.isArray(payload?.data?.sales)
+      ? payload.data.sales.map((sale: Sale) => normalizeSale(sale))
+      : [];
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sales,
+      },
+    };
   },
 
   /**
@@ -95,7 +155,17 @@ export const salesApi = {
    */
   getById: async (id: string): Promise<{ data: { sale: Sale } }> => {
     const response = await client.get(endpoints.sales.detail(id));
-    return response.data;
+    const payload = response.data;
+    const normalizedSale = payload?.data?.sale
+      ? normalizeSale(payload.data.sale as Sale)
+      : payload?.data?.sale;
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sale: normalizedSale,
+      },
+    };
   },
 
   /**
@@ -103,7 +173,17 @@ export const salesApi = {
    */
   approve: async (id: string): Promise<{ data: { sale: Sale } }> => {
     const response = await client.post(endpoints.sales.approve(id));
-    return response.data;
+    const payload = response.data;
+    const normalizedSale = payload?.data?.sale
+      ? normalizeSale(payload.data.sale as Sale)
+      : payload?.data?.sale;
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sale: normalizedSale,
+      },
+    };
   },
 
   reject: async (
@@ -111,14 +191,34 @@ export const salesApi = {
     payload?: { reason?: string }
   ): Promise<{ data: { sale: Sale } }> => {
     const response = await client.post(endpoints.sales.reject(id), payload || {});
-    return response.data;
+    const body = response.data;
+    const normalizedSale = body?.data?.sale
+      ? normalizeSale(body.data.sale as Sale)
+      : body?.data?.sale;
+    return {
+      ...body,
+      data: {
+        ...(body?.data || {}),
+        sale: normalizedSale,
+      },
+    };
   },
 
   reviewInbox: async (limit = 25): Promise<ReviewInboxResponse> => {
     const response = await client.get(endpoints.sales.reviewInbox, {
       params: { limit },
     });
-    return response.data;
+    const payload = response.data;
+    const sales = Array.isArray(payload?.data?.sales)
+      ? payload.data.sales.map((sale: Sale) => normalizeSale(sale))
+      : [];
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sales,
+      },
+    };
   },
 
   /**
@@ -126,7 +226,17 @@ export const salesApi = {
    */
   update: async (id: string, data: UpdateSaleInput): Promise<{ data: { sale: Sale } }> => {
     const response = await client.put(endpoints.sales.update(id), data);
-    return response.data;
+    const payload = response.data;
+    const normalizedSale = payload?.data?.sale
+      ? normalizeSale(payload.data.sale as Sale)
+      : payload?.data?.sale;
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sale: normalizedSale,
+      },
+    };
   },
 
   /**
@@ -156,14 +266,34 @@ export const salesApi = {
     isManual: boolean;
   }): Promise<{ data: { sale: Sale } }> => {
     const response = await client.post(endpoints.sales.list, data);
-    return response.data;
+    const payload = response.data;
+    const normalizedSale = payload?.data?.sale
+      ? normalizeSale(payload.data.sale as Sale)
+      : payload?.data?.sale;
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sale: normalizedSale,
+      },
+    };
   },
 
   quickCapture: async (
     data: QuickCaptureSaleInput
   ): Promise<{ data: { sale: Sale } }> => {
     const response = await client.post(endpoints.sales.quickCapture, data);
-    return response.data;
+    const payload = response.data;
+    const normalizedSale = payload?.data?.sale
+      ? normalizeSale(payload.data.sale as Sale)
+      : payload?.data?.sale;
+    return {
+      ...payload,
+      data: {
+        ...(payload?.data || {}),
+        sale: normalizedSale,
+      },
+    };
   },
 
   /**
