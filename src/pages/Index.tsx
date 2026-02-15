@@ -325,6 +325,7 @@ const Index = () => {
               <img
                 src='https://leadsboxapp.s3.us-east-1.amazonaws.com/leadsbox_dashboard.png'
                 alt='LeadsBox Dashboard Preview'
+                crossOrigin='anonymous'
                 className='w-full h-auto rounded-2xl shadow-2xl border border-border'
                 loading='eager'
               />
