@@ -114,6 +114,9 @@ export const endpoints = {
     pmfWeekly: (days?: number) => `/analytics/pmf-weekly${days ? `?days=${days}` : ''}`,
     activationFunnel: (days?: number) => `/analytics/activation-funnel${days ? `?days=${days}` : ''}`,
   },
+  metrics: {
+    subscribers: '/metrics/subscribers',
+  },
 
   billing: {
     plans: '/billing/plans',

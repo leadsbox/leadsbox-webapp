@@ -111,6 +111,12 @@ const sidebarItems: SidebarItem[] = [
     description: 'Performance metrics',
   },
   {
+    title: 'Subscribers',
+    href: '/dashboard/subscribers',
+    icon: FileSpreadsheet,
+    description: 'Subscriber directory and exports',
+  },
+  {
     title: 'Billing',
     href: '/dashboard/billing',
     icon: CreditCard,
