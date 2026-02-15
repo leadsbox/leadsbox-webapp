@@ -39,6 +39,7 @@ import { Message } from '@/types';
 import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
 import { notify } from '@/lib/toast';
 import { subscribeApiMonitoringAlerts } from '@/lib/apiMonitoring';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -201,7 +202,7 @@ export const DashboardLayout: React.FC = () => {
     }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false));
+  const isMobile = useIsMobile();
   const [inboxCount, setInboxCount] = useState<number>(0);
   const [salesAiCount, setSalesAiCount] = useState<number>(0);
   const [productsAiCount, setProductsAiCount] = useState<number>(0);
