@@ -53,6 +53,18 @@ interface SidebarItem {
   badge?: number;
 }
 
+type SidebarCounterKey = 'Inbox' | 'Sales' | 'Products' | 'Catalogs';
+
+type SidebarCounterState = Record<SidebarCounterKey, number>;
+
+const SIDEBAR_COUNTER_STORAGE_KEY = 'lb_sidebar_counter_seen';
+const DEFAULT_SIDEBAR_COUNTER_STATE: SidebarCounterState = {
+  Inbox: 0,
+  Sales: 0,
+  Products: 0,
+  Catalogs: 0,
+};
+
 const sidebarItems: SidebarItem[] = [
   {
     title: 'Home',
@@ -181,6 +193,26 @@ export const DashboardLayout: React.FC = () => {
   const [salesAiCount, setSalesAiCount] = useState<number>(0);
   const [productsAiCount, setProductsAiCount] = useState<number>(0);
   const [catalogsAiCount, setCatalogsAiCount] = useState<number>(0);
+  const [seenSidebarCounts, setSeenSidebarCounts] = useState<SidebarCounterState>(() => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_SIDEBAR_COUNTER_STATE;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(SIDEBAR_COUNTER_STORAGE_KEY);
+      if (!raw) return DEFAULT_SIDEBAR_COUNTER_STATE;
+
+      const parsed = JSON.parse(raw) as Partial<SidebarCounterState>;
+      return {
+        Inbox: Number(parsed?.Inbox ?? 0),
+        Sales: Number(parsed?.Sales ?? 0),
+        Products: Number(parsed?.Products ?? 0),
+        Catalogs: Number(parsed?.Catalogs ?? 0),
+      };
+    } catch {
+      return DEFAULT_SIDEBAR_COUNTER_STATE;
+    }
+  });
   const [inboxLoading, setInboxLoading] = useState(true);
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
@@ -192,6 +224,46 @@ export const DashboardLayout: React.FC = () => {
     );
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
   const { socket } = useSocketIO();
+
+  const getRawSidebarCount = useCallback((title: SidebarCounterKey): number => {
+    switch (title) {
+      case 'Inbox':
+        return inboxCount;
+      case 'Sales':
+        return salesAiCount;
+      case 'Products':
+        return productsAiCount;
+      case 'Catalogs':
+        return catalogsAiCount;
+      default:
+        return 0;
+    }
+  }, [catalogsAiCount, inboxCount, productsAiCount, salesAiCount]);
+
+  const getCounterKeyForPath = useCallback((pathname: string): SidebarCounterKey | null => {
+    if (pathname.startsWith('/dashboard/inbox')) return 'Inbox';
+    if (pathname.startsWith('/dashboard/sales')) return 'Sales';
+    if (pathname.startsWith('/dashboard/products')) return 'Products';
+    if (pathname.startsWith('/dashboard/catalogs')) return 'Catalogs';
+    return null;
+  }, []);
+
+  const setSeenForCounter = useCallback(
+    (title: SidebarCounterKey, value: number) => {
+      setSeenSidebarCounts((prev) => {
+        const normalized = Math.max(0, Number(value) || 0);
+        if (prev[title] === normalized) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [title]: normalized,
+        };
+      });
+    },
+    [],
+  );
 
   const fetchAiSidebarCounts = useCallback(async () => {
     try {
@@ -452,6 +524,49 @@ export const DashboardLayout: React.FC = () => {
   }, [navigate]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      SIDEBAR_COUNTER_STORAGE_KEY,
+      JSON.stringify(seenSidebarCounts),
+    );
+  }, [seenSidebarCounts]);
+
+  useEffect(() => {
+    const entries: Array<{ key: SidebarCounterKey; raw: number }> = [
+      { key: 'Inbox', raw: inboxCount },
+      { key: 'Sales', raw: salesAiCount },
+      { key: 'Products', raw: productsAiCount },
+      { key: 'Catalogs', raw: catalogsAiCount },
+    ];
+
+    for (const entry of entries) {
+      if (entry.raw < seenSidebarCounts[entry.key]) {
+        setSeenForCounter(entry.key, entry.raw);
+      }
+    }
+  }, [
+    catalogsAiCount,
+    inboxCount,
+    salesAiCount,
+    productsAiCount,
+    seenSidebarCounts,
+    setSeenForCounter,
+  ]);
+
+  useEffect(() => {
+    const activeCounter = getCounterKeyForPath(location.pathname);
+    if (!activeCounter) return;
+
+    const current = getRawSidebarCount(activeCounter);
+    setSeenForCounter(activeCounter, current);
+  }, [
+    getCounterKeyForPath,
+    getRawSidebarCount,
+    location.pathname,
+    setSeenForCounter,
+  ]);
+
+  useEffect(() => {
     return subscribeApiMonitoringAlerts((alert) => {
       const title = alert.title;
       const description = alert.description;
@@ -531,19 +646,31 @@ export const DashboardLayout: React.FC = () => {
 
   const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
   const getSidebarDynamicCount = useCallback((title: string): number => {
-    switch (title) {
-      case 'Inbox':
-        return inboxCount;
-      case 'Sales':
-        return salesAiCount;
-      case 'Products':
-        return productsAiCount;
-      case 'Catalogs':
-        return catalogsAiCount;
-      default:
-        return 0;
+    if (
+      title !== 'Inbox' &&
+      title !== 'Sales' &&
+      title !== 'Products' &&
+      title !== 'Catalogs'
+    ) {
+      return 0;
     }
-  }, [catalogsAiCount, inboxCount, productsAiCount, salesAiCount]);
+
+    const key = title as SidebarCounterKey;
+    const raw = getRawSidebarCount(key);
+    const seen = seenSidebarCounts[key] ?? 0;
+    const activeCounter = getCounterKeyForPath(location.pathname);
+
+    if (activeCounter === key) {
+      return 0;
+    }
+
+    return Math.max(raw - seen, 0);
+  }, [
+    getCounterKeyForPath,
+    getRawSidebarCount,
+    location.pathname,
+    seenSidebarCounts,
+  ]);
   const formattedRenewal = trialEndsAt
     ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
