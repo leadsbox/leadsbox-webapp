@@ -214,31 +214,30 @@ export const DashboardLayout: React.FC = () => {
     }
   });
   const [inboxLoading, setInboxLoading] = useState(true);
-  const [deferredInstallPrompt, setDeferredInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [notificationPermission, setNotificationPermission] =
-    useState<NotificationPermission>(
-      typeof window !== 'undefined' && 'Notification' in window
-        ? Notification.permission
-        : 'default',
-    );
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
+  );
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
   const { socket } = useSocketIO();
 
-  const getRawSidebarCount = useCallback((title: SidebarCounterKey): number => {
-    switch (title) {
-      case 'Inbox':
-        return inboxCount;
-      case 'Sales':
-        return salesAiCount;
-      case 'Products':
-        return productsAiCount;
-      case 'Catalogs':
-        return catalogsAiCount;
-      default:
-        return 0;
-    }
-  }, [catalogsAiCount, inboxCount, productsAiCount, salesAiCount]);
+  const getRawSidebarCount = useCallback(
+    (title: SidebarCounterKey): number => {
+      switch (title) {
+        case 'Inbox':
+          return inboxCount;
+        case 'Sales':
+          return salesAiCount;
+        case 'Products':
+          return productsAiCount;
+        case 'Catalogs':
+          return catalogsAiCount;
+        default:
+          return 0;
+      }
+    },
+    [catalogsAiCount, inboxCount, productsAiCount, salesAiCount],
+  );
 
   const getCounterKeyForPath = useCallback((pathname: string): SidebarCounterKey | null => {
     if (pathname.startsWith('/dashboard/inbox')) return 'Inbox';
@@ -248,22 +247,19 @@ export const DashboardLayout: React.FC = () => {
     return null;
   }, []);
 
-  const setSeenForCounter = useCallback(
-    (title: SidebarCounterKey, value: number) => {
-      setSeenSidebarCounts((prev) => {
-        const normalized = Math.max(0, Number(value) || 0);
-        if (prev[title] === normalized) {
-          return prev;
-        }
+  const setSeenForCounter = useCallback((title: SidebarCounterKey, value: number) => {
+    setSeenSidebarCounts((prev) => {
+      const normalized = Math.max(0, Number(value) || 0);
+      if (prev[title] === normalized) {
+        return prev;
+      }
 
-        return {
-          ...prev,
-          [title]: normalized,
-        };
-      });
-    },
-    [],
-  );
+      return {
+        ...prev,
+        [title]: normalized,
+      };
+    });
+  }, []);
 
   const fetchAiSidebarCounts = useCallback(async () => {
     try {
@@ -277,17 +273,12 @@ export const DashboardLayout: React.FC = () => {
       const pendingProducts = productsPendingRes?.data?.data?.products ?? [];
       const catalogs = catalogsRes?.data?.data?.catalogs ?? [];
 
-      const pendingProductsCount = Array.isArray(pendingProducts)
-        ? pendingProducts.length
-        : 0;
+      const pendingProductsCount = Array.isArray(pendingProducts) ? pendingProducts.length : 0;
       const aiCatalogsCount = Array.isArray(catalogs)
-        ? catalogs.filter((catalog: any) =>
-            Array.isArray(catalog?.items) &&
-            catalog.items.some(
-              (item: any) =>
-                item?.product?.isAutoDetected === true &&
-                item?.product?.status === 'PENDING',
-            ),
+        ? catalogs.filter(
+            (catalog: any) =>
+              Array.isArray(catalog?.items) &&
+              catalog.items.some((item: any) => item?.product?.isAutoDetected === true && item?.product?.status === 'PENDING'),
           ).length
         : 0;
 
@@ -359,16 +350,9 @@ export const DashboardLayout: React.FC = () => {
       if (data?.message?.sender === 'LEAD') {
         setInboxCount((prev) => prev + 1);
 
-        if (
-          typeof window !== 'undefined' &&
-          document.hidden &&
-          'Notification' in window &&
-          Notification.permission === 'granted'
-        ) {
+        if (typeof window !== 'undefined' && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
           const title = 'New message in LeadsBox';
-          const body =
-            data?.message?.content?.slice(0, 120) ||
-            'You have a new inbound message.';
+          const body = data?.message?.content?.slice(0, 120) || 'You have a new inbound message.';
 
           if ('serviceWorker' in navigator) {
             void navigator.serviceWorker
@@ -525,10 +509,7 @@ export const DashboardLayout: React.FC = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(
-      SIDEBAR_COUNTER_STORAGE_KEY,
-      JSON.stringify(seenSidebarCounts),
-    );
+    window.localStorage.setItem(SIDEBAR_COUNTER_STORAGE_KEY, JSON.stringify(seenSidebarCounts));
   }, [seenSidebarCounts]);
 
   useEffect(() => {
@@ -544,14 +525,7 @@ export const DashboardLayout: React.FC = () => {
         setSeenForCounter(entry.key, entry.raw);
       }
     }
-  }, [
-    catalogsAiCount,
-    inboxCount,
-    salesAiCount,
-    productsAiCount,
-    seenSidebarCounts,
-    setSeenForCounter,
-  ]);
+  }, [catalogsAiCount, inboxCount, salesAiCount, productsAiCount, seenSidebarCounts, setSeenForCounter]);
 
   useEffect(() => {
     const activeCounter = getCounterKeyForPath(location.pathname);
@@ -559,12 +533,7 @@ export const DashboardLayout: React.FC = () => {
 
     const current = getRawSidebarCount(activeCounter);
     setSeenForCounter(activeCounter, current);
-  }, [
-    getCounterKeyForPath,
-    getRawSidebarCount,
-    location.pathname,
-    setSeenForCounter,
-  ]);
+  }, [getCounterKeyForPath, getRawSidebarCount, location.pathname, setSeenForCounter]);
 
   useEffect(() => {
     return subscribeApiMonitoringAlerts((alert) => {
@@ -605,10 +574,7 @@ export const DashboardLayout: React.FC = () => {
       await deferredInstallPrompt.prompt();
       const choice = await deferredInstallPrompt.userChoice;
       trackAppEvent('pwa_install_prompt_choice', { outcome: choice.outcome });
-      if (
-        choice.outcome === 'dismissed' &&
-        window.matchMedia('(max-width: 768px)').matches
-      ) {
+      if (choice.outcome === 'dismissed' && window.matchMedia('(max-width: 768px)').matches) {
         trackMobileBlocked('pwa_install', 'dismissed_prompt');
       }
     } finally {
@@ -626,10 +592,7 @@ export const DashboardLayout: React.FC = () => {
     trackAppEvent('notification_permission_result', {
       permission: result,
     });
-    if (
-      result !== 'granted' &&
-      window.matchMedia('(max-width: 768px)').matches
-    ) {
+    if (result !== 'granted' && window.matchMedia('(max-width: 768px)').matches) {
       trackMobileBlocked('push_notifications', 'permission_not_granted', {
         permission: result,
       });
@@ -645,32 +608,25 @@ export const DashboardLayout: React.FC = () => {
   };
 
   const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
-  const getSidebarDynamicCount = useCallback((title: string): number => {
-    if (
-      title !== 'Inbox' &&
-      title !== 'Sales' &&
-      title !== 'Products' &&
-      title !== 'Catalogs'
-    ) {
-      return 0;
-    }
+  const getSidebarDynamicCount = useCallback(
+    (title: string): number => {
+      if (title !== 'Inbox' && title !== 'Sales' && title !== 'Products' && title !== 'Catalogs') {
+        return 0;
+      }
 
-    const key = title as SidebarCounterKey;
-    const raw = getRawSidebarCount(key);
-    const seen = seenSidebarCounts[key] ?? 0;
-    const activeCounter = getCounterKeyForPath(location.pathname);
+      const key = title as SidebarCounterKey;
+      const raw = getRawSidebarCount(key);
+      const seen = seenSidebarCounts[key] ?? 0;
+      const activeCounter = getCounterKeyForPath(location.pathname);
 
-    if (activeCounter === key) {
-      return 0;
-    }
+      if (activeCounter === key) {
+        return 0;
+      }
 
-    return Math.max(raw - seen, 0);
-  }, [
-    getCounterKeyForPath,
-    getRawSidebarCount,
-    location.pathname,
-    seenSidebarCounts,
-  ]);
+      return Math.max(raw - seen, 0);
+    },
+    [getCounterKeyForPath, getRawSidebarCount, location.pathname, seenSidebarCounts],
+  );
   const formattedRenewal = trialEndsAt
     ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
@@ -758,12 +714,12 @@ export const DashboardLayout: React.FC = () => {
                     {!sidebarCollapsed && (
                       <>
                         <span className='ml-3 flex-1'>{item.title}</span>
-                        {getSidebarDynamicCount(item.title) > 0 && (
+                        {getSidebarDynamicCount(item.title) > 0 && !isActive && (
                           <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                             {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
                           </Badge>
                         )}
-                        {item.title === 'Tasks' && item.badge && (
+                        {item.title === 'Tasks' && item.badge && !isActive && (
                           <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
                             {item.badge}
                           </Badge>
@@ -929,9 +885,7 @@ export const DashboardLayout: React.FC = () => {
         {(deferredInstallPrompt || notificationPermission !== 'granted') && (
           <div className='border-b bg-muted/40 px-4 py-2'>
             <div className='mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-sm'>
-              <p className='text-muted-foreground'>
-                Install LeadsBox and enable alerts for faster mobile response.
-              </p>
+              <p className='text-muted-foreground'>Install LeadsBox and enable alerts for faster mobile response.</p>
               <div className='flex flex-wrap gap-2'>
                 {deferredInstallPrompt && (
                   <Button size='sm' variant='outline' onClick={handleInstallApp}>
@@ -940,11 +894,7 @@ export const DashboardLayout: React.FC = () => {
                   </Button>
                 )}
                 {notificationPermission !== 'granted' && (
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    onClick={handleEnableNotifications}
-                  >
+                  <Button size='sm' variant='outline' onClick={handleEnableNotifications}>
                     <BellRing className='mr-1 h-4 w-4' />
                     Enable alerts
                   </Button>

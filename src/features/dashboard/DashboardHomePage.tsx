@@ -63,6 +63,7 @@ interface BackendLead {
   createdAt: string;
   updatedAt: string;
   lastMessageAt?: string;
+  assignedTo?: string;
 }
 
 type OrganizationDetails = {
@@ -289,26 +290,6 @@ export default function DashboardHomePage() {
         helperText: hasLeads ? undefined : 'Even a single sample lead unlocks pipeline insights.',
       },
       {
-        id: 'templates',
-        title: 'Craft your first template',
-        description: 'Personalize a WhatsApp template so responses feel on-brand.',
-        href: '/dashboard/templates/new',
-        ctaLabel: 'Create template',
-        icon: PenSquare,
-        completed: hasTemplates,
-        helperText: hasTemplates ? undefined : 'Templates help you reply faster once new leads arrive.',
-      },
-      {
-        id: 'automations',
-        title: 'Schedule an automatic follow-up',
-        description: 'Keep new leads warm with a simple automation or reminder.',
-        href: '/dashboard/automations',
-        ctaLabel: 'Build automation',
-        icon: Zap,
-        completed: hasAutomations,
-        helperText: hasAutomations ? undefined : 'Automations work in the background when you are busy.',
-      },
-      {
         id: 'payments',
         title: 'Enable Online Payments',
         description: 'Connect Paystack to accept payments directly from your invoices.',
@@ -329,7 +310,7 @@ export default function DashboardHomePage() {
         helperText: 'Share the love and get rewarded.',
       },
     ];
-  }, [organizationProfileComplete, missingProfileFields, hasMessagingIntegration, hasLeads, hasTemplates, hasAutomations, paymentConnected]);
+  }, [organizationProfileComplete, missingProfileFields, hasMessagingIntegration, hasLeads, paymentConnected]);
 
   const coreDataReady = !countsLoading && !analyticsLoading && !templatesLoading && !integrationLoading && !tasksLoading;
   const hasIncompleteSteps = onboardingSteps?.some((step) => !step.completed) ?? false;
@@ -410,7 +391,9 @@ export default function DashboardHomePage() {
       const response = await client.get(endpoints.followups);
       const followUps = extractFollowUps(response?.data);
       const mappedTasks = mapFollowUpsToTasks(followUps);
-      setTasks(mappedTasks);
+      // Filter tasks for current user only
+      const userTasks = mappedTasks.filter((task) => task.assignedTo === user?.id);
+      setTasks(userTasks);
     } catch (error) {
       console.error('Failed to fetch follow-ups for dashboard:', error);
       const apiError = error as ApiError;
@@ -419,7 +402,7 @@ export default function DashboardHomePage() {
     } finally {
       setTasksLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const fetchAnalyticsOverview = React.useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -721,8 +704,10 @@ export default function DashboardHomePage() {
         // Fetch leads count
         try {
           const leadsResp = await client.get('/leads');
-          const leadsList = leadsResp?.data?.data?.leads || leadsResp?.data || [];
-          setActualLeadsCount(leadsList.length);
+          const leadsList: BackendLead[] = leadsResp?.data?.data?.leads || leadsResp?.data || [];
+          // Filter for user assigned leads
+          const userLeads = leadsList.filter((lead) => lead.assignedTo === user?.id);
+          setActualLeadsCount(userLeads.length);
         } catch (error) {
           console.error('Failed to fetch leads count:', error);
           setActualLeadsCount(0);
@@ -731,8 +716,11 @@ export default function DashboardHomePage() {
         // Fetch threads count
         try {
           const threadsResp = await client.get('/threads');
-          const threadsList = threadsResp?.data?.data?.threads || threadsResp?.data || [];
-          setActualThreadsCount(threadsList.length);
+          // threadsList type depends on what the API returns, assuming it has assignedTo
+          const threadsList: Array<{ assignedTo?: string }> = threadsResp?.data?.data?.threads || threadsResp?.data || [];
+          // Filter for user assigned threads
+          const userThreads = threadsList.filter((thread) => thread.assignedTo === user?.id);
+          setActualThreadsCount(userThreads.length);
         } catch (error) {
           console.error('Failed to fetch threads count:', error);
           setActualThreadsCount(0);
@@ -744,8 +732,10 @@ export default function DashboardHomePage() {
       }
     };
 
-    fetchActualCounts();
-  }, []);
+    if (user?.id) {
+      fetchActualCounts();
+    }
+  }, [user?.id]);
 
   // Fetch analytics and dashboard data when range changes
   useEffect(() => {
@@ -816,6 +806,7 @@ export default function DashboardHomePage() {
               connected={instagramConnected}
               loading={integrationLoading}
               to='/dashboard/settings?tab=integrations'
+              color='purple'
             />
             <div className='flex items-center gap-2 px-2 py-1 rounded-full text-xs border'>
               <div
@@ -1125,8 +1116,7 @@ export default function DashboardHomePage() {
               </div>
               {reliabilityRows.map((row) => {
                 const status = getReliabilityStatus(row.data.errorRate, row.data.p95Ms);
-                const statusVariant =
-                  status === 'critical' ? 'destructive' : status === 'watch' ? 'secondary' : 'outline';
+                const statusVariant = status === 'critical' ? 'destructive' : status === 'watch' ? 'secondary' : 'outline';
                 return (
                   <div key={row.key} className='flex items-center justify-between gap-2 text-xs'>
                     <span className='text-muted-foreground'>{row.label}</span>
@@ -1156,7 +1146,9 @@ export default function DashboardHomePage() {
                 <>
                   {activationFunnel.steps.map((step, index) => (
                     <div key={step.id} className='flex items-center justify-between gap-2 text-xs'>
-                      <span className='text-muted-foreground'>{index + 1}. {step.label}</span>
+                      <span className='text-muted-foreground'>
+                        {index + 1}. {step.label}
+                      </span>
                       <div className='flex items-center gap-2'>
                         <span>{step.count}</span>
                         {index > 0 ? <span>{step.conversionFromPreviousPct.toFixed(1)}%</span> : null}
