@@ -19,7 +19,6 @@ import {
   Loader2,
   Package,
   BookOpen,
-  FileSpreadsheet,
   BellRing,
   Download,
 } from 'lucide-react';
@@ -109,12 +108,6 @@ const sidebarItems: SidebarItem[] = [
     href: '/dashboard/analytics',
     icon: BarChart3,
     description: 'Performance metrics',
-  },
-  {
-    title: 'Subscribers',
-    href: '/dashboard/subscribers',
-    icon: FileSpreadsheet,
-    description: 'Subscriber directory and exports',
   },
   {
     title: 'Billing',

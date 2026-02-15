@@ -45,7 +45,6 @@ const TemplatesHomePage = lazy(() => import('./features/templates/TemplatesHomeP
 const CreateTemplateWizardPage = lazy(() => import('./features/templates/CreateTemplateWizardPage'));
 const TemplateDetailPage = lazy(() => import('./features/templates/TemplateDetailPage'));
 const PaymentPlansPage = lazy(() => import('./features/billing/PaymentPlansPage'));
-const SubscribersPage = lazy(() => import('./features/billing/SubscribersPage'));
 const OrganizationOnboarding = lazy(() => import('./pages/OrganizationOnboarding'));
 const NotificationsPage = lazy(() => import('./features/notifications/NotificationsPage'));
 const ReferralsPage = lazy(() => import('./features/referrals/ReferralsPage'));
@@ -141,7 +140,6 @@ const App = () => {
 
                 {/* Billing is ALWAYS accessible for authenticated users */}
                 <Route path='billing' element={<PaymentPlansPage />} />
-                <Route path='subscribers' element={<SubscribersPage />} />
 
                 {/* Sub-protected routes requiring active subscription or trial */}
                 <Route
