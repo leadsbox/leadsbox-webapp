@@ -5,6 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Building, Plus, Save } from 'lucide-react';
 import { mockOrganization } from '@/data/mockData';
 import client from '@/api/client';
@@ -36,6 +46,20 @@ export const OrganizationTab: React.FC<Props> = ({
   const { setOrg } = useAuth();
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ name: '', description: '', currency: 'NGN', timezone: 'UTC' });
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
   const hasOrganizations = orgs.length > 0;
 
   const handleCreateOrganizationWithDetails = async () => {
@@ -262,40 +286,47 @@ export const OrganizationTab: React.FC<Props> = ({
               </div>
               <Button
                 variant='destructive'
-                onClick={async () => {
-                  if (window.confirm('Are you sure you want to PERMANENTLY delete this organization? This cannot be undone.')) {
-                    try {
-                      await client.delete(`/orgs/${selectedOrgId}`);
-                      notify.success({ title: 'Organization deleted' });
+                onClick={() => {
+                  setAlertConfig({
+                    open: true,
+                    title: 'Delete Organization',
+                    description: 'Are you sure you want to PERMANENTLY delete this organization? This cannot be undone.',
+                    variant: 'destructive',
+                    confirmLabel: 'Delete Organization',
+                    action: async () => {
+                      try {
+                        await client.delete(`/orgs/${selectedOrgId}`);
+                        notify.success({ title: 'Organization deleted' });
 
-                      // Remove from local list
-                      const remaining = orgs.filter((o) => String(o.id) !== selectedOrgId);
-                      setOrgs(remaining);
+                        // Remove from local list
+                        const remaining = orgs.filter((o) => String(o.id) !== selectedOrgId);
+                        setOrgs(remaining);
 
-                      if (remaining.length > 0) {
-                        const nextId = String(remaining[0].id);
-                        setSelectedOrgId(nextId);
-                        try {
-                          setOrg(nextId);
-                          window.dispatchEvent(new CustomEvent('lb:org-changed'));
-                        } catch (error) {
-                          console.error('Error switching organization after delete:', error);
+                        if (remaining.length > 0) {
+                          const nextId = String(remaining[0].id);
+                          setSelectedOrgId(nextId);
+                          try {
+                            setOrg(nextId);
+                            window.dispatchEvent(new CustomEvent('lb:org-changed'));
+                          } catch (error) {
+                            console.error('Error switching organization after delete:', error);
+                          }
+                        } else {
+                          setSelectedOrgId('');
+                          try {
+                            setOrg('');
+                            window.dispatchEvent(new CustomEvent('lb:org-changed'));
+                            window.location.reload();
+                          } catch (error) {
+                            console.error('Error clearing organization:', error);
+                          }
                         }
-                      } else {
-                        setSelectedOrgId('');
-                        try {
-                          setOrg('');
-                          window.dispatchEvent(new CustomEvent('lb:org-changed'));
-                          window.location.reload();
-                        } catch (error) {
-                          console.error('Error clearing organization:', error);
-                        }
+                      } catch (e) {
+                        console.error(e);
+                        notify.error({ title: 'Failed to delete organization', description: 'Ensure you are the owner and try again.' });
                       }
-                    } catch (e) {
-                      console.error(e);
-                      notify.error({ title: 'Failed to delete organization', description: 'Ensure you are the owner and try again.' });
-                    }
-                  }
+                    },
+                  });
                 }}
               >
                 Delete Organization
@@ -373,6 +404,26 @@ export const OrganizationTab: React.FC<Props> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

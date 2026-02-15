@@ -25,6 +25,16 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface AutomationBuilderProps {
   initialFlow?: AutomationFlow;
@@ -56,6 +66,21 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({ initialFlow, onCl
   const [dragOrigin, setDragOrigin] = useState<{ x: number; y: number } | null>(null);
   const [latestPointer, setLatestPointer] = useState<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
 
   useAutosave(flow, (draft) => {
     if (!touched) return;
@@ -276,8 +301,15 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({ initialFlow, onCl
 
   const handleExit = () => {
     if (touched) {
-      const confirmExit = window.confirm('You have unsaved changes. Exit without saving?');
-      if (!confirmExit) return;
+      setAlertConfig({
+        open: true,
+        title: 'Unsaved Changes',
+        description: 'You have unsaved changes. Are you sure you want to exit without saving?',
+        variant: 'destructive',
+        confirmLabel: 'Exit without saving',
+        action: () => onClose(),
+      });
+      return;
     }
     onClose();
   };
@@ -394,6 +426,26 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({ initialFlow, onCl
           <Inspector node={flow.nodes.find((node) => node.id === selectedNodeId) ?? null} onUpdate={handleNodeUpdate} />
         </div>
       </DndContext>
+
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

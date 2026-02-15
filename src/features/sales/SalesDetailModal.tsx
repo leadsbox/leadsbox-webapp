@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +38,20 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
   const [isRejecting, setIsRejecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
 
   React.useEffect(() => {
     if (sale) {
@@ -38,9 +62,7 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
   }, [sale]);
 
   if (!sale) return null;
-  const isPendingDecision = sale.reviewStatus
-    ? sale.reviewStatus === 'PENDING_REVIEW'
-    : !sale.approvedAt;
+  const isPendingDecision = sale.reviewStatus ? sale.reviewStatus === 'PENDING_REVIEW' : !sale.approvedAt;
 
   const calculateTotal = (items: SaleItem[]) => {
     return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -74,63 +96,77 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this sale?')) return;
-
-    try {
-      setIsDeleting(true);
-      if (onDelete) {
-        await onDelete(sale.id);
-      } else {
-        await salesApi.delete(sale.id);
-        notify.success({
-          key: `sale-deleted-${sale.id}`,
-          title: 'Sale Deleted',
-          description: 'The sale has been deleted.',
-        });
-      }
-      onClose();
-    } catch (error) {
-      console.error('Failed to delete sale:', error);
-      if (!onDelete) {
-        notify.error({
-          key: `sale-delete-error-${sale.id}`,
-          title: 'Delete Failed',
-          description: 'Failed to delete the sale. Please try again.',
-        });
-      }
-    } finally {
-      setIsDeleting(false);
-    }
+  const handleDelete = () => {
+    setAlertConfig({
+      open: true,
+      title: 'Delete Sale',
+      description: 'Are you sure you want to delete this sale? This action cannot be undone.',
+      variant: 'destructive',
+      confirmLabel: 'Delete',
+      action: async () => {
+        try {
+          setIsDeleting(true);
+          if (onDelete) {
+            await onDelete(sale.id);
+          } else {
+            await salesApi.delete(sale.id);
+            notify.success({
+              key: `sale-deleted-${sale.id}`,
+              title: 'Sale Deleted',
+              description: 'The sale has been deleted.',
+            });
+          }
+          onClose();
+        } catch (error) {
+          console.error('Failed to delete sale:', error);
+          if (!onDelete) {
+            notify.error({
+              key: `sale-delete-error-${sale.id}`,
+              title: 'Delete Failed',
+              description: 'Failed to delete the sale. Please try again.',
+            });
+          }
+        } finally {
+          setIsDeleting(false);
+        }
+      },
+    });
   };
 
-  const handleReject = async () => {
-    if (!window.confirm('Reject this AI-detected sale?')) return;
-    try {
-      setIsRejecting(true);
-      if (onReject) {
-        await onReject(sale.id);
-      } else {
-        await salesApi.reject(sale.id);
-        notify.success({
-          key: `sale-rejected-${sale.id}`,
-          title: 'Sale rejected',
-          description: 'The sale has been removed from AI review queue.',
-        });
-      }
-      onClose();
-    } catch (error) {
-      console.error('Failed to reject sale:', error);
-      if (!onReject) {
-        notify.error({
-          key: `sale-reject-error-${sale.id}`,
-          title: 'Rejection failed',
-          description: 'Failed to reject this sale. Please try again.',
-        });
-      }
-    } finally {
-      setIsRejecting(false);
-    }
+  const handleReject = () => {
+    setAlertConfig({
+      open: true,
+      title: 'Reject Sale',
+      description: 'Reject this AI-detected sale? It will be removed from the review queue.',
+      confirmLabel: 'Reject',
+      action: async () => {
+        try {
+          setIsRejecting(true);
+          if (onReject) {
+            await onReject(sale.id);
+          } else {
+            await salesApi.reject(sale.id);
+            notify.success({
+              key: `sale-rejected-${sale.id}`,
+              title: 'Sale rejected',
+              description: 'The sale has been removed from AI review queue.',
+            });
+          }
+          onClose();
+        } catch (error) {
+          console.error('Failed to reject sale:', error);
+          if (!onReject) {
+            notify.error({
+              key: `sale-reject-error-${sale.id}`,
+              title: 'Rejection failed',
+              description: 'Failed to reject this sale. Please try again.',
+            });
+          }
+        } finally {
+          setIsRejecting(false);
+        }
+      },
+    });
   };
 
   const handleSave = async () => {
@@ -400,6 +436,25 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
           )}
         </DialogFooter>
       </DialogContent>
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

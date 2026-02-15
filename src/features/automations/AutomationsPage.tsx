@@ -17,6 +17,16 @@ import { useAuth } from '@/context/useAuth';
 import ScheduleFollowUpModal, { ConversationOption, FollowUpPrefill } from './components/ScheduleFollowUpModal';
 import NewAutomationModal from './modals/NewAutomationModal';
 import { AutomationFlow } from './builder/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { FLOWS_COLLECTION_KEY, createDefaultFlow, useLocalStorage } from './builder/utils';
 import { validateFlow } from './builder/serializers';
 import { extractFollowUps } from '@/utils/apiData';
@@ -179,6 +189,21 @@ const AutomationsPage: React.FC = () => {
   const [builderFlow, setBuilderFlow] = useState<AutomationFlow | null>(null);
   const [builderKey, setBuilderKey] = useState(0);
 
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
+
   const loadTemplates = useCallback(async () => {
     try {
       const list = await templateApi.list();
@@ -251,23 +276,16 @@ const AutomationsPage: React.FC = () => {
     const leadId = (searchParams.get('leadId') || '').trim();
     const leadName = (searchParams.get('leadName') || '').trim();
     const providerRaw = (searchParams.get('provider') || 'whatsapp').trim().toLowerCase();
-    const provider =
-      providerRaw === 'whatsapp' || providerRaw === 'instagram' || providerRaw === 'telegram'
-        ? providerRaw
-        : 'whatsapp';
+    const provider = providerRaw === 'whatsapp' || providerRaw === 'instagram' || providerRaw === 'telegram' ? providerRaw : 'whatsapp';
     const conversationId = (searchParams.get('conversationId') || '').trim();
     const phone = (searchParams.get('phone') || '').trim();
 
-    const defaultMessage = leadName
-      ? `Hi ${leadName}, just checking in on your request.`
-      : 'Hi there, just checking in on your request.';
+    const defaultMessage = leadName ? `Hi ${leadName}, just checking in on your request.` : 'Hi there, just checking in on your request.';
     const scheduledAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     const pad = (value: number) => value.toString().padStart(2, '0');
     const scheduledTime = `${scheduledAt.getFullYear()}-${pad(
       scheduledAt.getMonth() + 1,
-    )}-${pad(scheduledAt.getDate())}T${pad(scheduledAt.getHours())}:${pad(
-      scheduledAt.getMinutes(),
-    )}`;
+    )}-${pad(scheduledAt.getDate())}T${pad(scheduledAt.getHours())}:${pad(scheduledAt.getMinutes())}`;
 
     setFollowUpPrefill({
       conversationId: conversationId || '',
@@ -297,9 +315,7 @@ const AutomationsPage: React.FC = () => {
     }
 
     const next = new URLSearchParams(searchParams);
-    ['quickFollowUp', 'leadId', 'leadName', 'provider', 'conversationId', 'phone'].forEach((key) =>
-      next.delete(key),
-    );
+    ['quickFollowUp', 'leadId', 'leadName', 'provider', 'conversationId', 'phone'].forEach((key) => next.delete(key));
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, hasOrgContext]);
 
@@ -350,27 +366,35 @@ const AutomationsPage: React.FC = () => {
       });
       return;
     }
-    if (!window.confirm('Cancel this follow-up?')) return;
-    try {
-      const res = await client.post(endpoints.followupCancel(followUp.id));
-      const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
-      notify.success({
-        key: `automations:followup:${followUp.id}:cancelled`,
-        title: 'Follow-up cancelled',
-      });
-      if (payload) {
-        await loadFollowUps();
-      } else {
-        handleFollowUpCancelled(followUp.id);
-      }
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to cancel follow-up.';
-      notify.error({
-        key: `automations:followup:${followUp.id}:cancel-error`,
-        title: 'Unable to cancel follow-up',
-        description: message,
-      });
-    }
+    setAlertConfig({
+      open: true,
+      title: 'Cancel Follow-up',
+      description: 'Are you sure you want to cancel this scheduled follow-up?',
+      variant: 'default',
+      confirmLabel: 'Cancel Follow-up',
+      action: async () => {
+        try {
+          const res = await client.post(endpoints.followupCancel(followUp.id));
+          const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
+          notify.success({
+            key: `automations:followup:${followUp.id}:cancelled`,
+            title: 'Follow-up cancelled',
+          });
+          if (payload) {
+            await loadFollowUps();
+          } else {
+            handleFollowUpCancelled(followUp.id);
+          }
+        } catch (error: unknown) {
+          const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to cancel follow-up.';
+          notify.error({
+            key: `automations:followup:${followUp.id}:cancel-error`,
+            title: 'Unable to cancel follow-up',
+            description: message,
+          });
+        }
+      },
+    });
   };
 
   const openBuilder = (flow?: AutomationFlow) => {
@@ -409,8 +433,8 @@ const AutomationsPage: React.FC = () => {
               status: flow.status === 'ON' ? 'OFF' : 'ON',
               updatedAt: new Date().toISOString(),
             }
-          : candidate
-      )
+          : candidate,
+      ),
     );
   };
 
@@ -432,11 +456,19 @@ const AutomationsPage: React.FC = () => {
   };
 
   const handleFlowDelete = (flow: AutomationFlow) => {
-    if (!window.confirm('Delete this automation? This cannot be undone.')) return;
-    setFlows((current) => current.filter((candidate) => candidate.id !== flow.id));
-    notify.info({
-      key: `automations:flow:${flow.id}:deleted`,
-      title: 'Automation deleted',
+    setAlertConfig({
+      open: true,
+      title: 'Delete Automation',
+      description: 'Are you sure you want to delete this automation? This action cannot be undone.',
+      variant: 'destructive',
+      confirmLabel: 'Delete',
+      action: () => {
+        setFlows((current) => current.filter((candidate) => candidate.id !== flow.id));
+        notify.info({
+          key: `automations:flow:${flow.id}:deleted`,
+          title: 'Automation deleted',
+        });
+      },
     });
   };
 
@@ -478,7 +510,12 @@ const AutomationsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className='grid gap-6 md:grid-cols-3'>
-              <Step number={1} icon={MessageSquare} title='Create Templates' description='Build approved WhatsApp templates from the Templates page' />
+              <Step
+                number={1}
+                icon={MessageSquare}
+                title='Create Templates'
+                description='Build approved WhatsApp templates from the Templates page'
+              />
               <Step number={2} icon={Clock} title='Schedule Follow-ups' description='Set automatic follow-ups for your conversations' />
               <Step number={3} icon={Bot} title='Build Flows' description='Create complex automation workflows with conditions' />
             </div>
@@ -539,10 +576,7 @@ const AutomationsPage: React.FC = () => {
                 <CardDescription>Schedule automatic messages to continue conversations.</CardDescription>
                 {followUpLeadContext ? (
                   <p className='mt-1 text-xs text-muted-foreground'>
-                    Lead context:{' '}
-                    <span className='font-medium text-foreground'>
-                      {followUpLeadContext.leadName || followUpLeadContext.leadId}
-                    </span>
+                    Lead context: <span className='font-medium text-foreground'>{followUpLeadContext.leadName || followUpLeadContext.leadId}</span>
                   </p>
                 ) : null}
               </div>
@@ -722,6 +756,26 @@ const AutomationsPage: React.FC = () => {
       {builderFlow && (
         <NewAutomationModal key={builderKey} open={builderOpen} onOpenChange={setBuilderOpen} initialFlow={builderFlow} onSave={handleFlowSaved} />
       )}
+
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

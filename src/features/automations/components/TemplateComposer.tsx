@@ -11,6 +11,16 @@ import { notify } from '@/lib/toast';
 import templateApi from '@/api/templates';
 import type { Template, TemplateCategory } from '@/types';
 import TemplatePreview from '@/features/templates/components/TemplatePreview';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface TemplateComposerProps {
   open: boolean;
@@ -89,15 +99,29 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
   const [form, setForm] = useState<TemplateFormState>(DEFAULT_FORM);
   const [busy, setBusy] = useState(false);
   const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
 
   useEffect(() => {
     if (!open) return;
     if (template) {
       setForm({
         name: template.name ?? '',
-        header: (template as any).header ?? '',
+        header: template.header ?? '',
         body: template.body ?? '',
-        footer: (template as any).footer ?? '',
+        footer: template.footer ?? '',
         variables: Array.isArray(template.variables) ? template.variables : [],
         category: template.category ?? 'UTILITY',
         language: template.language ?? 'en',
@@ -123,8 +147,6 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     });
   }, [form.variables]);
 
-  if (!open) return null;
-
   const placeholders = useMemo(
     () =>
       form.variables.map((key) => ({
@@ -134,6 +156,8 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
       })),
     [form.variables, previewValues],
   );
+
+  if (!open) return null;
 
   const handleAutoDetect = () => {
     const detected = detectVariables(form.body || '');
@@ -269,37 +293,45 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!template) return;
-    if (!window.confirm('Delete this template? This action cannot be undone.')) return;
 
-    setBusy(true);
-    try {
-      await templateApi.remove(template.id);
-      notify.success({
-        key: `templates:${template.id}:deleted`,
-        title: 'Template deleted',
-      });
-      onDeleted?.(template.id);
-      onOpenChange(false);
-    } catch (error: unknown) {
-      let message = 'Failed to delete template.';
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
-      ) {
-        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
-      }
-      notify.error({
-        key: `templates:${template?.id ?? 'delete'}:error`,
-        title: 'Unable to delete template',
-        description: message,
-      });
-    } finally {
-      setBusy(false);
-    }
+    setAlertConfig({
+      open: true,
+      title: 'Delete Template',
+      description: 'Are you sure you want to delete this template? This action cannot be undone.',
+      variant: 'destructive',
+      confirmLabel: 'Delete',
+      action: async () => {
+        setBusy(true);
+        try {
+          await templateApi.remove(template.id);
+          notify.success({
+            key: `templates:${template.id}:deleted`,
+            title: 'Template deleted',
+          });
+          onDeleted?.(template.id);
+          onOpenChange(false);
+        } catch (error: unknown) {
+          let message = 'Failed to delete template.';
+          if (
+            typeof error === 'object' &&
+            error !== null &&
+            'response' in error &&
+            typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+          ) {
+            message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+          }
+          notify.error({
+            key: `templates:${template?.id ?? 'delete'}:error`,
+            title: 'Unable to delete template',
+            description: message,
+          });
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
   };
 
   return (
@@ -326,11 +358,7 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
 
             <div className='space-y-1.5'>
               <Label htmlFor='template-language'>Language</Label>
-              <Select
-                value={form.language}
-                onValueChange={(value) => setForm((prev) => ({ ...prev, language: value }))}
-                disabled={busy}
-              >
+              <Select value={form.language} onValueChange={(value) => setForm((prev) => ({ ...prev, language: value }))} disabled={busy}>
                 <SelectTrigger id='template-language'>
                   <SelectValue placeholder='Select language' />
                 </SelectTrigger>
@@ -450,10 +478,8 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
                 </SelectContent>
               </Select>
               <p className='text-xs text-muted-foreground'>
-                {
-                  CATEGORY_OPTIONS.find((option) => option.value === form.category)?.helper ??
-                  'Choose how Meta will classify and review this template.'
-                }
+                {CATEGORY_OPTIONS.find((option) => option.value === form.category)?.helper ??
+                  'Choose how Meta will classify and review this template.'}
               </p>
             </div>
           </div>
@@ -489,9 +515,7 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
 
         <div className='flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
-            {template?.status && (
-              <Badge variant='secondary'>Status: {template.status.replace('_', ' ')}</Badge>
-            )}
+            {template?.status && <Badge variant='secondary'>Status: {template.status.replace('_', ' ')}</Badge>}
             <span>Templates keep conversations going after the 24-hour window.</span>
           </div>
           <div className='flex flex-wrap items-center gap-2'>
@@ -514,6 +538,26 @@ const TemplateComposer = ({ open, onOpenChange, template, onSaved, onDeleted }: 
           </div>
         </div>
       </CardContent>
+
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

@@ -12,6 +12,16 @@ import { notify } from '@/lib/toast';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import type { FollowUpRule, FollowUpStatus, Template } from '@/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export interface ConversationOption {
   id: string;
@@ -74,9 +84,7 @@ const toDateTimeLocalInput = (value?: string | Date | null) => {
   const date = typeof value === 'string' ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return '';
   const pad = (input: number) => input.toString().padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
-    date.getMinutes(),
-  )}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
 const parseDateTimeLocal = (value: string) => {
@@ -113,16 +121,24 @@ const ScheduleFollowUpModal = ({
     variables: {},
   });
   const [busy, setBusy] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
 
-  const selectedTemplate = useMemo(
-    () => templateOptions.find((candidate) => candidate.id === form.templateId),
-    [form.templateId, templateOptions],
-  );
+  const selectedTemplate = useMemo(() => templateOptions.find((candidate) => candidate.id === form.templateId), [form.templateId, templateOptions]);
 
-  const templateVariableNames = useMemo(
-    () => selectedTemplate?.variables ?? [],
-    [selectedTemplate],
-  );
+  const templateVariableNames = useMemo(() => selectedTemplate?.variables ?? [], [selectedTemplate]);
 
   useEffect(() => {
     if (!open) return;
@@ -304,42 +320,50 @@ const ScheduleFollowUpModal = ({
     }
   };
 
-  const handleCancelFollowUp = async () => {
+  const handleCancelFollowUp = () => {
     if (!followUp) return;
-    if (!window.confirm('Cancel this follow-up?')) return;
-    setBusy(true);
-    try {
-      const res = await client.post(endpoints.followupCancel(followUp.id));
-      const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
-      notify.success({
-        key: `followups:${followUp.id}:cancelled`,
-        title: 'Follow-up cancelled',
-      });
-      if (payload) {
-        onCancelled?.(payload.id);
-        onCompleted?.(payload, { mode: 'update' });
-      } else {
-        onCancelled?.(followUp.id);
-      }
-      onOpenChange(false);
-    } catch (error: unknown) {
-      let message = 'Failed to cancel follow-up.';
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
-      ) {
-        message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
-      }
-      notify.error({
-        key: `followups:${followUp?.id ?? 'cancel'}:error`,
-        title: 'Unable to cancel follow-up',
-        description: message,
-      });
-    } finally {
-      setBusy(false);
-    }
+    setAlertConfig({
+      open: true,
+      title: 'Cancel Follow-up',
+      description: 'Are you sure you want to cancel this scheduled follow-up?',
+      variant: 'default',
+      confirmLabel: 'Cancel Follow-up',
+      action: async () => {
+        setBusy(true);
+        try {
+          const res = await client.post(endpoints.followupCancel(followUp.id));
+          const payload = (res.data?.data?.followUp as FollowUpRule) ?? (res.data?.followUp as FollowUpRule) ?? null;
+          notify.success({
+            key: `followups:${followUp.id}:cancelled`,
+            title: 'Follow-up cancelled',
+          });
+          if (payload) {
+            onCancelled?.(payload.id);
+            onCompleted?.(payload, { mode: 'update' });
+          } else {
+            onCancelled?.(followUp.id);
+          }
+          onOpenChange(false);
+        } catch (error: unknown) {
+          let message = 'Failed to cancel follow-up.';
+          if (
+            typeof error === 'object' &&
+            error !== null &&
+            'response' in error &&
+            typeof (error as { response?: { data?: { message?: string } } }).response === 'object'
+          ) {
+            message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || message;
+          }
+          notify.error({
+            key: `followups:${followUp?.id ?? 'cancel'}:error`,
+            title: 'Unable to cancel follow-up',
+            description: message,
+          });
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
   };
 
   return (
@@ -386,11 +410,7 @@ const ScheduleFollowUpModal = ({
             <div className='grid gap-3 sm:grid-cols-2'>
               <div className='space-y-1.5'>
                 <Label htmlFor='followup-provider'>Channel</Label>
-                <Select
-                  value={form.provider}
-                  onValueChange={(value) => handleChange('provider', value)}
-                  disabled={busy}
-                >
+                <Select value={form.provider} onValueChange={(value) => handleChange('provider', value)} disabled={busy}>
                   <SelectTrigger id='followup-provider'>
                     <SelectValue placeholder='Select channel' />
                   </SelectTrigger>
@@ -514,7 +534,7 @@ const ScheduleFollowUpModal = ({
 
         <div className='flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
-            <Badge variant='secondary'>Status: {mode === 'edit' ? followUp?.status ?? 'SCHEDULED' : 'SCHEDULED'}</Badge>
+            <Badge variant='secondary'>Status: {mode === 'edit' ? (followUp?.status ?? 'SCHEDULED') : 'SCHEDULED'}</Badge>
             <span>Automations free your team to focus on live chats.</span>
           </div>
           <div className='flex flex-wrap items-center gap-2'>
@@ -532,6 +552,26 @@ const ScheduleFollowUpModal = ({
           </div>
         </div>
       </CardContent>
+
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

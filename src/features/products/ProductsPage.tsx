@@ -14,6 +14,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductImportDialog } from './ProductImportDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ProductsPage = () => {
   const queryClient = useQueryClient();
@@ -21,6 +31,21 @@ const ProductsPage = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('_ALL_');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    confirmLabel: string;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+    confirmLabel: 'Confirm',
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -169,10 +194,26 @@ const ProductsPage = () => {
   const categories = categoriesData?.data?.categories || [];
   const pendingProducts = pendingData?.data?.products || [];
 
-  const handleApprove = async (productId: string) => {
-    if (confirm('Approve this product and add it to your catalog?')) {
-      approveMutation.mutate(productId);
-    }
+  const handleApprove = (productId: string) => {
+    setAlertConfig({
+      open: true,
+      title: 'Approve Product',
+      description: 'Are you sure you want to approve this product and add it to your catalog?',
+      action: () => approveMutation.mutate(productId),
+      confirmLabel: 'Approve',
+      variant: 'default',
+    });
+  };
+
+  const confirmDelete = (productId: string) => {
+    setAlertConfig({
+      open: true,
+      title: 'Delete Product',
+      description: 'Are you sure you want to delete this product? This action cannot be undone.',
+      action: () => deleteMutation.mutate(productId),
+      confirmLabel: 'Delete',
+      variant: 'destructive',
+    });
   };
 
   return (
@@ -324,15 +365,7 @@ const ProductsPage = () => {
                               <CheckCircle2 className='h-3 w-3 mr-1' />
                               Approve
                             </Button>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => {
-                                if (confirm('Delete this auto-detected product?')) {
-                                  deleteMutation.mutate(product.id);
-                                }
-                              }}
-                            >
+                            <Button variant='ghost' size='sm' onClick={() => confirmDelete(product.id)}>
                               <Trash2 className='h-3 w-3' />
                             </Button>
                           </TableCell>
@@ -450,15 +483,7 @@ const ProductsPage = () => {
                     <Button variant='ghost' size='icon' onClick={() => openDialog(product)}>
                       <Edit className='h-4 w-4' />
                     </Button>
-                    <Button
-                      variant='ghost'
-                      size='icon'
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete this product?')) {
-                          deleteMutation.mutate(product.id);
-                        }
-                      }}
-                    >
+                    <Button variant='ghost' size='icon' onClick={() => confirmDelete(product.id)}>
                       <Trash2 className='h-4 w-4' />
                     </Button>
                   </TableCell>
@@ -554,6 +579,26 @@ const ProductsPage = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertConfig.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={alertConfig.variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={() => {
+                alertConfig.action();
+              }}
+            >
+              {alertConfig.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
