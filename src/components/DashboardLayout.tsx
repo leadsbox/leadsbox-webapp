@@ -45,6 +45,19 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
+interface CatalogProduct {
+  status?: string;
+  isAutoDetected?: boolean;
+}
+
+interface CatalogItem {
+  product?: CatalogProduct;
+}
+
+interface Catalog {
+  items?: CatalogItem[];
+}
+
 interface SidebarItem {
   title: string;
   href: string;
@@ -276,9 +289,9 @@ export const DashboardLayout: React.FC = () => {
       const pendingProductsCount = Array.isArray(pendingProducts) ? pendingProducts.length : 0;
       const aiCatalogsCount = Array.isArray(catalogs)
         ? catalogs.filter(
-            (catalog: any) =>
+            (catalog: Catalog) =>
               Array.isArray(catalog?.items) &&
-              catalog.items.some((item: any) => item?.product?.isAutoDetected === true && item?.product?.status === 'PENDING'),
+              catalog.items?.some((item: CatalogItem) => item?.product?.isAutoDetected === true && item?.product?.status === 'PENDING'),
           ).length
         : 0;
 
