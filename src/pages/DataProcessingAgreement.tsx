@@ -75,25 +75,40 @@ const DataProcessingAgreement: React.FC = () => {
 
           <div className='prose dark:prose-invert max-w-none space-y-6'>
             <p>
-              This Data Processing Agreement ("DPA") forms part of the Terms of Service between you ("Customer") and LeadsBox Inc. ("LeadsBox", "we", "us") and governs the processing of Personal Data in accordance with applicable data protection laws, including the General Data Protection Regulation (EU) 2016/679 ("GDPR").
+              This Data Processing Agreement ("DPA") forms part of the Terms of Service between you ("Customer") and Tribus Global Ltd ("LeadsBox",
+              "we", "us") and governs the processing of Personal Data in accordance with applicable data protection laws, including the General Data
+              Protection Regulation (EU) 2016/679 ("GDPR").
             </p>
 
             <h2>1. Definitions</h2>
             <p>In this DPA:</p>
             <ul>
-              <li><strong>"Personal Data"</strong> means any information relating to an identified or identifiable natural person processed by LeadsBox on behalf of Customer</li>
-              <li><strong>"Data Subject"</strong> means the individual to whom Personal Data relates</li>
-              <li><strong>"Processing"</strong> has the meaning given in applicable data protection laws</li>
-              <li><strong>"Controller"</strong> means the entity that determines the purposes and means of Processing Personal Data</li>
-              <li><strong>"Processor"</strong> means the entity that Processes Personal Data on behalf of the Controller</li>
+              <li>
+                <strong>"Personal Data"</strong> means any information relating to an identified or identifiable natural person processed by LeadsBox
+                on behalf of Customer
+              </li>
+              <li>
+                <strong>"Data Subject"</strong> means the individual to whom Personal Data relates
+              </li>
+              <li>
+                <strong>"Processing"</strong> has the meaning given in applicable data protection laws
+              </li>
+              <li>
+                <strong>"Controller"</strong> means the entity that determines the purposes and means of Processing Personal Data
+              </li>
+              <li>
+                <strong>"Processor"</strong> means the entity that Processes Personal Data on behalf of the Controller
+              </li>
             </ul>
 
             <h2>2. Roles and Scope</h2>
             <p>
-              <strong>2.1</strong> Customer acts as the Controller and LeadsBox acts as the Processor of Personal Data processed through the LeadsBox service.
+              <strong>2.1</strong> Customer acts as the Controller and LeadsBox acts as the Processor of Personal Data processed through the LeadsBox
+              service.
             </p>
             <p>
-              <strong>2.2</strong> This DPA applies to the Processing of Personal Data by LeadsBox for the purpose of providing the services described in the Terms of Service.
+              <strong>2.2</strong> This DPA applies to the Processing of Personal Data by LeadsBox for the purpose of providing the services described
+              in the Terms of Service.
             </p>
             <p>
               <strong>2.3</strong> The nature, purpose, and types of Personal Data processed are detailed in <strong>Appendix A</strong> below.
@@ -127,15 +142,28 @@ const DataProcessingAgreement: React.FC = () => {
               <strong>5.2</strong> Current sub-processors include:
             </p>
             <ul>
-              <li><strong>Amazon Web Services (AWS)</strong> - Cloud infrastructure and data storage</li>
-              <li><strong>Render</strong> - Application hosting</li>
-              <li><strong>PostgreSQL (Managed Database)</strong> - Database services</li>
-              <li><strong>OpenAI</strong> - AI-powered features processing</li>
-              <li><strong>Paystack</strong> - Payment processing</li>
-              <li><strong>PostHog</strong> - Analytics</li>
+              <li>
+                <strong>Amazon Web Services (AWS)</strong> - Cloud infrastructure and data storage
+              </li>
+              <li>
+                <strong>Render</strong> - Application hosting
+              </li>
+              <li>
+                <strong>PostgreSQL (Managed Database)</strong> - Database services
+              </li>
+              <li>
+                <strong>OpenAI</strong> - AI-powered features processing
+              </li>
+              <li>
+                <strong>Paystack</strong> - Payment processing
+              </li>
+              <li>
+                <strong>PostHog</strong> - Analytics
+              </li>
             </ul>
             <p>
-              <strong>5.3</strong> LeadsBox will notify Customer of any new sub-processor at least 30 days before engagement. Customer may object on reasonable grounds.
+              <strong>5.3</strong> LeadsBox will notify Customer of any new sub-processor at least 30 days before engagement. Customer may object on
+              reasonable grounds.
             </p>
 
             <h2>6. Security Measures</h2>
@@ -179,7 +207,8 @@ const DataProcessingAgreement: React.FC = () => {
 
             <h2>9. Data Breach Notification</h2>
             <p>
-              <strong>9.1</strong> LeadsBox will notify Customer without undue delay (and in any event within 72 hours) after becoming aware of a Personal Data breach.
+              <strong>9.1</strong> LeadsBox will notify Customer without undue delay (and in any event within 72 hours) after becoming aware of a
+              Personal Data breach.
             </p>
             <p>
               <strong>9.2</strong> Notifications will include:
@@ -196,7 +225,8 @@ const DataProcessingAgreement: React.FC = () => {
               <strong>10.1</strong> LeadsBox will make available to Customer information necessary to demonstrate compliance with this DPA.
             </p>
             <p>
-              <strong>10.2</strong> Customer may conduct audits or inspections upon reasonable notice (at least 30 days) and no more than once per year, unless required by law or following a data breach.
+              <strong>10.2</strong> Customer may conduct audits or inspections upon reasonable notice (at least 30 days) and no more than once per
+              year, unless required by law or following a data breach.
             </p>
 
             <h2>11. Data Retention and Deletion</h2>
@@ -210,18 +240,17 @@ const DataProcessingAgreement: React.FC = () => {
             </ul>
 
             <h2>12. Liability and Indemnification</h2>
-            <p>
-              Each party's liability under this DPA is subject to the limitations and exclusions of liability set out in the Terms of Service.
-            </p>
+            <p>Each party's liability under this DPA is subject to the limitations and exclusions of liability set out in the Terms of Service.</p>
 
             <h2>13. Term and Termination</h2>
             <p>
-              This DPA will remain in effect for as long as LeadsBox Processes Personal Data on behalf of Customer or until termination of the Terms of Service.
+              This DPA will remain in effect for as long as LeadsBox Processes Personal Data on behalf of Customer or until termination of the Terms
+              of Service.
             </p>
 
             <div className='bg-muted p-6 rounded-lg mt-8'>
               <h2 className='text-xl font-bold mb-4'>Appendix A: Details of Processing</h2>
-              
+
               <div className='space-y-4'>
                 <div>
                   <h3 className='font-semibold mb-2'>Nature and Purpose of Processing</h3>
@@ -232,9 +261,7 @@ const DataProcessingAgreement: React.FC = () => {
 
                 <div>
                   <h3 className='font-semibold mb-2'>Duration of Processing</h3>
-                  <p className='text-sm'>
-                    For the duration of the Terms of Service, plus 30 days for data deletion.
-                  </p>
+                  <p className='text-sm'>For the duration of the Terms of Service, plus 30 days for data deletion.</p>
                 </div>
 
                 <div>
