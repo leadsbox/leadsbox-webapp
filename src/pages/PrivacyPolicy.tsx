@@ -89,8 +89,8 @@ const PrivacyPolicy: React.FC = () => {
                 <p className='font-medium mt-3 mb-2'>Contact:</p>
                 <p className='text-sm'>
                   Email:{' '}
-                  <a href='mailto:privacy@leadsbox.com' className='text-primary'>
-                    privacy@leadsbox.com
+                  <a href='mailto:privacy@leadsboxapp.com' className='text-primary'>
+                    privacy@leadsboxapp.com
                   </a>
                   <br />
                   Phone: +234 813 818 5331
@@ -249,8 +249,8 @@ const PrivacyPolicy: React.FC = () => {
 
               <p className='mt-3'>
                 To exercise these rights, contact:{' '}
-                <a href='mailto:privacy@leadsbox.com' className='text-primary'>
-                  privacy@leadsbox.com
+                <a href='mailto:privacy@leadsboxapp.com' className='text-primary'>
+                  privacy@leadsboxapp.com
                 </a>
               </p>
             </section>
@@ -345,8 +345,8 @@ const PrivacyPolicy: React.FC = () => {
               <h2 className='text-2xl font-semibold mb-3'>13. Complaints</h2>
               <p className='mb-3'>
                 If you have privacy concerns, contact us first:{' '}
-                <a href='mailto:privacy@leadsbox.com' className='text-primary'>
-                  privacy@leadsbox.com
+                <a href='mailto:privacy@leadsboxapp.com' className='text-primary'>
+                  privacy@leadsboxapp.com
                 </a>
               </p>
               <p className='mb-2'>If unresolved, you may file a complaint with:</p>
@@ -376,13 +376,13 @@ const PrivacyPolicy: React.FC = () => {
                 </p>
                 <p className='text-sm mt-3'>
                   <strong>Privacy Inquiries:</strong>{' '}
-                  <a href='mailto:privacy@leadsbox.com' className='text-primary'>
-                    privacy@leadsbox.com
+                  <a href='mailto:privacy@leadsboxapp.com' className='text-primary'>
+                    privacy@leadsboxapp.com
                   </a>
                   <br />
                   <strong>General Support:</strong>{' '}
-                  <a href='mailto:support@leadsbox.com' className='text-primary'>
-                    support@leadsbox.com
+                  <a href='mailto:support@leadsboxapp.com' className='text-primary'>
+                    support@leadsboxapp.com
                   </a>
                   <br />
                   <strong>Phone:</strong> +234 813 818 5331

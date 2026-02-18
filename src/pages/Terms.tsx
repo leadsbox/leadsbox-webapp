@@ -224,8 +224,8 @@ const Terms: React.FC = () => {
               </li>
               <li>
                 <strong>Informal Resolution:</strong> Contact{' '}
-                <a href='mailto:support@leadsbox.com' className='text-primary'>
-                  support@leadsbox.com
+                <a href='mailto:support@leadsboxapp.com' className='text-primary'>
+                  support@leadsboxapp.com
                 </a>{' '}
                 to resolve disputes
               </li>
@@ -247,20 +247,20 @@ const Terms: React.FC = () => {
             </p>
             <p className='text-sm'>
               Email:{' '}
-              <a href='mailto:hello@leadsbox.com' className='text-primary'>
-                hello@leadsbox.com
+              <a href='mailto:hello@leadsboxapp.com' className='text-primary'>
+                hello@leadsboxapp.com
               </a>
             </p>
             <p className='text-sm'>
               Support:{' '}
-              <a href='mailto:support@leadsbox.com' className='text-primary'>
-                support@leadsbox.com
+              <a href='mailto:support@leadsboxapp.com' className='text-primary'>
+                support@leadsboxapp.com
               </a>
             </p>
             <p className='text-sm'>
               Legal:{' '}
-              <a href='mailto:legal@leadsbox.com' className='text-primary'>
-                legal@leadsbox.com
+              <a href='mailto:legal@leadsboxapp.com' className='text-primary'>
+                legal@leadsboxapp.com
               </a>
             </p>
           </div>

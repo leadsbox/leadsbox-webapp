@@ -17,7 +17,7 @@ export const mockUsers: User[] = [
     id: '1',
     username: 'johnsmith',
     name: 'John Smith',
-    email: 'john@leadsbox.com',
+    email: 'john@leadsboxapp.com',
     profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
     role: 'OWNER',
@@ -28,7 +28,7 @@ export const mockUsers: User[] = [
     id: '2',
     username: 'sarahjohnson',
     name: 'Sarah Johnson',
-    email: 'sarah@leadsbox.com',
+    email: 'sarah@leadsboxapp.com',
     profileImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
     role: 'MANAGER',
@@ -39,7 +39,7 @@ export const mockUsers: User[] = [
     id: '3',
     username: 'mikewilson',
     name: 'Mike Wilson',
-    email: 'mike@leadsbox.com',
+    email: 'mike@leadsboxapp.com',
     profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
     role: 'AGENT',
@@ -73,7 +73,7 @@ export const mockOrganization: Organization = {
     integrations: {
       whatsapp: {
         enabled: true,
-        webhook: 'https://api.leadsbox.com/webhooks/whatsapp',
+        webhook: 'https://api.leadsboxapp.com/webhooks/whatsapp',
         token: 'wa_token_123',
       },
       telegram: {
