@@ -5,7 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,15 +117,17 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
       setMemberDialogOpen(false);
       const resp = await client.get(`/orgs/${selectedOrgId}/members`);
       const list: Array<any> = resp?.data?.data?.members || [];
-      setMembers(list.map((m) => ({
-        membershipId: m.id,
-        userId: m.userId,
-        name: m.user?.name || m.user?.username || 'User',
-        email: m.user?.email || '',
-        avatar: m.user?.profileImage || m.user?.avatar || null,
-        role: m.role,
-        addedAt: m.addedAt,
-      })) as MemberVM[]);
+      setMembers(
+        list.map((m) => ({
+          membershipId: m.id,
+          userId: m.userId,
+          name: m.user?.name || m.user?.username || 'User',
+          email: m.user?.email || '',
+          avatar: m.user?.profileImage || m.user?.avatar || null,
+          role: m.role,
+          addedAt: m.addedAt,
+        })) as MemberVM[],
+      );
       notify.success({
         key: 'settings:members:added',
         title: 'Member invited',
@@ -306,7 +318,10 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction className='bg-destructive text-destructive-foreground hover:bg-destructive/90' onClick={() => removeMember(member.userId)}>
+                          <AlertDialogAction
+                            className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                            onClick={() => removeMember(member.userId)}
+                          >
                             Remove
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -322,7 +337,7 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
 
       {/* Invite Member Modal */}
       <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
-        <DialogContent>
+        <DialogContent className='sm:max-w-xl'>
           <DialogHeader>
             <DialogTitle>Invite Member</DialogTitle>
             <DialogDescription>Add a user to this organization.</DialogDescription>
@@ -350,12 +365,7 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
               <Label>Invitation Link</Label>
               <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
                 <Input readOnly value={inviteLink} />
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={copyInviteLink}
-                  className='whitespace-nowrap'
-                >
+                <Button type='button' variant='outline' onClick={copyInviteLink} className='whitespace-nowrap'>
                   <Copy className='h-4 w-4 mr-2' />
                   Copy Link
                 </Button>
@@ -363,20 +373,11 @@ export const MembersTab: React.FC<Props> = ({ selectedOrgId }) => {
             </div>
           )}
           <DialogFooter className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => setMemberDialogOpen(false)}
-            >
+            <Button type='button' variant='outline' onClick={() => setMemberDialogOpen(false)}>
               Cancel
             </Button>
             <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-              <Button
-                type='button'
-                variant='secondary'
-                onClick={generateInvite}
-                disabled={!selectedOrgId || generatingInvite}
-              >
+              <Button type='button' variant='secondary' onClick={generateInvite} disabled={!selectedOrgId || generatingInvite}>
                 <Copy className='h-4 w-4 mr-2' />
                 Generate Invite Link
               </Button>

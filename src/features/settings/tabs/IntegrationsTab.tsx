@@ -716,7 +716,7 @@ export const IntegrationsTab: React.FC = () => {
       </CardContent>
 
       <AlertDialog open={orgDialogOpen} onOpenChange={setOrgDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className='sm:max-w-lg'>
           <AlertDialogHeader>
             <AlertDialogTitle>Create an Organization</AlertDialogTitle>
             <AlertDialogDescription>You need an organization before connecting WhatsApp. Create one to proceed.</AlertDialogDescription>

@@ -168,7 +168,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
           Import CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className='sm:max-w-2xl max-h-[85vh] flex flex-col'>
+      <DialogContent className='max-w-5xl max-h-[85vh] flex flex-col'>
         <DialogHeader>
           <DialogTitle>Import Products</DialogTitle>
           <DialogDescription>

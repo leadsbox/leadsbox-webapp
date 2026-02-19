@@ -16,13 +16,13 @@ export function FeedbackDialog() {
 
   const handleSubmit = async () => {
     if (!feedback.trim()) return;
-    
+
     setSending(true);
     try {
       // 1. Track in PostHog
       trackEvent('user_feedback_submitted', {
         message: feedback,
-        url: window.location.href
+        url: window.location.href,
       });
 
       // 2. Send to Sentry as a user report or message
@@ -35,7 +35,7 @@ export function FeedbackDialog() {
         title: 'Feedback Sent',
         description: 'Thank you for helping us improve LeadsBox!',
       });
-      
+
       setFeedback('');
       setOpen(false);
     } catch (error) {
@@ -53,44 +53,38 @@ export function FeedbackDialog() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <motion.button
-            className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-green-600 text-white shadow-lg opacity-60 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
+            className='fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-green-600 text-white shadow-lg opacity-60 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center'
             style={{
               boxShadow: '0 0 0 0 rgba(34, 197, 94, 0.7)',
-              animation: 'pulse-green 2s infinite'
+              animation: 'pulse-green 2s infinite',
             }}
-            whileHover={{ 
+            whileHover={{
               scale: 1.1,
-              boxShadow: '0 0 20px rgba(34, 197, 94, 0.6)'
+              boxShadow: '0 0 20px rgba(34, 197, 94, 0.6)',
             }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-            title="Send Feedback"
-            aria-label="Send Feedback"
+            title='Send Feedback'
+            aria-label='Send Feedback'
           >
-            <MessageCircle className="h-6 w-6" />
+            <MessageCircle className='h-6 w-6' />
           </motion.button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
             <DialogTitle>Send Feedback</DialogTitle>
-            <DialogDescription>
-              Found a bug? Have a suggestion? Let us know!
-            </DialogDescription>
+            <DialogDescription>Found a bug? Have a suggestion? Let us know!</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="feedback">Your Message</Label>
-              <Textarea
-                id="feedback"
-                placeholder="I noticed that..."
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                rows={5}
-              />
+          <div className='grid gap-4 py-4'>
+            <div className='grid gap-2'>
+              <Label htmlFor='feedback'>Your Message</Label>
+              <Textarea id='feedback' placeholder='I noticed that...' value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={5} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant='outline' onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleSubmit} disabled={!feedback.trim() || sending}>
               {sending ? 'Sending...' : 'Send Feedback'}
             </Button>

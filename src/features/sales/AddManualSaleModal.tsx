@@ -73,7 +73,7 @@ export const AddManualSaleModal: React.FC<AddManualSaleModalProps> = ({ open, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Add Manual Sale</DialogTitle>
           <DialogDescription>Record a sale transaction manually. This sale will be tagged as "Manual".</DialogDescription>

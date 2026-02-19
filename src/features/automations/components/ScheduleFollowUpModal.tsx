@@ -369,7 +369,7 @@ const ScheduleFollowUpModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-4xl max-h-[95vh] overflow-y-auto p-0 gap-0'>
+      <DialogContent className='max-w-5xl max-h-[95vh] overflow-y-auto p-0 gap-0'>
         <Card className='border-0 shadow-none'>
           <CardHeader>
             <CardTitle>{mode === 'edit' ? 'Edit follow-up' : 'Schedule follow-up'}</CardTitle>

@@ -8,7 +8,7 @@ type DemoDialogProps = {
 const DemoDialog = ({ open, onOpenChange }: DemoDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-2xl'>
+      <DialogContent className='max-w-4xl'>
         <DialogHeader>
           <DialogTitle>LeadsBox in 60 seconds</DialogTitle>
           <DialogDescription>Quick walkthrough of the unified inbox and AI follow-ups.</DialogDescription>

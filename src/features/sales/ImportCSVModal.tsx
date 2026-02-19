@@ -57,7 +57,7 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({ open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-lg'>
+      <DialogContent className='max-w-xl'>
         <DialogHeader>
           <DialogTitle>Import Sales from CSV</DialogTitle>
           <DialogDescription>Upload a CSV file with sales data. All imported sales will be tagged as "Imported".</DialogDescription>

@@ -338,7 +338,7 @@ export const OrganizationTab: React.FC<Props> = ({
 
       {/* Create Organization Modal */}
       <Dialog open={createOrgOpen} onOpenChange={setCreateOrgOpen}>
-        <DialogContent>
+        <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
             <DialogTitle>Create Organization</DialogTitle>
             <DialogDescription>Fill in details to create your organization.</DialogDescription>
