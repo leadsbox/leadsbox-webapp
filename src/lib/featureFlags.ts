@@ -9,6 +9,6 @@ export const featureFlags = {
   tasks: false,
   templates: false,
   notifications: false,
-  referrals: false,
+  referrals: true,
   salesOld: false, // If we decide to hide the legacy sales feature later
 };
