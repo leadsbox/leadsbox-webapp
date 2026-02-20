@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import DashboardHeader from './DashboardHeader';
@@ -79,19 +80,9 @@ const DEFAULT_SIDEBAR_COUNTER_STATE: SidebarCounterState = {
   Catalogs: 0,
 };
 
-const sidebarItems: SidebarItem[] = [
-  {
-    title: 'Home',
-    href: '/dashboard/home',
-    icon: Home,
-    description: 'Command center overview',
-  },
-  {
-    title: 'Setup',
-    href: '/dashboard/setup',
-    icon: Sparkles,
-    description: 'Launch checklist and first-value steps',
-  },
+import { featureFlags } from '@/lib/featureFlags';
+
+const allSidebarItems: SidebarItem[] = [
   {
     title: 'Inbox',
     href: '/dashboard/inbox',
@@ -105,35 +96,64 @@ const sidebarItems: SidebarItem[] = [
     description: 'Manage your leads',
   },
   {
+    title: 'Contacts',
+    href: '/dashboard/contacts',
+    icon: Users,
+    description: 'Manage all contacts',
+  },
+  {
     title: 'Sales',
     href: '/dashboard/sales',
     icon: ShoppingBag,
     description: 'Sales grouped from conversations',
   },
   {
-    title: 'Products',
-    href: '/dashboard/products',
-    icon: Package,
-    description: 'Manage your product catalog',
-  },
-  {
-    title: 'Catalogs',
-    href: '/dashboard/catalogs',
-    icon: BookOpen,
-    description: 'Product collections and sharing',
-  },
-  {
-    title: 'Invoices',
-    href: '/dashboard/invoices',
-    icon: FileText,
-    description: 'Create and manage invoices',
-  },
-
-  {
     title: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
     description: 'Performance metrics',
+  },
+  ...(featureFlags.products
+    ? [
+        {
+          title: 'Products',
+          href: '/dashboard/products',
+          icon: Package,
+          description: 'Manage your product catalog',
+        },
+      ]
+    : []),
+  ...(featureFlags.catalogs
+    ? [
+        {
+          title: 'Catalogs',
+          href: '/dashboard/catalogs',
+          icon: BookOpen,
+          description: 'Product collections and sharing',
+        },
+      ]
+    : []),
+  ...(featureFlags.invoices
+    ? [
+        {
+          title: 'Invoices',
+          href: '/dashboard/invoices',
+          icon: FileText,
+          description: 'Create and manage invoices',
+        },
+      ]
+    : []),
+  {
+    title: 'Home',
+    href: '/dashboard/home',
+    icon: Home,
+    description: 'Command center overview',
+  },
+  {
+    title: 'Setup',
+    href: '/dashboard/setup',
+    icon: Sparkles,
+    description: 'Launch checklist and first-value steps',
   },
   {
     title: 'Billing',
@@ -147,41 +167,9 @@ const sidebarItems: SidebarItem[] = [
     icon: Settings,
     description: 'Account and preferences',
   },
-  // {
-  //   title: 'Templates',
-  //   href: '/dashboard/templates',
-  //   icon: MessageSquare,
-  //   description: 'WhatsApp message templates',
-  // },
-  // {
-  //   title: 'Tasks',
-  //   href: '/dashboard/tasks',
-  //   icon: CheckSquare,
-  //   badge: 3,
-  //   description: 'Your tasks and reminders',
-  // },
-
-  // 🚀 LAUNCH MVP: Hiding non-essential features (can re-enable by uncommenting)
-  // {
-  //   title: 'Automations',
-  //   href: '/dashboard/automations',
-  //   icon: Sparkles,
-  //   description: 'Follow-ups & workflow builder',
-  // },
-  // {
-  //   title: 'Carousel',
-  //   href: '/dashboard/carousel',
-  //   icon: Sparkles,
-  //   description: 'Generate branded carousels from videos',
-  // },
-
-  // {
-  //   title: 'Quotes',
-  //   href: '/dashboard/quotes',
-  //   icon: FileSpreadsheet,
-  //   description: 'Create and send quotes',
-  // },
 ];
+
+const sidebarItems = allSidebarItems;
 
 const DashboardContentFallback = () => (
   <div className='flex min-h-[320px] items-center justify-center text-muted-foreground' role='status' aria-live='polite'>
@@ -922,9 +910,11 @@ export const DashboardLayout: React.FC = () => {
 
         {/* Page content */}
         <section className='dashboard-main flex-1 overflow-auto' aria-label='Dashboard content'>
-          <Suspense fallback={<DashboardContentFallback />}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<DashboardContentFallback />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </section>
       </div>
       <SupportWidget />

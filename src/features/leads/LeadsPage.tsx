@@ -17,6 +17,8 @@ import {
   Calendar,
   DollarSign,
   MessageCircle,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -35,13 +37,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Lead, Stage, LeadLabel, leadLabelUtils } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 import { WhatsAppIcon, TelegramIcon } from '@/components/brand-icons';
@@ -51,6 +47,7 @@ import { notify } from '@/lib/toast';
 import { trackAppEvent } from '@/lib/productTelemetry';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { LeadsBoardView } from './LeadsBoardView';
 
 // Backend lead type
 interface BackendLead {
@@ -115,6 +112,7 @@ const LEGACY_STAGE_MAP: Record<string, Stage> = {
 const LeadsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<Stage | 'ALL'>('ALL');
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
@@ -137,7 +135,7 @@ const LeadsPage: React.FC = () => {
         label: leadLabelUtils.getDisplayName(stage as LeadLabel),
       })),
     ],
-    []
+    [],
   );
 
   const stageCounts = useMemo(() => {
@@ -188,13 +186,7 @@ const LeadsPage: React.FC = () => {
 
   const resolveSource = useCallback((provider?: string): Lead['source'] => {
     const normalized = String(provider || 'manual').toLowerCase();
-    if (
-      normalized === 'whatsapp' ||
-      normalized === 'telegram' ||
-      normalized === 'instagram' ||
-      normalized === 'website' ||
-      normalized === 'manual'
-    ) {
+    if (normalized === 'whatsapp' || normalized === 'telegram' || normalized === 'instagram' || normalized === 'website' || normalized === 'manual') {
       return normalized;
     }
     return 'manual';
@@ -202,16 +194,11 @@ const LeadsPage: React.FC = () => {
 
   const mapBackendLeadToUi = useCallback(
     (lead: BackendLead): Lead => {
-      const normalizedLabel = lead.label
-        ? (lead.label.toUpperCase() as LeadLabel)
-        : undefined;
+      const normalizedLabel = lead.label ? (lead.label.toUpperCase() as LeadLabel) : undefined;
       const stage = labelToStage(lead.label);
       const assignedUserId = lead.user?.id || lead.userId || '';
       const displayName =
-        lead.contact?.displayName ||
-        (lead.providerId
-          ? `Lead ${String(lead.providerId).slice(0, 6)}`
-          : lead.conversationId || 'Lead');
+        lead.contact?.displayName || (lead.providerId ? `Lead ${String(lead.providerId).slice(0, 6)}` : lead.conversationId || 'Lead');
 
       return {
         id: lead.id,
@@ -232,11 +219,7 @@ const LeadsPage: React.FC = () => {
         threadId: lead.threadId,
         providerId: lead.providerId,
         contactId: lead.contact?.id,
-        from:
-          lead.contact?.phone ||
-          lead.contact?.email ||
-          lead.providerId ||
-          lead.conversationId,
+        from: lead.contact?.phone || lead.contact?.email || lead.providerId || lead.conversationId,
         label: normalizedLabel,
         notes: lead.notes?.[0]?.note || '',
         noteHistory:
@@ -257,7 +240,7 @@ const LeadsPage: React.FC = () => {
           })) || [],
       };
     },
-    [labelToPriority, labelToStage, resolveSource]
+    [labelToPriority, labelToStage, resolveSource],
   );
 
   const fetchLeads = useCallback(async () => {
@@ -328,15 +311,12 @@ const LeadsPage: React.FC = () => {
       navigate(`/dashboard/inbox?${params.toString()}`);
       closeCreateLeadModal();
     },
-    [closeCreateLeadModal, navigate]
+    [closeCreateLeadModal, navigate],
   );
 
   const openScheduleFollowUp = useCallback(
     (lead: Lead) => {
-      const providerSeed =
-        lead.source === 'whatsapp' || lead.source === 'instagram' || lead.source === 'telegram'
-          ? lead.source
-          : 'whatsapp';
+      const providerSeed = lead.source === 'whatsapp' || lead.source === 'instagram' || lead.source === 'telegram' ? lead.source : 'whatsapp';
       const params = new URLSearchParams({
         quickFollowUp: '1',
         leadId: lead.id,
@@ -348,7 +328,7 @@ const LeadsPage: React.FC = () => {
       navigate(`/dashboard/automations?${params.toString()}`);
       closeCreateLeadModal();
     },
-    [closeCreateLeadModal, navigate]
+    [closeCreateLeadModal, navigate],
   );
 
   const openQuickCapture = useCallback(
@@ -362,7 +342,7 @@ const LeadsPage: React.FC = () => {
       navigate(`/dashboard/sales?${params.toString()}`);
       closeCreateLeadModal();
     },
-    [closeCreateLeadModal, navigate]
+    [closeCreateLeadModal, navigate],
   );
 
   const handleCreateLead = useCallback(async () => {
@@ -378,11 +358,7 @@ const LeadsPage: React.FC = () => {
       return;
     }
 
-    const seed =
-      normalizedPhone ||
-      normalizedEmail ||
-      normalizedName.toLowerCase().replace(/\s+/g, '-') ||
-      `lead-${Date.now()}`;
+    const seed = normalizedPhone || normalizedEmail || normalizedName.toLowerCase().replace(/\s+/g, '-') || `lead-${Date.now()}`;
     const conversationId = `manual:${newLeadSource}:${seed}:${Date.now()}`;
 
     try {
@@ -433,16 +409,7 @@ const LeadsPage: React.FC = () => {
     } finally {
       setIsCreatingLead(false);
     }
-  }, [
-    fetchLeads,
-    mapBackendLeadToUi,
-    newLeadEmail,
-    newLeadName,
-    newLeadPhone,
-    newLeadSource,
-    newLeadStage,
-    resetCreateLeadForm,
-  ]);
+  }, [fetchLeads, mapBackendLeadToUi, newLeadEmail, newLeadName, newLeadPhone, newLeadSource, newLeadStage, resetCreateLeadForm]);
 
   const isDataLoading = isLoading || membersLoading;
 
@@ -458,30 +425,17 @@ const LeadsPage: React.FC = () => {
 
         return matchesSearch && matchesStage;
       }),
-    [leads, searchQuery, stageFilter]
+    [leads, searchQuery, stageFilter],
   );
 
   const engagedCount = useMemo(
-    () =>
-      leads.filter((lead) =>
-        ['ENGAGED', 'FOLLOW_UP_REQUIRED', 'TRANSACTION_IN_PROGRESS'].includes(
-          lead.stage
-        )
-      ).length,
-    [leads]
+    () => leads.filter((lead) => ['ENGAGED', 'FOLLOW_UP_REQUIRED', 'TRANSACTION_IN_PROGRESS'].includes(lead.stage)).length,
+    [leads],
   );
 
-  const wonCount = useMemo(
-    () =>
-      leads.filter((lead) => lead.stage === 'TRANSACTION_SUCCESSFUL').length,
-    [leads]
-  );
+  const wonCount = useMemo(() => leads.filter((lead) => lead.stage === 'TRANSACTION_SUCCESSFUL').length, [leads]);
 
-  const lostCount = useMemo(
-    () =>
-      leads.filter((lead) => lead.stage === 'CLOSED_LOST_TRANSACTION').length,
-    [leads]
-  );
+  const lostCount = useMemo(() => leads.filter((lead) => lead.stage === 'CLOSED_LOST_TRANSACTION').length, [leads]);
 
   const getStageColor = (stage: Stage) => {
     switch (stage) {
@@ -563,11 +517,8 @@ const LeadsPage: React.FC = () => {
       if (!member) return undefined;
 
       const { user } = member;
-      const fullName = [user?.firstName, user?.lastName]
-        .filter(Boolean)
-        .join(' ');
-      const displayName =
-        fullName || user?.username || user?.email || 'Team member';
+      const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+      const displayName = fullName || user?.username || user?.email || 'Team member';
 
       return {
         id: member.userId,
@@ -576,11 +527,47 @@ const LeadsPage: React.FC = () => {
         email: user?.email ?? undefined,
       };
     },
-    [getMemberByUserId]
+    [getMemberByUserId],
   );
 
   const handleLeadSelection = (lead: Lead) => {
     navigate(`/dashboard/leads/${lead.id}`);
+  };
+
+  const handleLeadMove = async (leadId: string, newLabel: string) => {
+    const originalLead = leads.find((l) => l.id === leadId);
+    if (!originalLead) return;
+
+    // Optimistic update
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id === leadId) {
+          return {
+            ...l,
+            stage: newLabel as Stage,
+            tags: [newLabel],
+          };
+        }
+        return l;
+      }),
+    );
+
+    try {
+      await client.put(endpoints.lead(leadId), { label: newLabel });
+      notify.success({
+        key: `lead:${leadId}:moved`,
+        title: 'Lead updated',
+        description: `Moved to ${leadLabelUtils.getDisplayName(newLabel as LeadLabel)}`,
+      });
+    } catch (error) {
+      // Revert on error
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? originalLead : l)));
+      notify.error({
+        key: `lead:${leadId}:move-failed`,
+        title: 'Failed to update lead',
+        description: 'Please try again.',
+      });
+    }
   };
 
   const handleWhatsAppClick = (lead: Lead) => {
@@ -613,295 +600,357 @@ const LeadsPage: React.FC = () => {
           <h1 className='text-2xl sm:text-3xl font-bold text-foreground'>Leads</h1>
           <p className='text-sm sm:text-base text-muted-foreground'>Manage and track your leads</p>
         </div>
-        <Button
-          onClick={() => {
-            setCreatedLeadForNextSteps(null);
-            setIsCreateLeadOpen(true);
-          }}
-        >
-          <Plus className='h-4 w-4 mr-2' />
-          Add Lead
-        </Button>
+        <div className='flex items-center gap-2'>
+          <div className='flex items-center bg-muted/50 p-1 rounded-md border text-muted-foreground mr-2'>
+            <Button
+              variant='ghost'
+              size='sm'
+              className={`h-8 w-8 p-0 ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              <List className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='sm'
+              className={`h-8 w-8 p-0 ${viewMode === 'board' ? 'bg-background shadow-sm text-foreground' : ''}`}
+              onClick={() => setViewMode('board')}
+            >
+              <LayoutGrid className='h-4 w-4' />
+            </Button>
+          </div>
+          <Button
+            onClick={() => {
+              setCreatedLeadForNextSteps(null);
+              setIsCreateLeadOpen(true);
+            }}
+          >
+            <Plus className='h-4 w-4 mr-2' />
+            Add Lead
+          </Button>
+        </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Quick Filters */}
+      <div className='flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide'>
+        {[
+          { id: 'ALL', label: 'All Leads' },
+          { id: 'NEW_LEAD', label: 'New Inquiries' },
+          { id: 'PAYMENT_PENDING', label: 'Payment Pending' },
+          { id: 'FOLLOW_UP_REQUIRED', label: 'Follow-up' },
+          { id: 'TRANSACTION_SUCCESSFUL', label: 'Closed/Won' },
+        ].map((filter) => (
+          <Button
+            key={filter.id}
+            variant={stageFilter === filter.id ? 'default' : 'outline'}
+            size='sm'
+            className='rounded-full px-4 shrink-0'
+            onClick={() => setStageFilter(filter.id as Stage | 'ALL')}
+          >
+            {filter.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Search and Extra Filters */}
       <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4'>
         <div className='relative flex-1'>
           <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-          <Input placeholder='Search leads...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
+          <Input
+            placeholder='Search leads by name, email, or company...'
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className='pl-10 max-w-md'
+          />
         </div>
 
-        <Select
-          value={stageFilter}
-          onValueChange={(value) => setStageFilter(value as Stage | 'ALL')}
-        >
-          <SelectTrigger className='w-full sm:w-[220px]'>
-            <SelectValue placeholder='All stages' />
+        <Select value={stageFilter} onValueChange={(value) => setStageFilter(value as Stage | 'ALL')}>
+          <SelectTrigger className='w-full sm:w-[220px] bg-background'>
+            <SelectValue placeholder='More stages...' />
           </SelectTrigger>
           <SelectContent align='end'>
             {stageFilters.map(({ value, label }) => (
               <SelectItem key={value} value={value}>
                 <div className='flex items-center justify-between gap-4'>
                   <span>{label}</span>
-                  <span className='text-xs text-muted-foreground'>
-                    {stageCounts[value] ?? 0}
-                  </span>
+                  <span className='text-xs text-muted-foreground'>{stageCounts[value] ?? 0}</span>
                 </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-
-        <Button variant='outline'>
-          <Filter className='h-4 w-4 mr-2' />
-          Filter
-        </Button>
       </div>
 
       {/* Stats Cards */}
       <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-        {isDataLoading
-          ? Array.from({ length: 4 }).map((_, index) => (
-              <Card key={`lead-stat-skeleton-${index}`} className='h-full'>
-                <CardHeader className='pb-2 space-y-2'>
-                  <Skeleton className='h-4 w-24' />
-                </CardHeader>
-                <CardContent className='space-y-2'>
-                  <Skeleton className='h-7 w-16' />
-                  <Skeleton className='h-3 w-32' />
-                </CardContent>
-              </Card>
-            ))
-          : (
-              <>
-                <Card>
-                  <CardHeader className='pb-2'>
-                    <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='text-2xl font-bold'>{leads.length}</div>
-                    <p className='text-xs text-muted-foreground'>+12% from last month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className='pb-2'>
-                    <CardTitle className='text-sm font-medium'>Active Pipeline</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='text-2xl font-bold'>{engagedCount}</div>
-                    <p className='text-xs text-muted-foreground'>Leads currently in motion</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className='pb-2'>
-                    <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='text-2xl font-bold'>24.5%</div>
-                    <p className='text-xs text-muted-foreground'>+2.1% from last month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className='pb-2'>
-                    <CardTitle className='text-sm font-medium'>Recent Outcomes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className='text-sm text-muted-foreground space-y-1'>
-                      <div className='flex items-center justify-between'>
-                        <span>Won</span>
-                        <span className='font-semibold text-green-500'>{wonCount}</span>
-                      </div>
-                      <div className='flex items-center justify-between'>
-                        <span>Lost</span>
-                        <span className='font-semibold text-red-500'>{lostCount}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
+        {isDataLoading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <Card key={`lead-stat-skeleton-${index}`} className='h-full'>
+              <CardHeader className='pb-2 space-y-2'>
+                <Skeleton className='h-4 w-24' />
+              </CardHeader>
+              <CardContent className='space-y-2'>
+                <Skeleton className='h-7 w-16' />
+                <Skeleton className='h-3 w-32' />
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <Card>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='text-2xl font-bold'>{leads.length}</div>
+                <p className='text-xs text-muted-foreground'>+12% from last month</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-sm font-medium'>Active Pipeline</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='text-2xl font-bold'>{engagedCount}</div>
+                <p className='text-xs text-muted-foreground'>Leads currently in motion</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-sm font-medium'>Conversion Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='text-2xl font-bold'>24.5%</div>
+                <p className='text-xs text-muted-foreground'>+2.1% from last month</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-sm font-medium'>Recent Outcomes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='text-sm text-muted-foreground space-y-1'>
+                  <div className='flex items-center justify-between'>
+                    <span>Won</span>
+                    <span className='font-semibold text-green-500'>{wonCount}</span>
+                  </div>
+                  <div className='flex items-center justify-between'>
+                    <span>Lost</span>
+                    <span className='font-semibold text-red-500'>{lostCount}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Leads Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {isDataLoading ? <Skeleton className='h-6 w-32' /> : `Leads (${filteredLeads.length})`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className='overflow-x-auto'>
-          <Table className='min-w-[800px]'>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Lead</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Last Activity</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isDataLoading ? (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <TableRow key={`lead-row-skel-${index}`}>
-                    <TableCell>
-                      <div className='flex items-center space-x-3'>
-                        <Skeleton className='h-8 w-8 rounded-full' />
-                        <div className='space-y-2'>
-                          <Skeleton className='h-4 w-28' />
-                          <Skeleton className='h-3 w-20' />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-16' />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-24' />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-20' />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-24' />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-16' />
-                    </TableCell>
-                    <TableCell>
-                      <div className='flex items-center space-x-2'>
-                        <Skeleton className='h-6 w-6 rounded-full' />
-                        <Skeleton className='h-4 w-20' />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-24' />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className='h-4 w-6' />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : filteredLeads.length === 0 ? (
+      {viewMode === 'board' ? (
+        <LeadsBoardView leads={filteredLeads} onLeadMove={handleLeadMove} onLeadClick={handleLeadSelection} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>{isDataLoading ? <Skeleton className='h-6 w-32' /> : `Leads (${filteredLeads.length})`}</CardTitle>
+          </CardHeader>
+          <CardContent className='overflow-x-auto'>
+            <Table className='min-w-[800px]'>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={9} className='h-36 text-center text-muted-foreground'>
-                    <div className='space-y-2'>
-                      <p>No leads match your filters yet.</p>
-                      <Button
-                        size='sm'
-                        onClick={() => {
-                          setCreatedLeadForNextSteps(null);
-                          setIsCreateLeadOpen(true);
-                        }}
-                      >
-                        <Plus className='mr-2 h-4 w-4' />
-                        Add your first lead
-                      </Button>
-                    </div>
-                  </TableCell>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Lead Label</TableHead>
+                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Last Activity</TableHead>
+                  <TableHead className='text-right'>Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredLeads.map((lead) => {
-                  const assignedUser = getAssignedUser(lead.assignedTo || '');
-
-                  return (
-                    <TableRow key={lead.id} className='cursor-pointer hover:bg-muted/50' onClick={() => handleLeadSelection(lead)}>
-                    <TableCell>
-                      <div className='flex items-center space-x-3'>
-                        <Avatar className='h-8 w-8'>
-                          <AvatarFallback className='bg-primary/10 text-primary'>{lead.name.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className='font-medium'>{lead.name}</div>
-                          <div className='text-sm text-muted-foreground'>{lead.email}</div>
+              </TableHeader>
+              <TableBody>
+                {isDataLoading ? (
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <TableRow key={`lead-row-skel-${index}`}>
+                      <TableCell>
+                        <div className='flex items-center space-x-3'>
+                          <Skeleton className='h-8 w-8 rounded-full' />
+                          <div className='space-y-2'>
+                            <Skeleton className='h-4 w-32' />
+                            <Skeleton className='h-3 w-24' />
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className='flex items-center'>
-                        {getSourceIcon(lead.source)}
-                        <span className='capitalize text-sm ml-1'>{lead.source}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className='text-sm text-muted-foreground'>
-                        {(() => {
-                          const leadData = lead as Lead & { from?: string; providerId?: string; conversationId?: string };
-                          return leadData.from || leadData.providerId || leadData.conversationId || '—';
-                        })()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant='outline' className={getStageColor(lead.stage)}>
-                        {leadLabelUtils.isValidLabel(lead.stage as LeadLabel)
-                          ? leadLabelUtils.getDisplayName(lead.stage as LeadLabel)
-                          : lead.stage.replace(/_/g, ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className='flex flex-wrap gap-1'>
-                        {lead.tags.map((tag, index) => (
-                          <Badge key={index} variant='outline' className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
-                            {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
-                          </Badge>
-                        ))}
-                        {lead.tags.length === 0 && <span className='text-sm text-muted-foreground'>—</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant='outline' className={getPriorityColor(lead.priority)}>
-                        {lead.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {assignedUser ? (
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className='h-6 w-24 rounded-full' />
+                      </TableCell>
+                      <TableCell>
                         <div className='flex items-center space-x-2'>
-                          <Avatar className='h-6 w-6'>
-                            {assignedUser.avatar ? (
-                              <AvatarImage src={assignedUser.avatar} />
-                            ) : (
-                              <AvatarFallback className='text-xs'>
-                                {assignedUser.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <span className='text-sm'>{assignedUser.name}</span>
+                          <Skeleton className='h-6 w-6 rounded-full' />
+                          <Skeleton className='h-4 w-20' />
                         </div>
-                      ) : (
-                        <span className='text-sm text-muted-foreground'>Unassigned</span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <span className='text-sm text-muted-foreground'>
-                        {lead.lastActivity && formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true })}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant='ghost'
-                        size='icon'
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleLeadSelection(lead);
-                        }}
-                      >
-                        <ExternalLink className='h-4 w-4' />
-                      </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className='h-4 w-20' />
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        <Skeleton className='h-8 w-8 ml-auto rounded-md' />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredLeads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className='h-48 text-center'>
+                      <div className='flex flex-col items-center justify-center space-y-3'>
+                        <div className='bg-muted/50 p-4 rounded-full'>
+                          <Building className='h-8 w-8 text-muted-foreground/50' />
+                        </div>
+                        {leads.length === 0 ? (
+                          <>
+                            <h3 className='text-lg font-medium'>No leads yet</h3>
+                            <p className='text-sm text-muted-foreground max-w-sm'>
+                              Add a lead manually or connect a channel to start capturing leads automatically.
+                            </p>
+                            <Button
+                              className='mt-2'
+                              onClick={() => {
+                                setCreatedLeadForNextSteps(null);
+                                setIsCreateLeadOpen(true);
+                              }}
+                            >
+                              <Plus className='mr-2 h-4 w-4' />
+                              Add your first lead
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <h3 className='text-lg font-medium'>No matching leads</h3>
+                            <p className='text-sm text-muted-foreground'>Try adjusting your search criteria or resetting filters.</p>
+                            <Button
+                              variant='outline'
+                              className='mt-2'
+                              onClick={() => {
+                                setSearchQuery('');
+                                setStageFilter('ALL');
+                              }}
+                            >
+                              Clear filters
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
-                );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : (
+                  filteredLeads.map((lead) => {
+                    const assignedUser = getAssignedUser(lead.assignedTo || '');
 
+                    return (
+                      <TableRow
+                        key={lead.id}
+                        className='cursor-pointer hover:bg-muted/50 transition-colors'
+                        onClick={(e) => {
+                          // Don't trigger if clicking a button inside
+                          if (!(e.target as HTMLElement).closest('button, a')) {
+                            handleLeadSelection(lead);
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <div className='flex items-center space-x-3'>
+                            <div className='relative'>
+                              <Avatar className='h-9 w-9'>
+                                <AvatarFallback className='bg-primary/10 text-primary'>{lead.name.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div
+                                className='absolute -bottom-1 -right-1 bg-white rounded-full p-[2px] shadow-sm cursor-help'
+                                title={`Source: ${lead.source}`}
+                              >
+                                {getSourceIcon(lead.source)}
+                              </div>
+                            </div>
+                            <div className='flex flex-col min-w-0'>
+                              <span className='font-medium text-foreground truncate max-w-[180px]'>{lead.name}</span>
+                              <span className='text-xs text-muted-foreground truncate max-w-[180px]'>
+                                {lead.phone || lead.email || 'No contact info'}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge
+                            variant='outline'
+                            className={`font-medium ${leadLabelUtils.getLabelStyling(lead.stage as LeadLabel) || getStageColor(lead.stage)}`}
+                          >
+                            {leadLabelUtils.isValidLabel(lead.stage) ? leadLabelUtils.getDisplayName(lead.stage as LeadLabel) : lead.stage}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          {assignedUser ? (
+                            <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                              <Avatar className='h-6 w-6'>
+                                {assignedUser.avatar ? <AvatarImage src={assignedUser.avatar} /> : null}
+                                <AvatarFallback className='text-[10px]'>{assignedUser.name.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <span className='truncate max-w-[100px] hidden sm:inline-block'>{assignedUser.name}</span>
+                            </div>
+                          ) : (
+                            <span className='text-sm text-muted-foreground opacity-50'>Unassigned</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className='text-sm text-muted-foreground'>
+                          {lead.lastActivity ? formatDistanceToNow(new Date(lead.lastActivity), { addSuffix: true }) : 'Never'}
+                        </TableCell>
+
+                        <TableCell className='text-right'>
+                          <div className='flex items-center justify-end space-x-2'>
+                            <Button
+                              variant='ghost'
+                              size='icon'
+                              className='h-8 w-8 text-muted-foreground hover:text-primary'
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleWhatsAppClick(lead);
+                              }}
+                              title='Message in Inbox'
+                            >
+                              <MessageCircle className='h-4 w-4' />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant='ghost' size='icon' className='h-8 w-8'>
+                                  <MoreHorizontal className='h-4 w-4' />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align='end' onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleLeadSelection(lead)}>View details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleWhatsAppClick(lead)}>Message in Inbox</DropdownMenuItem>
+                                {lead.phone && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      window.location.href = `tel:${lead.phone}`;
+                                    }}
+                                  >
+                                    Call contact
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className='text-destructive'>Archive lead</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Create Lead Modal */}
       <Dialog
         open={isCreateLeadOpen}
         onOpenChange={(open) => {
@@ -982,11 +1031,7 @@ const LeadsPage: React.FC = () => {
               <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                 <div className='space-y-2'>
                   <Label htmlFor='manual-lead-source'>Source</Label>
-                  <Select
-                    value={newLeadSource}
-                    onValueChange={(value) => setNewLeadSource(value as Lead['source'])}
-                    disabled={isCreatingLead}
-                  >
+                  <Select value={newLeadSource} onValueChange={(value) => setNewLeadSource(value as Lead['source'])} disabled={isCreatingLead}>
                     <SelectTrigger id='manual-lead-source'>
                       <SelectValue placeholder='Select source' />
                     </SelectTrigger>
@@ -1001,11 +1046,7 @@ const LeadsPage: React.FC = () => {
                 </div>
                 <div className='space-y-2'>
                   <Label htmlFor='manual-lead-stage'>Starting stage</Label>
-                  <Select
-                    value={newLeadStage}
-                    onValueChange={(value) => setNewLeadStage(value as Stage)}
-                    disabled={isCreatingLead}
-                  >
+                  <Select value={newLeadStage} onValueChange={(value) => setNewLeadStage(value as Stage)} disabled={isCreatingLead}>
                     <SelectTrigger id='manual-lead-stage'>
                       <SelectValue placeholder='Select stage' />
                     </SelectTrigger>
@@ -1019,9 +1060,7 @@ const LeadsPage: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              <p className='text-xs text-muted-foreground'>
-                Add at least phone or email. We use this to keep your pipeline and follow-ups reliable.
-              </p>
+              <p className='text-xs text-muted-foreground'>Add at least phone or email. We use this to keep your pipeline and follow-ups reliable.</p>
             </div>
           )}
 
@@ -1032,11 +1071,7 @@ const LeadsPage: React.FC = () => {
               </Button>
             ) : (
               <>
-                <Button
-                  variant='outline'
-                  onClick={closeCreateLeadModal}
-                  disabled={isCreatingLead}
-                >
+                <Button variant='outline' onClick={closeCreateLeadModal} disabled={isCreatingLead}>
                   Cancel
                 </Button>
                 <Button onClick={() => void handleCreateLead()} disabled={isCreatingLead}>

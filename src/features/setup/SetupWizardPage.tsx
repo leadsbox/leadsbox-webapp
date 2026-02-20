@@ -39,31 +39,31 @@ const SetupWizardPage = () => {
   const steps = useMemo(
     () => [
       {
+        id: 'org-created',
+        title: 'Organization created',
+        description: 'Your workspace is ready to go.',
+        href: '#',
+        cta: 'Done',
+        completed: true, // Always true if they reach here (handled by ProtectedRoute)
+      },
+      {
         id: 'connect-channel',
-        title: 'Connect a messaging channel',
-        description: 'Connect WhatsApp or Instagram so customer chats enter LeadsBox automatically.',
+        title: 'Connect WhatsApp Business',
+        description: 'Connect your WhatsApp so customer chats enter LeadsBox automatically.',
         href: '/dashboard/settings?tab=integrations',
-        cta: metrics.channelConnected ? 'Manage channels' : 'Connect channel',
+        cta: metrics.channelConnected ? 'Manage channels' : 'Connect WhatsApp',
         completed: metrics.channelConnected,
       },
       {
         id: 'first-lead',
-        title: 'Capture your first lead',
-        description: 'Import or create at least one lead so AI can start tracking progress.',
-        href: '/dashboard/leads?quickAdd=1',
-        cta: 'Add lead',
+        title: 'First conversations & leads',
+        description: 'Once someone messages your WhatsApp, they will appear in your Inbox and Leads.',
+        href: '/dashboard/inbox',
+        cta: 'Go to Inbox',
         completed: metrics.leadsCount > 0,
       },
-      {
-        id: 'first-sale',
-        title: 'Record first paid sale',
-        description: 'Use quick capture or invoice payment once to confirm your revenue workflow.',
-        href: '/dashboard/sales',
-        cta: 'Go to sales',
-        completed: metrics.paidSalesCount > 0,
-      },
     ],
-    [metrics.channelConnected, metrics.leadsCount, metrics.paidSalesCount]
+    [metrics.channelConnected, metrics.leadsCount],
   );
 
   const completedSteps = steps.filter((step) => step.completed).length;
@@ -79,7 +79,9 @@ const SetupWizardPage = () => {
             Complete these steps to make LeadsBox automatic and reliable for your daily WhatsApp sales flow.
           </p>
         </div>
-        <Badge variant='secondary'>{completedSteps}/{steps.length} complete</Badge>
+        <Badge variant='secondary'>
+          {completedSteps}/{steps.length} complete
+        </Badge>
       </div>
 
       <Card>
@@ -95,10 +97,6 @@ const SetupWizardPage = () => {
           <div className='rounded-lg border bg-muted/30 p-3'>
             <p className='text-muted-foreground'>Leads</p>
             <p className='text-xl font-semibold'>{metrics.leadsCount}</p>
-          </div>
-          <div className='rounded-lg border bg-muted/30 p-3'>
-            <p className='text-muted-foreground'>Paid sales</p>
-            <p className='text-xl font-semibold'>{metrics.paidSalesCount}</p>
           </div>
           <div className='rounded-lg border bg-muted/30 p-3'>
             <p className='text-muted-foreground'>First-value status</p>
@@ -130,11 +128,7 @@ const SetupWizardPage = () => {
               <CardContent className='flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='flex items-start gap-3'>
                   <div className='mt-0.5'>
-                    {step.completed ? (
-                      <CheckCircle2 className='h-5 w-5 text-emerald-500' />
-                    ) : (
-                      <Circle className='h-5 w-5 text-muted-foreground' />
-                    )}
+                    {step.completed ? <CheckCircle2 className='h-5 w-5 text-emerald-500' /> : <Circle className='h-5 w-5 text-muted-foreground' />}
                   </div>
                   <div>
                     <p className='text-xs text-muted-foreground'>Step {index + 1}</p>
@@ -142,11 +136,7 @@ const SetupWizardPage = () => {
                     <p className='text-sm text-muted-foreground'>{step.description}</p>
                   </div>
                 </div>
-                <Button
-                  asChild
-                  size='sm'
-                  variant={step.completed ? 'secondary' : step.id === nextStep?.id ? 'default' : 'outline'}
-                >
+                <Button asChild size='sm' variant={step.completed ? 'secondary' : step.id === nextStep?.id ? 'default' : 'outline'}>
                   <Link to={step.href}>{step.completed ? 'Completed' : step.cta}</Link>
                 </Button>
               </CardContent>

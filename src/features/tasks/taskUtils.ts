@@ -43,9 +43,7 @@ const toTaskStatus = (status?: FollowUpStatus | null): Task['status'] => {
 
 const resolveTitle = (followUp: FollowUpRule): string => {
   const metadataTitle =
-    typeof followUp.metadata === 'object' &&
-    followUp.metadata !== null &&
-    typeof (followUp.metadata as Record<string, unknown>).title === 'string'
+    typeof followUp.metadata === 'object' && followUp.metadata !== null && typeof (followUp.metadata as Record<string, unknown>).title === 'string'
       ? String((followUp.metadata as Record<string, unknown>).title)
       : null;
 
@@ -58,8 +56,7 @@ const resolveTitle = (followUp: FollowUpRule): string => {
   }
 
   const provider = typeof followUp.provider === 'string' ? followUp.provider : '';
-  const capitalisedProvider =
-    provider.length > 0 ? provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase() : 'Follow-up';
+  const capitalisedProvider = provider.length > 0 ? provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase() : 'Follow-up';
 
   return `${capitalisedProvider} reminder`;
 };
@@ -81,6 +78,7 @@ export const mapFollowUpToTask = (followUp: FollowUpRule): Task => {
     status: toTaskStatus(followUp.status),
     assignedTo: followUp.userId ?? '',
     leadId: followUp.leadId ?? undefined,
+    leadName: followUp.lead?.contact?.displayName || followUp.lead?.contact?.name || followUp.lead?.name || undefined,
     threadId: followUp.conversationId ?? undefined,
     dueDate: dueDateIso,
     createdAt: toIsoString(followUp.createdAt, dueDateIso),
@@ -88,8 +86,7 @@ export const mapFollowUpToTask = (followUp: FollowUpRule): Task => {
   };
 };
 
-export const mapFollowUpsToTasks = (followUps: FollowUpRule[]): Task[] =>
-  followUps.map((followUp) => mapFollowUpToTask(followUp));
+export const mapFollowUpsToTasks = (followUps: FollowUpRule[]): Task[] => followUps.map((followUp) => mapFollowUpToTask(followUp));
 
 const startOfDay = (date: Date) => {
   const next = new Date(date);

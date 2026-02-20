@@ -1,7 +1,7 @@
 // Inbox Page Component for LeadsBox Dashboard
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Select } from '../../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 // ...existing imports...
 
 // ...existing imports...
@@ -34,13 +34,14 @@ import { endpoints } from '@/api/config';
 import { AxiosError } from 'axios';
 import { notify } from '@/lib/toast';
 import { Thread, Message, Stage, LeadLabel, leadLabelUtils } from '../../types';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isSameDay, format, isToday, isYesterday } from 'date-fns';
 import { WhatsAppConnectionError } from '@/components/WhatsAppConnectionError';
 import { useSocketIO } from '@/lib/socket';
 import { trackAppEvent, trackMobileBlocked } from '@/lib/productTelemetry';
 import { useAuth } from '@/context/useAuth';
 import templateApi from '@/api/templates';
 import confetti from 'canvas-confetti';
+import { useSetupProgress } from '@/features/setup/useSetupProgress';
 
 const InboxPage: React.FC = () => {
   // ...other state...
@@ -52,6 +53,7 @@ const InboxPage: React.FC = () => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const { metrics, loading: setupLoading } = useSetupProgress();
 
   // ...other effects...
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,7 +80,7 @@ const InboxPage: React.FC = () => {
   const [followUpScheduledAt, setFollowUpScheduledAt] = useState('');
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [followUpTemplateId, setFollowUpTemplateId] = useState('');
-  const [approvedTemplates, setApprovedTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [approvedTemplates, setApprovedTemplates] = useState<Array<{ id: string; name: string; body?: string }>>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Ref for auto-scrolling to bottom of messages
@@ -103,6 +105,32 @@ const InboxPage: React.FC = () => {
     stopTyping,
     on: socketOn,
   } = useSocketIO();
+
+  // Fetch templates for quick replies
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const templates = await templateApi.list({ status: 'APPROVED' });
+        const list = Array.isArray(templates) ? templates : [];
+        setApprovedTemplates(
+          list.map((t) => ({
+            id: t.id,
+            name: t.name,
+            body: t.components?.find((c: { type: string; text?: string }) => c.type === 'BODY')?.text || '',
+          })),
+        );
+      } catch (err) {
+        console.error('Failed to load templates for quick replies:', err);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+    // Only load if user is authenticated and orgId is available
+    if (user?.currentOrgId || user?.orgId || getOrgId()) {
+      loadTemplates();
+    }
+  }, [user?.currentOrgId, user?.orgId]);
 
   // Debug authentication state
   React.useEffect(() => {
@@ -142,9 +170,7 @@ const InboxPage: React.FC = () => {
     });
 
     const nextParams = new URLSearchParams(searchParams);
-    ['startChat', 'phone', 'text', 'leadId', 'leadName'].forEach((key) =>
-      nextParams.delete(key),
-    );
+    ['startChat', 'phone', 'text', 'leadId', 'leadName'].forEach((key) => nextParams.delete(key));
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -241,19 +267,9 @@ const InboxPage: React.FC = () => {
       createdAt: api.lastMessageAt,
       updatedAt: api.lastMessageAt,
       contactId: api.contact.id,
-      providerId:
-        api.contact.waId ||
-        api.contact.phone ||
-        api.contact.igUsername ||
-        api.contact.fbPsid ||
-        api.contact.id,
+      providerId: api.contact.waId || api.contact.phone || api.contact.igUsername || api.contact.fbPsid || api.contact.id,
       conversationId: api.id,
-      from:
-        api.contact.waId ||
-        api.contact.phone ||
-        api.contact.igUsername ||
-        api.contact.fbPsid ||
-        api.contact.id,
+      from: api.contact.waId || api.contact.phone || api.contact.igUsername || api.contact.fbPsid || api.contact.id,
     };
   };
   const toUiThread = (api: ApiThread): Thread => {
@@ -1053,17 +1069,8 @@ const InboxPage: React.FC = () => {
 
   const createLeadForThread = async (thread: Thread): Promise<string> => {
     const organizationId = user?.currentOrgId || user?.orgId || getOrgId();
-    const providerId =
-      thread.lead.providerId ||
-      thread.lead.from ||
-      thread.lead.phone ||
-      thread.lead.contactId;
-    const provider =
-      thread.channel === 'whatsapp' ||
-      thread.channel === 'instagram' ||
-      thread.channel === 'telegram'
-        ? thread.channel
-        : 'whatsapp';
+    const providerId = thread.lead.providerId || thread.lead.from || thread.lead.phone || thread.lead.contactId;
+    const provider = thread.channel === 'whatsapp' || thread.channel === 'instagram' || thread.channel === 'telegram' ? thread.channel : 'whatsapp';
 
     if (!organizationId || !providerId) {
       throw new Error('Missing organization or provider context for lead creation');
@@ -1178,6 +1185,7 @@ const InboxPage: React.FC = () => {
         list.map((template) => ({
           id: template.id,
           name: template.name,
+          body: template.components?.find((c: { type: string; text?: string }) => c.type === 'BODY')?.text || '',
         })),
       );
     } catch {
@@ -1283,688 +1291,45 @@ const InboxPage: React.FC = () => {
   };
 
   return (
-    <div className='flex h-full bg-background relative'>
-      {/* WhatsApp Connection Error */}
-      {whatsappConnectionError && (
-        <div className='absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4'>
-          <WhatsAppConnectionError onRetry={() => setWhatsappConnectionError(false)} />
+    <div className='flex h-full bg-background relative flex-col'>
+      {/* WhatsApp Connection Error Full Width Banner */}
+      {(!setupLoading && !metrics.channelConnected) || whatsappConnectionError ? (
+        <div className='w-full z-40 bg-amber-50'>
+          <WhatsAppConnectionError onRetry={whatsappConnectionError ? () => setWhatsappConnectionError(false) : undefined} />
         </div>
-      )}
-
-      {/* Thread List Sidebar - Desktop */}
-      <div className='hidden md:flex w-96 border-r border-border flex-col'>
-        {/* Header */}
-        <div className='p-4 border-b border-border'>
-          <div className='flex items-center justify-between mb-4'>
-            <h1 className='text-2xl font-semibold text-foreground'>Inbox</h1>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant='outline' size='icon'>
-                  <MoreHorizontal className='h-4 w-4' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end'>
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowNewChat(true)}>New Chat</DropdownMenuItem>
-                <DropdownMenuItem>Mark all as read</DropdownMenuItem>
-                <DropdownMenuItem>Archive conversations</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Export data</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Search */}
-          <div className='relative mb-4'>
-            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-            <Input placeholder='Search conversations...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
-          </div>
-
-          {/* Filters */}
-          <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
-            <TabsList className='grid w-full grid-cols-4'>
-              <TabsTrigger value='all'>All</TabsTrigger>
-              <TabsTrigger value='unread'>Unread</TabsTrigger>
-              <TabsTrigger value='mine'>Mine</TabsTrigger>
-              <TabsTrigger value='hot'>Hot</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {/* Thread List */}
-        <div className='flex-1 overflow-auto'>
-          {loadingThreads ? (
-            <div className='space-y-4 p-4'>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className='flex items-start gap-3'>
-                  <Skeleton className='h-10 w-10 rounded-full' />
-                  <div className='flex-1 space-y-2'>
-                    <Skeleton className='h-4 w-2/3' />
-                    <Skeleton className='h-3 w-1/2' />
-                    <Skeleton className='h-3 w-3/4' />
-                  </div>
-                  <Skeleton className='h-3 w-12' />
-                </div>
-              ))}
-            </div>
-          ) : filteredThreads.length === 0 ? (
-            <div className='p-6 text-center'>
-              <WhatsAppIcon className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
-              <h3 className='text-lg font-medium text-foreground mb-2'>No conversations found</h3>
-              <p className='text-muted-foreground'>Try adjusting your search or filters.</p>
-              <div className='mt-4'>
-                <Button onClick={() => setShowNewChat(true)}>Start New Chat</Button>
-              </div>
-            </div>
-          ) : (
-            filteredThreads.map((thread) => (
-              <div
-                key={thread.id}
-                onClick={() => setSelectedThread(thread)}
-                className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors ${
-                  selectedThread?.id === thread.id ? 'bg-muted border-l-4 border-l-primary' : ''
-                }`}
-              >
-                <div className='flex items-start space-x-3'>
-                  <div className='relative'>
-                    <Avatar className='h-10 w-10'>
-                      <AvatarImage src={thread.lead.name} />
-                      <AvatarFallback>{thread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-lg border border-gray-100'>
-                      {getChannelIcon(thread.channel)}
-                    </div>
-                  </div>
-
-                  <div className='flex-1 min-w-0'>
-                    <div className='flex items-center justify-between mb-1'>
-                      <h3 className='font-medium text-foreground truncate'>{thread.lead.name}</h3>
-                      <div className='flex items-center space-x-1'>
-                        {thread.isUnread && <div className='w-2 h-2 bg-primary rounded-full' />}
-                        <span className='text-xs text-muted-foreground'>{formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}</span>
-                      </div>
-                    </div>
-
-                    <div className='flex items-center space-x-2 mb-2'>
-                      <Badge variant='outline' className={getStatusColor(thread.status)}>
-                        {thread.status}
-                      </Badge>
-                      <Badge variant='outline' className={getPriorityColor(thread.priority)}>
-                        {thread.priority}
-                      </Badge>
-                    </div>
-
-                    <p className='text-sm text-muted-foreground truncate'>{thread.lastMessage?.content || 'No messages yet'}</p>
-
-                    {thread.lead.tags?.length > 0 && (
-                      <div className='flex flex-wrap gap-1 mt-2'>
-                        {thread.lead.tags.slice(0, 2).map((tag) => (
-                          <Badge key={tag} variant='outline' className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
-                            {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
-                          </Badge>
-                        ))}
-                        {thread.lead.tags.length > 2 && (
-                          <Badge variant='outline' className='text-xs'>
-                            +{thread.lead.tags.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Message View */}
-      <div className='flex-1 flex flex-col min-w-0'>
-        {showNewChat ? (
-          <>
-            {/* New Chat Header with phone input */}
-            <div className='p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3 w-full'>
-                  <h2 className='text-lg font-semibold text-foreground whitespace-nowrap'>New Chat</h2>
-                  <Input
-                    placeholder='WhatsApp Phone (e.g., +2348012345678)'
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    className='max-w-md'
-                  />
-                </div>
-                <div className='flex items-center gap-2'>
-                  <Button variant='ghost' size='icon' aria-label='Cancel new chat' onClick={() => setShowNewChat(false)}>
-                    <X className='h-4 w-4' />
+      ) : null}
+      <div className='flex h-full bg-background relative'>
+        {/* Thread List Sidebar - Desktop */}
+        <div className='hidden md:flex w-96 border-r border-border flex-col'>
+          {/* Header */}
+          <div className='p-4 border-b border-border'>
+            <div className='flex items-center justify-between mb-4'>
+              <h1 className='text-2xl font-semibold text-foreground'>Inbox</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant='outline' size='icon'>
+                    <MoreHorizontal className='h-4 w-4' />
                   </Button>
-                </div>
-              </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowNewChat(true)}>New Chat</DropdownMenuItem>
+                  <DropdownMenuItem>Mark all as read</DropdownMenuItem>
+                  <DropdownMenuItem>Archive conversations</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>Export data</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
-            {/* Empty timeline area with hint */}
-            <div className='flex-1 overflow-auto p-4'>
-              <div className='h-full grid place-items-center text-center text-muted-foreground'>
-                <div>
-                  <WhatsAppIcon className='h-12 w-12 mx-auto mb-3' />
-                  <p>Enter a phone number above and your message below to start a conversation.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Composer for initial message */}
-            <div className='p-3 sm:p-4 border-t border-border bg-card'>
-              <div className='flex items-center space-x-2'>
-                <Input
-                  placeholder='Type your message...'
-                  className='flex-1 h-11 rounded-xl border-border bg-background'
-                  value={newText}
-                  onChange={(e) => setNewText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (!newPhone.trim() || !newText.trim()) return;
-                      (async () => {
-                        try {
-                          setSendingNew(true);
-                          const res = await client.post(endpoints.threadStart, {
-                            orgId: getOrgId(),
-                            contactPhone: newPhone.trim(),
-                            text: newText.trim(),
-                          });
-                          const threadId = res?.data?.data?.threadId as string | undefined;
-                          setShowNewChat(false);
-                          setNewPhone('');
-                          setNewText('');
-                          await fetchThreads();
-                          if (threadId) {
-                            const created = (threads || []).find((t) => t.id === threadId);
-                            if (created) setSelectedThread(created);
-                            await fetchMessages(threadId);
-                          }
-                        } catch (error) {
-                          const e = error as AxiosError<{ message?: string }>;
-                          const errorMessage = e?.response?.data?.message || 'Failed to start chat';
-                          if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
-                            setWhatsappConnectionError(true);
-                          }
-                          notify.error({
-                            key: 'inbox:new-chat:error',
-                            title: 'Unable to start chat',
-                            description: errorMessage,
-                          });
-                        } finally {
-                          setSendingNew(false);
-                        }
-                      })();
-                    }
-                  }}
-                />
-                <Button
-                  className='h-11 rounded-xl px-4'
-                  disabled={sendingNew || !newPhone.trim() || !newText.trim()}
-                  onClick={async () => {
-                    try {
-                      setSendingNew(true);
-                      const res = await client.post(endpoints.threadStart, {
-                        orgId: getOrgId(),
-                        contactPhone: newPhone.trim(),
-                        text: newText.trim(),
-                      });
-                      const threadId = res?.data?.data?.threadId as string | undefined;
-                      setShowNewChat(false);
-                      setNewPhone('');
-                      setNewText('');
-                      await fetchThreads();
-                      if (threadId) {
-                        const created = (threads || []).find((t) => t.id === threadId);
-                        if (created) setSelectedThread(created);
-                        await fetchMessages(threadId);
-                      }
-                    } catch (error) {
-                      const e = error as AxiosError<{ message?: string }>;
-                      const errorMessage = e?.response?.data?.message || 'Failed to start chat';
-                      if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
-                        setWhatsappConnectionError(true);
-                      }
-                      notify.error({
-                        key: 'inbox:new-chat:error',
-                        title: 'Unable to start chat',
-                        description: errorMessage,
-                      });
-                    } finally {
-                      setSendingNew(false);
-                    }
-                  }}
-                >
-                  Send
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : selectedThread ? (
-          <>
-            {/* Conversation Header */}
-            <div className='p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center space-x-3'>
-                  {/* Mobile: back to conversations */}
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    className='md:hidden'
-                    aria-label='Back to conversations'
-                    onClick={() => setMobileThreadsOpen(true)}
-                  >
-                    <ChevronLeft className='h-5 w-5' />
-                  </Button>
-                  <div className='relative'>
-                    <Avatar className='h-10 w-10'>
-                      <AvatarImage src={selectedThread.lead.name} />
-                      <AvatarFallback>{selectedThread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-lg border border-gray-100'>
-                      {getChannelIcon(selectedThread.channel)}
-                    </div>
-                    {selectedThread.tags?.length > 0 && (
-                      <div className='absolute -top-1 -right-1 flex flex-wrap-reverse justify-end max-w-[80px] gap-0.5'>
-                        {selectedThread.tags.slice(0, 3).map((tag, index) => (
-                          <div key={tag} className={`h-1.5 w-1.5 rounded-full ${getTagColor(tag).split(' ')[0]}`} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className='flex-1 min-w-0'>
-                    {editingContact ? (
-                      <div className='space-y-2'>
-                        <Input
-                          value={contactForm.displayName}
-                          onChange={(e) => setContactForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                          placeholder='Contact name'
-                          className='text-lg font-semibold h-8'
-                        />
-                        <div className='flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2'>
-                          <Input
-                            value={contactForm.phone}
-                            onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
-                            placeholder='+234xxxxxxxxxx'
-                            className='text-sm h-7 flex-1 w-full'
-                          />
-                          <Input
-                            type='email'
-                            value={contactForm.email}
-                            onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
-                            placeholder='contact@example.com'
-                            className='text-sm h-7 flex-1 w-full'
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className='flex items-center gap-2 mb-1'>
-                          <h2
-                            className={`text-lg font-semibold text-foreground transition-colors ${
-                              selectedThread.leadId ? 'cursor-pointer hover:text-primary' : ''
-                            }`}
-                            onClick={() => {
-                              if (selectedThread.leadId) {
-                                navigate(`/dashboard/leads/${selectedThread.leadId}`);
-                              }
-                            }}
-                          >
-                            {selectedThread.lead.name}
-                          </h2>
-                          {/* 🏷️ Lead Tags Display */}
-                          <div className='flex flex-wrap gap-1'>
-                            {selectedThread.lead.tags.slice(0, 2).map((tag) => {
-                              const isStageTag = tag === selectedThread.lead.stage;
-                              return (
-                                <Badge
-                                  key={tag}
-                                  variant='outline'
-                                  className={`text-xs px-2 py-1 transition-all duration-500 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)} ${
-                                    isStageTag && highlightStageInbox
-                                      ? 'ring-4 ring-primary ring-offset-2 scale-110 animate-pulse shadow-lg shadow-primary/50'
-                                      : ''
-                                  }`}
-                                  style={
-                                    isStageTag && highlightStageInbox
-                                      ? {
-                                          animation: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                        }
-                                      : undefined
-                                  }
-                                >
-                                  {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
-                                </Badge>
-                              );
-                            })}
-                            {selectedThread.lead.tags.length > 2 && (
-                              <Badge variant='outline' className='text-xs px-2 py-1'>
-                                +{selectedThread.lead.tags.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0'>
-                          <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
-                            {selectedThread.lead.phone && selectedThread.lead.email ? (
-                              <>
-                                <span>{selectedThread.lead.phone}</span>
-                                <span>•</span>
-                                <span>{selectedThread.lead.email}</span>
-                              </>
-                            ) : selectedThread.lead.phone ? (
-                              <span>{selectedThread.lead.phone}</span>
-                            ) : selectedThread.lead.email ? (
-                              <span>{selectedThread.lead.email}</span>
-                            ) : (
-                              <span>No contact info</span>
-                            )}
-                          </div>
-                          {selectedThread.tags?.length > 0 && (
-                            <div className='flex flex-wrap gap-1'>
-                              {selectedThread.tags.slice(0, 3).map((tag) => (
-                                <Badge key={tag} className={`text-xs ${getTagColor(tag)}`}>
-                                  {tag}
-                                </Badge>
-                              ))}
-                              {selectedThread.tags.length > 3 && (
-                                <Badge variant='outline' className='text-xs'>
-                                  +{selectedThread.tags.length - 3}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className='flex items-center space-x-2'>
-                  {editingContact ? (
-                    <>
-                      <Button variant='outline' size='sm' onClick={handleCancelEditContact}>
-                        <X className='h-4 w-4 mr-1' />
-                        Cancel
-                      </Button>
-                      <Button size='sm' onClick={handleSaveContact} disabled={savingContact}>
-                        <Save className='h-4 w-4 mr-1' />
-                        {savingContact ? 'Saving...' : 'Save'}
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button variant='outline' size='icon'>
-                        <Phone className='h-4 w-4' />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant='outline' size='icon'>
-                            <MoreHorizontal className='h-4 w-4' />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align='end'>
-                          <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={handleEditContact}>Edit Contact Details</DropdownMenuItem>
-                          <DropdownMenuItem>View Lead Profile</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>Archive Conversation</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
-                </div>
-              </div>
-              {!editingContact && (
-                <div className='mt-3 flex items-center gap-2 overflow-x-auto pb-1'>
-                  <Button size='sm' className='shrink-0' onClick={() => navigateToSalesQuickCapture('PENDING')}>
-                    <ReceiptText className='mr-1 h-4 w-4' />
-                    Record sale
-                  </Button>
-                  <Button size='sm' variant='outline' className='shrink-0' onClick={() => navigateToSalesQuickCapture('PAID')}>
-                    Mark paid
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    className='shrink-0'
-                    onClick={handleOpenFollowUpDialog}
-                    disabled={threadActionBusy === 'follow_up'}
-                  >
-                    {threadActionBusy === 'follow_up' ? (
-                      <Loader2 className='mr-1 h-4 w-4 animate-spin' />
-                    ) : (
-                      <CalendarPlus className='mr-1 h-4 w-4' />
-                    )}
-                    Schedule follow-up
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Messages */}
-            <div className='flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4'>
-              {loadingMessages ? (
-                <div className='space-y-4'>
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className={`flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-                      <Skeleton className={`h-16 w-2/3 max-w-sm rounded-2xl ${index % 2 === 0 ? 'bg-muted' : 'bg-primary/20'}`} />
-                    </div>
-                  ))}
-                </div>
-              ) : messages.length === 0 ? (
-                <div className='text-center text-muted-foreground'>No messages yet</div>
-              ) : (
-                messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender === 'AGENT' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-md ${
-                        message.sender === 'AGENT' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
-                      }`}
-                    >
-                      <p className='text-sm'>{message.content}</p>
-                      <div className='flex items-center justify-between mt-1'>
-                        <span className='text-xs opacity-70'>{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</span>
-                        {message.sender === 'AGENT' && (
-                          <div className='flex items-center space-x-1'>
-                            {message.isRead ? <span className='text-xs opacity-70'>✓✓</span> : <span className='text-xs opacity-70'>✓</span>}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              {/* Invisible element to scroll to */}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className='p-3 sm:p-4 border-t border-border bg-card'>
-              {/* Typing indicators */}
-              {typingUsers.size > 0 && (
-                <div className='mb-2 text-xs text-muted-foreground flex items-center gap-1'>
-                  <div className='flex space-x-1'>
-                    <div className='w-1 h-1 bg-current rounded-full animate-bounce'></div>
-                    <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
-                    <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                  {typingUsers.size === 1 ? `${Array.from(typingUsers.values())[0]} is typing...` : `${typingUsers.size} people are typing...`}
-                </div>
-              )}
-
-              {/* Connection status */}
-              <div className='flex items-center justify-between mb-2'>
-                <div className='flex items-center gap-2 text-xs'>
-                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className='text-muted-foreground'>{isConnected ? 'Real-time messaging' : 'Offline mode'}</span>
-                  {!isConnected && (
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      onClick={() => selectedThread && fetchMessages(selectedThread.id)}
-                      className='ml-2 h-6 text-xs'
-                    >
-                      Refresh
-                    </Button>
-                  )}
-                  {/* Socket.IO Connection Status */}
-                </div>
-                {socketError && <div className='text-xs text-red-500'>Connection error: {socketError}</div>}
-              </div>
-
-              {/* Message Template UI removed */}
-
-              <div className='flex items-center space-x-2'>
-                <Input
-                  placeholder='Type your message...'
-                  className='flex-1 h-11 rounded-xl border-border bg-background shadow-sm'
-                  value={composer}
-                  onChange={(e) => setComposer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
-                <Button
-                  disabled={!selectedThread || !composer.trim()}
-                  onClick={handleSendMessage}
-                  className={`h-11 rounded-xl px-4 ${isConnected ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                >
-                  {isConnected ? '⚡ Send' : 'Send'}
-                </Button>
-              </div>
-              {/* Follow-up Panel removed */}
-            </div>
-          </>
-        ) : !selectedThread && (loadingThreads || loadingMessages) ? (
-          <div className='flex-1 flex flex-col gap-4 p-4 sm:p-6'>
-            <div className='flex items-center justify-between gap-4'>
-              <Skeleton className='h-8 w-48 max-w-[60%]' />
-              <Skeleton className='h-8 w-32' />
-            </div>
-            <div className='flex-1 space-y-3 overflow-hidden'>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={`message-pane-skeleton-${index}`} className={`flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-                  <Skeleton className='h-16 w-2/3 max-w-sm rounded-2xl' />
-                </div>
-              ))}
-            </div>
-            <Skeleton className='h-11 w-full rounded-xl' />
-          </div>
-        ) : (
-          <div className='flex-1 flex items-center justify-center'>
-            <div className='text-center'>
-              <WhatsAppIcon className='h-16 w-16 text-muted-foreground mx-auto mb-4' />
-              <h3 className='text-xl font-medium text-foreground mb-2'>Select a conversation</h3>
-              <p className='text-muted-foreground'>Choose a conversation from the left to start messaging</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
-        <DialogContent className='sm:max-w-lg'>
-          <DialogHeader>
-            <DialogTitle>Schedule follow-up</DialogTitle>
-            <DialogDescription>
-              Plan the next message for {selectedThread?.lead?.name || 'this contact'} and keep the pipeline moving.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-4'>
-            <div className='space-y-2'>
-              <label className='text-sm font-medium'>Send at</label>
-              <Input
-                type='datetime-local'
-                value={followUpScheduledAt}
-                onChange={(event) => setFollowUpScheduledAt(event.target.value)}
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <label className='text-sm font-medium'>Approved template (optional)</label>
-              <div className='rounded-md border bg-background px-3 py-2'>
-                <select
-                  value={followUpTemplateId}
-                  onChange={(event) => setFollowUpTemplateId(event.target.value)}
-                  className='w-full bg-transparent text-sm outline-none'
-                >
-                  <option value=''>Use plain text message</option>
-                  {approvedTemplates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {loadingTemplates && (
-                <p className='flex items-center text-xs text-muted-foreground'>
-                  <Loader2 className='mr-1 h-3.5 w-3.5 animate-spin' />
-                  Loading approved templates...
-                </p>
-              )}
-            </div>
-
-            {!followUpTemplateId && (
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Message</label>
-                <Textarea
-                  rows={4}
-                  value={followUpMessage}
-                  onChange={(event) => setFollowUpMessage(event.target.value)}
-                  placeholder='Type your follow-up message'
-                />
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant='outline' onClick={() => setFollowUpDialogOpen(false)} disabled={threadActionBusy === 'follow_up'}>
-              Cancel
-            </Button>
-            <Button onClick={handleScheduleFollowUp} disabled={threadActionBusy === 'follow_up'}>
-              {threadActionBusy === 'follow_up' ? 'Scheduling...' : 'Schedule follow-up'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mobile Threads Drawer */}
-      <div
-        id='mobile-threads'
-        className={`md:hidden fixed inset-0 z-40 ${mobileThreadsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
-        aria-hidden={!mobileThreadsOpen}
-      >
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${mobileThreadsOpen ? 'opacity-100' : 'opacity-0'}`}
-          onClick={() => setMobileThreadsOpen(false)}
-        />
-        <aside
-          className={`absolute inset-y-2 left-2 w-80 max-w-[85vw] bg-card border border-border shadow-xl rounded-2xl overflow-hidden transition-transform duration-300 ease-in-out ${
-            mobileThreadsOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-          role='dialog'
-          aria-modal='true'
-          aria-label='Threads'
-        >
-          {/* Drawer Header */}
-          <div className='p-3 border-b border-border flex items-center justify-between'>
-            <h2 className='font-semibold'>Inbox</h2>
-            <Button variant='ghost' size='icon' aria-label='Close threads' onClick={() => setMobileThreadsOpen(false)}>
-              <X className='h-5 w-5' />
-            </Button>
-          </div>
-          {/* Same content as desktop sidebar */}
-          <div className='p-3 border-b border-border'>
-            <div className='relative mb-3'>
+            {/* Search */}
+            <div className='relative mb-4'>
               <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
               <Input placeholder='Search conversations...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
             </div>
+
+            {/* Filters */}
             <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
               <TabsList className='grid w-full grid-cols-4'>
                 <TabsTrigger value='all'>All</TabsTrigger>
@@ -1974,21 +1339,47 @@ const InboxPage: React.FC = () => {
               </TabsList>
             </Tabs>
           </div>
+
+          {/* Thread List */}
           <div className='flex-1 overflow-auto'>
-            {filteredThreads.length === 0 ? (
-              <div className='p-6 text-center'>
-                <WhatsAppIcon className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
-                <h3 className='text-lg font-medium text-foreground mb-2'>No conversations found</h3>
-                <p className='text-muted-foreground'>Try adjusting your search or filters.</p>
+            {loadingThreads ? (
+              <div className='space-y-4 p-4'>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className='flex items-start gap-3'>
+                    <Skeleton className='h-10 w-10 rounded-full' />
+                    <div className='flex-1 space-y-2'>
+                      <Skeleton className='h-4 w-2/3' />
+                      <Skeleton className='h-3 w-1/2' />
+                      <Skeleton className='h-3 w-3/4' />
+                    </div>
+                    <Skeleton className='h-3 w-12' />
+                  </div>
+                ))}
+              </div>
+            ) : filteredThreads.length === 0 ? (
+              <div className='p-6 text-center mt-12'>
+                <WhatsAppIcon className='h-12 w-12 text-muted-foreground/30 mx-auto mb-4' />
+                <h3 className='text-lg font-medium text-foreground mb-2'>
+                  {!setupLoading && !metrics.channelConnected ? 'Inbox is offline' : 'No conversations found'}
+                </h3>
+                <p className='text-sm text-muted-foreground mb-4 w-4/5 mx-auto leading-relaxed'>
+                  {!setupLoading && !metrics.channelConnected
+                    ? 'Connect WhatsApp in your Settings to sync customer messages instantly.'
+                    : 'Wait for customers to message you or adjust your search filters.'}
+                </p>
+                {!setupLoading && !metrics.channelConnected ? (
+                  <Button onClick={() => navigate('/dashboard/settings?tab=integrations')}>Connect Channel</Button>
+                ) : (
+                  <Button variant='outline' onClick={() => setShowNewChat(true)}>
+                    Start New Chat
+                  </Button>
+                )}
               </div>
             ) : (
               filteredThreads.map((thread) => (
                 <div
                   key={thread.id}
-                  onClick={() => {
-                    setSelectedThread(thread);
-                    setMobileThreadsOpen(false);
-                  }}
+                  onClick={() => setSelectedThread(thread)}
                   className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors ${
                     selectedThread?.id === thread.id ? 'bg-muted border-l-4 border-l-primary' : ''
                   }`}
@@ -2003,6 +1394,7 @@ const InboxPage: React.FC = () => {
                         {getChannelIcon(thread.channel)}
                       </div>
                     </div>
+
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-center justify-between mb-1'>
                         <h3 className='font-medium text-foreground truncate'>{thread.lead.name}</h3>
@@ -2013,6 +1405,7 @@ const InboxPage: React.FC = () => {
                           </span>
                         </div>
                       </div>
+
                       <div className='flex items-center space-x-2 mb-2'>
                         <Badge variant='outline' className={getStatusColor(thread.status)}>
                           {thread.status}
@@ -2021,14 +1414,710 @@ const InboxPage: React.FC = () => {
                           {thread.priority}
                         </Badge>
                       </div>
-                      <p className='text-sm text-muted-foreground truncate'>{thread.lastMessage?.content || 'No messages yet'}</p>
+
+                      <p className={`text-sm truncate ${thread.isUnread ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                        {thread.lastMessage ? (
+                          <>
+                            <span className={thread.lastMessage.sender === 'AGENT' ? 'text-primary mr-1' : 'text-muted-foreground mr-1'}>
+                              {thread.lastMessage.sender === 'AGENT' ? 'You:' : ''}
+                            </span>
+                            {thread.lastMessage.content}
+                          </>
+                        ) : (
+                          'No messages yet'
+                        )}
+                      </p>
+
+                      {thread.lead.tags?.length > 0 && (
+                        <div className='flex flex-wrap gap-1 mt-2'>
+                          {thread.lead.tags.slice(0, 2).map((tag) => (
+                            <Badge key={tag} variant='outline' className={`text-xs ${leadLabelUtils.getLabelStyling(tag as LeadLabel)}`}>
+                              {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
+                            </Badge>
+                          ))}
+                          {thread.lead.tags.length > 2 && (
+                            <Badge variant='outline' className='text-xs'>
+                              +{thread.lead.tags.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               ))
             )}
           </div>
-        </aside>
+        </div>
+
+        {/* Message View */}
+        <div className='flex-1 flex flex-col min-w-0'>
+          {showNewChat ? (
+            <>
+              {/* New Chat Header with phone input */}
+              <div className='p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-3 w-full'>
+                    <h2 className='text-lg font-semibold text-foreground whitespace-nowrap'>New Chat</h2>
+                    <Input
+                      placeholder='WhatsApp Phone (e.g., +2348012345678)'
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                      className='max-w-md'
+                    />
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Button variant='ghost' size='icon' aria-label='Cancel new chat' onClick={() => setShowNewChat(false)}>
+                      <X className='h-4 w-4' />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Empty timeline area with hint */}
+              <div className='flex-1 overflow-auto p-4'>
+                <div className='h-full grid place-items-center text-center text-muted-foreground'>
+                  <div>
+                    <WhatsAppIcon className='h-12 w-12 mx-auto mb-3' />
+                    <p>Enter a phone number above and your message below to start a conversation.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Composer for initial message */}
+              <div className='p-3 sm:p-4 border-t border-border bg-card'>
+                <div className='flex items-center space-x-2'>
+                  <Input
+                    placeholder='Type your message...'
+                    className='flex-1 h-11 rounded-xl border-border bg-background'
+                    value={newText}
+                    onChange={(e) => setNewText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!newPhone.trim() || !newText.trim()) return;
+                        (async () => {
+                          try {
+                            setSendingNew(true);
+                            const res = await client.post(endpoints.threadStart, {
+                              orgId: getOrgId(),
+                              contactPhone: newPhone.trim(),
+                              text: newText.trim(),
+                            });
+                            const threadId = res?.data?.data?.threadId as string | undefined;
+                            setShowNewChat(false);
+                            setNewPhone('');
+                            setNewText('');
+                            await fetchThreads();
+                            if (threadId) {
+                              const created = (threads || []).find((t) => t.id === threadId);
+                              if (created) setSelectedThread(created);
+                              await fetchMessages(threadId);
+                            }
+                          } catch (error) {
+                            const e = error as AxiosError<{ message?: string }>;
+                            const errorMessage = e?.response?.data?.message || 'Failed to start chat';
+                            if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+                              setWhatsappConnectionError(true);
+                            }
+                            notify.error({
+                              key: 'inbox:new-chat:error',
+                              title: 'Unable to start chat',
+                              description: errorMessage,
+                            });
+                          } finally {
+                            setSendingNew(false);
+                          }
+                        })();
+                      }
+                    }}
+                  />
+                  <Button
+                    className='h-11 rounded-xl px-4'
+                    disabled={sendingNew || !newPhone.trim() || !newText.trim()}
+                    onClick={async () => {
+                      try {
+                        setSendingNew(true);
+                        const res = await client.post(endpoints.threadStart, {
+                          orgId: getOrgId(),
+                          contactPhone: newPhone.trim(),
+                          text: newText.trim(),
+                        });
+                        const threadId = res?.data?.data?.threadId as string | undefined;
+                        setShowNewChat(false);
+                        setNewPhone('');
+                        setNewText('');
+                        await fetchThreads();
+                        if (threadId) {
+                          const created = (threads || []).find((t) => t.id === threadId);
+                          if (created) setSelectedThread(created);
+                          await fetchMessages(threadId);
+                        }
+                      } catch (error) {
+                        const e = error as AxiosError<{ message?: string }>;
+                        const errorMessage = e?.response?.data?.message || 'Failed to start chat';
+                        if (errorMessage.includes('WhatsApp connection') || errorMessage.includes('connect your WhatsApp')) {
+                          setWhatsappConnectionError(true);
+                        }
+                        notify.error({
+                          key: 'inbox:new-chat:error',
+                          title: 'Unable to start chat',
+                          description: errorMessage,
+                        });
+                      } finally {
+                        setSendingNew(false);
+                      }
+                    }}
+                  >
+                    Send
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : selectedThread ? (
+            <>
+              {/* Conversation Header */}
+              <div className='p-3 sm:p-4 border-b border-border bg-card sticky top-0 z-10'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center space-x-3'>
+                    {/* Mobile: back to conversations */}
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      className='md:hidden'
+                      aria-label='Back to conversations'
+                      onClick={() => setMobileThreadsOpen(true)}
+                    >
+                      <ChevronLeft className='h-5 w-5' />
+                    </Button>
+                    <div className='relative'>
+                      <Avatar className='h-10 w-10'>
+                        <AvatarImage src={selectedThread.lead.name} />
+                        <AvatarFallback>{selectedThread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-lg border border-gray-100'>
+                        {getChannelIcon(selectedThread.channel)}
+                      </div>
+                      {selectedThread.tags?.length > 0 && (
+                        <div className='absolute -top-1 -right-1 flex flex-wrap-reverse justify-end max-w-[80px] gap-0.5'>
+                          {selectedThread.tags.slice(0, 3).map((tag, index) => (
+                            <div key={tag} className={`h-1.5 w-1.5 rounded-full ${getTagColor(tag).split(' ')[0]}`} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                      {editingContact ? (
+                        <div className='space-y-2'>
+                          <Input
+                            value={contactForm.displayName}
+                            onChange={(e) => setContactForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                            placeholder='Contact name'
+                            className='text-lg font-semibold h-8'
+                          />
+                          <div className='flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2'>
+                            <Input
+                              value={contactForm.phone}
+                              onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
+                              placeholder='+234xxxxxxxxxx'
+                              className='text-sm h-7 flex-1 w-full'
+                            />
+                            <Input
+                              type='email'
+                              value={contactForm.email}
+                              onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
+                              placeholder='contact@example.com'
+                              className='text-sm h-7 flex-1 w-full'
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className='flex items-center gap-2 mb-1'>
+                            <h2
+                              className={`text-lg font-semibold text-foreground transition-colors ${
+                                selectedThread.leadId ? 'cursor-pointer hover:text-primary' : ''
+                              }`}
+                              onClick={() => {
+                                if (selectedThread.leadId) {
+                                  navigate(`/dashboard/leads/${selectedThread.leadId}`);
+                                }
+                              }}
+                            >
+                              {selectedThread.lead.name}
+                            </h2>
+                            {/* 🏷️ Lead Tags Display */}
+                            <div className='flex flex-wrap gap-1'>
+                              {selectedThread.lead.tags.slice(0, 2).map((tag) => {
+                                const isStageTag = tag === selectedThread.lead.stage;
+                                return (
+                                  <Badge
+                                    key={tag}
+                                    variant='outline'
+                                    className={`text-xs px-2 py-1 transition-all duration-500 ${leadLabelUtils.getLabelStyling(tag as LeadLabel)} ${
+                                      isStageTag && highlightStageInbox
+                                        ? 'ring-4 ring-primary ring-offset-2 scale-110 animate-pulse shadow-lg shadow-primary/50'
+                                        : ''
+                                    }`}
+                                    style={
+                                      isStageTag && highlightStageInbox
+                                        ? {
+                                            animation: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    {leadLabelUtils.isValidLabel(tag) ? leadLabelUtils.getDisplayName(tag as LeadLabel) : tag}
+                                  </Badge>
+                                );
+                              })}
+                              {selectedThread.lead.tags.length > 2 && (
+                                <Badge variant='outline' className='text-xs px-2 py-1'>
+                                  +{selectedThread.lead.tags.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0'>
+                            <div className='flex items-center space-x-2 text-sm text-muted-foreground'>
+                              {selectedThread.lead.phone && selectedThread.lead.email ? (
+                                <>
+                                  <span>{selectedThread.lead.phone}</span>
+                                  <span>•</span>
+                                  <span>{selectedThread.lead.email}</span>
+                                </>
+                              ) : selectedThread.lead.phone ? (
+                                <span>{selectedThread.lead.phone}</span>
+                              ) : selectedThread.lead.email ? (
+                                <span>{selectedThread.lead.email}</span>
+                              ) : (
+                                <span>No contact info</span>
+                              )}
+                            </div>
+                            {selectedThread.tags?.length > 0 && (
+                              <div className='flex flex-wrap gap-1'>
+                                {selectedThread.tags.slice(0, 3).map((tag) => (
+                                  <Badge key={tag} className={`text-xs ${getTagColor(tag)}`}>
+                                    {tag}
+                                  </Badge>
+                                ))}
+                                {selectedThread.tags.length > 3 && (
+                                  <Badge variant='outline' className='text-xs'>
+                                    +{selectedThread.tags.length - 3}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className='flex items-center space-x-2'>
+                    {editingContact ? (
+                      <>
+                        <Button variant='outline' size='sm' onClick={handleCancelEditContact}>
+                          <X className='h-4 w-4 mr-1' />
+                          Cancel
+                        </Button>
+                        <Button size='sm' onClick={handleSaveContact} disabled={savingContact}>
+                          <Save className='h-4 w-4 mr-1' />
+                          {savingContact ? 'Saving...' : 'Save'}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant='outline' size='icon'>
+                          <Phone className='h-4 w-4' />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant='outline' size='icon'>
+                              <MoreHorizontal className='h-4 w-4' />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align='end'>
+                            <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={handleEditContact}>Edit Contact Details</DropdownMenuItem>
+                            <DropdownMenuItem>View Lead Profile</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>Archive Conversation</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {!editingContact && (
+                  <div className='mt-3 flex items-center gap-2 overflow-x-auto pb-1'>
+                    <Button size='sm' className='shrink-0' onClick={() => navigateToSalesQuickCapture('PENDING')}>
+                      <ReceiptText className='mr-1 h-4 w-4' />
+                      Record sale
+                    </Button>
+                    <Button size='sm' variant='outline' className='shrink-0' onClick={() => navigateToSalesQuickCapture('PAID')}>
+                      Mark paid
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      className='shrink-0'
+                      onClick={handleOpenFollowUpDialog}
+                      disabled={threadActionBusy === 'follow_up'}
+                    >
+                      {threadActionBusy === 'follow_up' ? (
+                        <Loader2 className='mr-1 h-4 w-4 animate-spin' />
+                      ) : (
+                        <CalendarPlus className='mr-1 h-4 w-4' />
+                      )}
+                      Schedule follow-up
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Messages */}
+              <div className='flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4'>
+                {loadingMessages ? (
+                  <div className='space-y-4'>
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className={`flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                        <Skeleton className={`h-16 w-2/3 max-w-sm rounded-2xl ${index % 2 === 0 ? 'bg-muted' : 'bg-primary/20'}`} />
+                      </div>
+                    ))}
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className='text-center text-muted-foreground'>No messages yet</div>
+                ) : (
+                  messages.map((message, index) => {
+                    const messageDate = new Date(message.createdAt);
+                    const prevMessage = index > 0 ? messages[index - 1] : null;
+                    const prevMessageDate = prevMessage ? new Date(prevMessage.createdAt) : null;
+                    const showDateDivider = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
+                    const isAgent = message.sender === 'AGENT';
+                    const showSender = isAgent
+                      ? !prevMessage || prevMessage.sender !== 'AGENT' || showDateDivider
+                      : !prevMessage || prevMessage.sender === 'AGENT' || showDateDivider;
+
+                    return (
+                      <React.Fragment key={message.id}>
+                        {showDateDivider && (
+                          <div className='flex justify-center my-4'>
+                            <span className='text-[11px] font-medium bg-muted px-2 py-1 rounded-full text-muted-foreground'>
+                              {isToday(messageDate) ? 'Today' : isYesterday(messageDate) ? 'Yesterday' : format(messageDate, 'MMMM d, yyyy')}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`flex flex-col ${isAgent ? 'items-end' : 'items-start'} mb-1`}>
+                          {showSender && (
+                            <span className='text-[11px] text-muted-foreground mb-1 px-1'>
+                              {isAgent ? 'You' : selectedThread.lead.name || 'Contact'}
+                            </span>
+                          )}
+                          <div
+                            className={`max-w-[85%] sm:max-w-[75%] px-3 py-2 rounded-2xl ${
+                              isAgent ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'
+                            }`}
+                          >
+                            <p className='text-sm leading-relaxed whitespace-pre-wrap break-words'>{message.content}</p>
+                            <div
+                              className={`flex items-center justify-end mt-1 space-x-1 ${isAgent ? 'text-primary-foreground/80' : 'text-muted-foreground/80'}`}
+                            >
+                              <span className='text-[10px]'>{format(messageDate, 'h:mm a')}</span>
+                              {isAgent && (
+                                <span>
+                                  {message.isRead ? <span className='text-[10px] font-bold'>✓✓</span> : <span className='text-[10px]'>✓</span>}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
+                )}
+                {/* Invisible element to scroll to */}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Message Input */}
+              <div className='p-3 sm:p-4 border-t border-border bg-card'>
+                {/* Typing indicators */}
+                {typingUsers.size > 0 && (
+                  <div className='mb-2 text-xs text-muted-foreground flex items-center gap-1'>
+                    <div className='flex space-x-1'>
+                      <div className='w-1 h-1 bg-current rounded-full animate-bounce'></div>
+                      <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
+                      <div className='w-1 h-1 bg-current rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    {typingUsers.size === 1 ? `${Array.from(typingUsers.values())[0]} is typing...` : `${typingUsers.size} people are typing...`}
+                  </div>
+                )}
+
+                {/* Connection status */}
+                <div className='flex items-center justify-between mb-2'>
+                  <div className='flex items-center gap-2 text-xs'>
+                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className='text-muted-foreground'>{isConnected ? 'Real-time messaging' : 'Offline mode'}</span>
+                    {!isConnected && (
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => selectedThread && fetchMessages(selectedThread.id)}
+                        className='ml-2 h-6 text-xs'
+                      >
+                        Refresh
+                      </Button>
+                    )}
+                    {/* Socket.IO Connection Status */}
+                  </div>
+                  {socketError && <div className='text-xs text-red-500'>Connection error: {socketError}</div>}
+                </div>
+
+                {/* Quick Replies / Templates */}
+                <div className='flex items-center gap-2 mb-2'>
+                  <Select
+                    value=''
+                    disabled={loadingTemplates || approvedTemplates.length === 0}
+                    onValueChange={(val) => {
+                      const tpl = approvedTemplates.find((t) => t.id === val);
+                      if (tpl && tpl.body) {
+                        setComposer((prev) => (prev ? prev + '\n' + tpl.body : tpl.body));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className='h-8 text-xs w-[200px] border-border bg-muted/30'>
+                      <SelectValue placeholder={loadingTemplates ? 'Loading templates...' : 'Insert template...'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {approvedTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className='flex items-center space-x-2'>
+                  <Textarea
+                    placeholder='Type your message...'
+                    className='flex-1 min-h-[44px] max-h-32 rounded-xl border-border bg-background shadow-sm resize-none py-2.5'
+                    value={composer}
+                    onChange={(e) => setComposer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    disabled={!selectedThread || !composer.trim()}
+                    onClick={handleSendMessage}
+                    className={`h-11 rounded-xl px-4 ${isConnected ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                  >
+                    {isConnected ? '⚡ Send' : 'Send'}
+                  </Button>
+                </div>
+                {/* Follow-up Panel removed */}
+              </div>
+            </>
+          ) : !selectedThread && (loadingThreads || loadingMessages) ? (
+            <div className='flex-1 flex flex-col gap-4 p-4 sm:p-6'>
+              <div className='flex items-center justify-between gap-4'>
+                <Skeleton className='h-8 w-48 max-w-[60%]' />
+                <Skeleton className='h-8 w-32' />
+              </div>
+              <div className='flex-1 space-y-3 overflow-hidden'>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={`message-pane-skeleton-${index}`} className={`flex ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                    <Skeleton className='h-16 w-2/3 max-w-sm rounded-2xl' />
+                  </div>
+                ))}
+              </div>
+              <Skeleton className='h-11 w-full rounded-xl' />
+            </div>
+          ) : (
+            <div className='flex-1 flex items-center justify-center'>
+              <div className='text-center'>
+                <WhatsAppIcon className='h-16 w-16 text-muted-foreground mx-auto mb-4' />
+                <h3 className='text-xl font-medium text-foreground mb-2'>Select a conversation</h3>
+                <p className='text-muted-foreground'>Choose a conversation from the left to start messaging</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
+          <DialogContent className='sm:max-w-lg'>
+            <DialogHeader>
+              <DialogTitle>Schedule follow-up</DialogTitle>
+              <DialogDescription>
+                Plan the next message for {selectedThread?.lead?.name || 'this contact'} and keep the pipeline moving.
+              </DialogDescription>
+            </DialogHeader>
+            <div className='space-y-4'>
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Send at</label>
+                <Input type='datetime-local' value={followUpScheduledAt} onChange={(event) => setFollowUpScheduledAt(event.target.value)} />
+              </div>
+
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Approved template (optional)</label>
+                <div className='rounded-md border bg-background px-3 py-2'>
+                  <select
+                    value={followUpTemplateId}
+                    onChange={(event) => setFollowUpTemplateId(event.target.value)}
+                    className='w-full bg-transparent text-sm outline-none'
+                  >
+                    <option value=''>Use plain text message</option>
+                    {approvedTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {loadingTemplates && (
+                  <p className='flex items-center text-xs text-muted-foreground'>
+                    <Loader2 className='mr-1 h-3.5 w-3.5 animate-spin' />
+                    Loading approved templates...
+                  </p>
+                )}
+              </div>
+
+              {!followUpTemplateId && (
+                <div className='space-y-2'>
+                  <label className='text-sm font-medium'>Message</label>
+                  <Textarea
+                    rows={4}
+                    value={followUpMessage}
+                    onChange={(event) => setFollowUpMessage(event.target.value)}
+                    placeholder='Type your follow-up message'
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant='outline' onClick={() => setFollowUpDialogOpen(false)} disabled={threadActionBusy === 'follow_up'}>
+                Cancel
+              </Button>
+              <Button onClick={handleScheduleFollowUp} disabled={threadActionBusy === 'follow_up'}>
+                {threadActionBusy === 'follow_up' ? 'Scheduling...' : 'Schedule follow-up'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Mobile Threads Drawer */}
+        <div
+          id='mobile-threads'
+          className={`md:hidden fixed inset-0 z-40 ${mobileThreadsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          aria-hidden={!mobileThreadsOpen}
+        >
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity ${mobileThreadsOpen ? 'opacity-100' : 'opacity-0'}`}
+            onClick={() => setMobileThreadsOpen(false)}
+          />
+          <aside
+            className={`absolute inset-y-2 left-2 w-80 max-w-[85vw] bg-card border border-border shadow-xl rounded-2xl overflow-hidden transition-transform duration-300 ease-in-out ${
+              mobileThreadsOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Threads'
+          >
+            {/* Drawer Header */}
+            <div className='p-3 border-b border-border flex items-center justify-between'>
+              <h2 className='font-semibold'>Inbox</h2>
+              <Button variant='ghost' size='icon' aria-label='Close threads' onClick={() => setMobileThreadsOpen(false)}>
+                <X className='h-5 w-5' />
+              </Button>
+            </div>
+            {/* Same content as desktop sidebar */}
+            <div className='p-3 border-b border-border'>
+              <div className='relative mb-3'>
+                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                <Input placeholder='Search conversations...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
+              </div>
+              <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
+                <TabsList className='grid w-full grid-cols-4'>
+                  <TabsTrigger value='all'>All</TabsTrigger>
+                  <TabsTrigger value='unread'>Unread</TabsTrigger>
+                  <TabsTrigger value='mine'>Mine</TabsTrigger>
+                  <TabsTrigger value='hot'>Hot</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <div className='flex-1 overflow-auto'>
+              {filteredThreads.length === 0 ? (
+                <div className='p-6 text-center'>
+                  <WhatsAppIcon className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+                  <h3 className='text-lg font-medium text-foreground mb-2'>No conversations found</h3>
+                  <p className='text-muted-foreground'>Try adjusting your search or filters.</p>
+                </div>
+              ) : (
+                filteredThreads.map((thread) => (
+                  <div
+                    key={thread.id}
+                    onClick={() => {
+                      setSelectedThread(thread);
+                      setMobileThreadsOpen(false);
+                    }}
+                    className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors ${
+                      selectedThread?.id === thread.id ? 'bg-muted border-l-4 border-l-primary' : ''
+                    }`}
+                  >
+                    <div className='flex items-start space-x-3'>
+                      <div className='relative'>
+                        <Avatar className='h-10 w-10'>
+                          <AvatarImage src={thread.lead.name} />
+                          <AvatarFallback>{thread.lead.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-lg border border-gray-100'>
+                          {getChannelIcon(thread.channel)}
+                        </div>
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <div className='flex items-center justify-between mb-1'>
+                          <h3 className='font-medium text-foreground truncate'>{thread.lead.name}</h3>
+                          <div className='flex items-center space-x-1'>
+                            {thread.isUnread && <div className='w-2 h-2 bg-primary rounded-full' />}
+                            <span className='text-xs text-muted-foreground'>
+                              {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className='flex items-center space-x-2 mb-2'>
+                          <Badge variant='outline' className={getStatusColor(thread.status)}>
+                            {thread.status}
+                          </Badge>
+                          <Badge variant='outline' className={getPriorityColor(thread.priority)}>
+                            {thread.priority}
+                          </Badge>
+                        </div>
+                        <p className={`text-sm truncate ${thread.isUnread ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                          {thread.lastMessage ? (
+                            <>
+                              <span className={thread.lastMessage.sender === 'AGENT' ? 'text-primary mr-1' : 'text-muted-foreground mr-1'}>
+                                {thread.lastMessage.sender === 'AGENT' ? 'You:' : ''}
+                              </span>
+                              {thread.lastMessage.content}
+                            </>
+                          ) : (
+                            'No messages yet'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

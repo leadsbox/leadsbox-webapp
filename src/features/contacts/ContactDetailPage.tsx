@@ -435,14 +435,6 @@ const ContactDetailPage: React.FC = () => {
             </Card>
           )}
         </TabsContent>
-
-        <TabsContent value='activity' className='space-y-4'>
-          <Card>
-            <CardContent className='p-8 text-center'>
-              <p className='text-muted-foreground'>Activity timeline coming soon</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );

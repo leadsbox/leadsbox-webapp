@@ -29,6 +29,8 @@ const ReferralProgram = lazy(() => import('./pages/ReferralProgram'));
 const InboxPage = lazy(() => import('./features/inbox/InboxPage'));
 const LeadsPage = lazy(() => import('./features/leads/LeadsPage'));
 const LeadDetailPage = lazy(() => import('./features/leads/LeadDetailPage'));
+const ContactsPage = lazy(() => import('./features/contacts/ContactsPage'));
+const ContactDetailPage = lazy(() => import('./features/contacts/ContactDetailPage'));
 const SalesPage = lazy(() => import('./features/sales/SalesPage'));
 const SaleDetailPage = lazy(() => import('./features/sales/SaleDetailPage'));
 const TasksPage = lazy(() => import('./features/tasks/TasksPage'));
@@ -70,6 +72,7 @@ const DashboardIndexGate = () => {
         if (!isActive) return;
         setupProgress.trackFunnelMilestones(metrics);
         setupProgress.trackWeeklyFunnelSnapshot(metrics);
+        // Navigate to home if first value reached, otherwise setup
         setTargetPath(setupProgress.hasReachedFirstValue(metrics) ? 'home' : 'setup');
       } catch (error) {
         if (!isActive) return;
@@ -159,6 +162,8 @@ const App = () => {
                   <Route path='inbox' element={<InboxPage />} />
                   <Route path='leads' element={<LeadsPage />} />
                   <Route path='leads/:leadId' element={<LeadDetailPage />} />
+                  <Route path='contacts' element={<ContactsPage />} />
+                  <Route path='contacts/:contactId' element={<ContactDetailPage />} />
                   <Route path='sales' element={<SalesPage />} />
                   <Route path='sales/:saleId' element={<SaleDetailPage />} />
                   {/* <Route path='tasks' element={<TasksPage />} /> */}

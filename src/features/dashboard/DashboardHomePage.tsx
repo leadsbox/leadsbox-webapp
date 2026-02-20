@@ -21,6 +21,7 @@ import {
   Zap,
   Gift,
   Instagram,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -186,6 +187,16 @@ export default function DashboardHomePage() {
   const [activationFunnel, setActivationFunnel] = useState<ActivationFunnelSnapshot | null>(null);
   const [activationFunnelLoading, setActivationFunnelLoading] = useState(false);
 
+  // Beta banner state
+  const [showBetaBanner, setShowBetaBanner] = useState(() => {
+    return localStorage.getItem('lb_beta_banner_dismissed') !== 'true';
+  });
+
+  const dismissBetaBanner = () => {
+    localStorage.setItem('lb_beta_banner_dismissed', 'true');
+    setShowBetaBanner(false);
+  };
+
   const taskBuckets = useMemo(() => categoriseTasks(tasks), [tasks]);
   const todayTasks = taskBuckets.today;
   const overdueTasks = taskBuckets.overdue;
@@ -261,8 +272,8 @@ export default function DashboardHomePage() {
     return [
       {
         id: 'profile',
-        title: 'Complete your organization profile',
-        description: 'Set your brand name, timezone, and currency so everything stays consistent.',
+        title: 'Complete organization profile',
+        description: 'Set your brand name, timezone, and currency.',
         href: '/dashboard/settings?tab=organization',
         ctaLabel: 'Open settings',
         icon: Briefcase,
@@ -271,46 +282,26 @@ export default function DashboardHomePage() {
       },
       {
         id: 'integrations',
-        title: 'Connect your first messaging channel',
-        description: 'Sync WhatsApp or Instagram so conversations flow straight into LeadsBox.',
+        title: 'Connect WhatsApp',
+        description: 'Sync your primary channel so conversations flow straight into LeadsBox.',
         href: '/dashboard/settings?tab=integrations',
         ctaLabel: 'Connect now',
         icon: MailCheck,
-        completed: hasMessagingIntegration,
-        helperText: hasMessagingIntegration ? undefined : 'Start with the channel your customers use most.',
+        completed: whatsappConnected,
+        helperText: whatsappConnected ? undefined : 'Start with the channel your customers use most.',
       },
       {
         id: 'leads',
-        title: 'Bring in your first leads',
-        description: 'Import a CSV or add one manually to start filling your pipeline.',
+        title: 'Capture your first lead',
+        description: 'Add your first lead manually or from incoming messages to start your pipeline.',
         href: '/dashboard/leads?quickAdd=1',
         ctaLabel: 'Add lead',
-        icon: UploadCloud,
+        icon: Users,
         completed: hasLeads,
         helperText: hasLeads ? undefined : 'Even a single sample lead unlocks pipeline insights.',
       },
-      {
-        id: 'payments',
-        title: 'Enable Online Payments',
-        description: 'Connect Paystack to accept payments directly from your invoices.',
-        href: '/dashboard/settings?tab=integrations', // Assuming payments are in integrations tab
-        ctaLabel: 'Connect Payments',
-        icon: DollarSign,
-        completed: paymentConnected,
-        helperText: paymentConnected ? undefined : 'Get paid 3x faster with online payments.',
-      },
-      {
-        id: 'referral',
-        title: 'Invite a Friend',
-        description: 'Get $50 in credits by inviting another business.',
-        href: '/dashboard/referrals',
-        ctaLabel: 'Invite & Earn',
-        icon: Gift,
-        completed: false, // We don't track this yet, but it's a good nudge
-        helperText: 'Share the love and get rewarded.',
-      },
     ];
-  }, [organizationProfileComplete, missingProfileFields, hasMessagingIntegration, hasLeads, paymentConnected]);
+  }, [organizationProfileComplete, missingProfileFields, whatsappConnected, hasLeads]);
 
   const coreDataReady = !countsLoading && !analyticsLoading && !templatesLoading && !integrationLoading && !tasksLoading;
   const hasIncompleteSteps = onboardingSteps?.some((step) => !step.completed) ?? false;
@@ -784,6 +775,36 @@ export default function DashboardHomePage() {
 
   return (
     <div className='p-4 sm:p-6 space-y-4 sm:space-y-6'>
+      {/* Beta Banner */}
+      {showBetaBanner && (
+        <div className='bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3'>
+          <div className='flex items-start sm:items-center gap-3'>
+            <div className='bg-primary/20 p-2 rounded-full shrink-0'>
+              <Sparkles className='h-5 w-5 text-primary' />
+            </div>
+            <div>
+              <p className='font-medium text-foreground'>Welcome to LeadsBox Closed Beta!</p>
+              <p className='text-sm text-muted-foreground'>
+                You're among our first users. As we refine the app, some features may change. Please share your feedback to help us improve!
+              </p>
+            </div>
+          </div>
+          <div className='flex items-center gap-2 w-full sm:w-auto shrink-0'>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => window.open('mailto:support@leadsbox.co', '_blank')}
+              className='w-full sm:w-auto bg-background'
+            >
+              Give Feedback
+            </Button>
+            <Button size='sm' variant='ghost' onClick={dismissBetaBanner} className='w-full sm:w-auto text-muted-foreground hover:bg-primary/10'>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4'>
         <div className='space-y-3'>
@@ -850,7 +871,7 @@ export default function DashboardHomePage() {
         <div className='grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4'>
           <Card className='transition-all duration-200 hover:shadow-md'>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Total Leads</CardTitle>
+              <CardTitle className='text-sm font-medium'>New Leads This Week</CardTitle>
               <Users className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
@@ -865,7 +886,7 @@ export default function DashboardHomePage() {
 
           <Card className='transition-all duration-200 hover:shadow-md'>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Active Threads</CardTitle>
+              <CardTitle className='text-sm font-medium'>Conversations This Week</CardTitle>
               <MessageSquare className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
@@ -897,15 +918,27 @@ export default function DashboardHomePage() {
 
           <Card className='transition-all duration-200 hover:shadow-md'>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Avg Response Time</CardTitle>
-              <Calendar className='h-4 w-4 text-muted-foreground' />
+              <CardTitle className='text-sm font-medium'>Follow-ups Due Today</CardTitle>
+              <CheckSquare className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
-              {analyticsLoading ? <Skeleton className='h-7 w-16' /> : <div className='text-2xl font-bold'>{analyticsOverview.avgResponseTime}h</div>}
+              {tasksLoading ? (
+                <Skeleton className='h-7 w-16' />
+              ) : (
+                <div className='text-2xl font-bold'>{taskBuckets.today.length + taskBuckets.overdue.length}</div>
+              )}
               <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-                <TrendingUp className='h-3 w-3 text-green-500 rotate-180' />
-                <span className='text-green-500'>-0.3h</span>
-                <span>improvement</span>
+                {taskBuckets.overdue.length > 0 ? (
+                  <>
+                    <TrendingUp className='h-3 w-3 text-red-500' />
+                    <span className='text-red-500'>{taskBuckets.overdue.length} overdue</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className='h-3 w-3 text-green-500' />
+                    <span className='text-green-500'>You're all caught up</span>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

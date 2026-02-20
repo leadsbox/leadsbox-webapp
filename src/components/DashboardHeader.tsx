@@ -36,6 +36,7 @@ import NotificationDropdown from './NotificationDropdown';
 import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { notify } from '@/lib/toast';
+import { useSetupProgress } from '@/features/setup/useSetupProgress';
 
 interface DashboardHeaderProps {
   onSidebarToggle?: () => void;
@@ -49,6 +50,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
   const userAvatar = user?.profileImage || user?.avatar || undefined;
   const [orgId, setOrgIdState] = React.useState<string>(() => getOrgId());
   const [memberRole, setMemberRole] = React.useState<'OWNER' | 'ADMIN' | 'MEMBER' | null>(null);
+  const { metrics, loading: setupLoading } = useSetupProgress();
 
   // Track org changes via storage or custom event (set by Settings page)
   React.useEffect(() => {
@@ -267,7 +269,24 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         </div>
 
         {/* Right section - Actions and user menu */}
-        <div className='flex items-center space-x-2'>
+        <div className='flex items-center space-x-2 lg:space-x-3'>
+          {/* WhatsApp Status Pill */}
+          {!setupLoading && (
+            <Link to='/dashboard/settings?tab=integrations' className='hidden sm:flex transition-opacity hover:opacity-80'>
+              <Badge
+                variant='outline'
+                className={
+                  metrics.channelConnected
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 gap-1.5'
+                    : 'bg-destructive/10 text-destructive border-destructive/20 gap-1.5'
+                }
+              >
+                <div className={`h-1.5 w-1.5 rounded-full ${metrics.channelConnected ? 'bg-emerald-500' : 'bg-destructive'}`} />
+                {metrics.channelConnected ? 'WA Connected' : 'WA Disconnected'}
+              </Badge>
+            </Link>
+          )}
+
           {/* Search button for mobile */}
           <Button variant='ghost' size='icon' className='lg:hidden'>
             <Search className='h-5 w-5' />

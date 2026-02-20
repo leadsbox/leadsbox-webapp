@@ -66,7 +66,9 @@ export const fetchSetupMetrics = async (): Promise<SetupMetrics> => {
   const leadList = Array.isArray(leads) ? leads : [];
 
   const leadSourceBreakdown = leadList.reduce<Record<string, number>>((acc, lead) => {
-    const source = String((lead as { provider?: string; source?: string }).provider || (lead as { source?: string }).source || 'manual').toLowerCase();
+    const source = String(
+      (lead as { provider?: string; source?: string }).provider || (lead as { source?: string }).source || 'manual',
+    ).toLowerCase();
     acc[source] = (acc[source] || 0) + 1;
     return acc;
   }, {});
@@ -90,7 +92,7 @@ export const fetchSetupMetrics = async (): Promise<SetupMetrics> => {
 };
 
 export const hasReachedFirstValue = (metrics: SetupMetrics): boolean => {
-  return metrics.channelConnected && metrics.leadsCount > 0 && metrics.paidSalesCount > 0;
+  return metrics.channelConnected && metrics.leadsCount > 0;
 };
 
 export const trackFunnelMilestones = (metrics: SetupMetrics): void => {

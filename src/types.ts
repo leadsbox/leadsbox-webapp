@@ -75,6 +75,7 @@ export interface Template {
   header?: string | null;
   footer?: string | null;
   buttons?: unknown;
+  components?: any[];
   sampleValues?: Record<string, string> | null;
   submittedAt?: string | null;
   approvedAt?: string | null;
@@ -101,6 +102,7 @@ export interface FollowUpRule {
   userId: string;
   organizationId: string;
   leadId?: string;
+  lead?: Lead | null;
   templateId?: string | null;
   variables?: Record<string, string> | null;
   template?: Template;
@@ -137,7 +139,7 @@ export interface Lead {
   stage: Stage;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   tags: string[];
-  assignedTo?: string;
+  assignedTo?: string | any;
   value?: number;
   notes?: string;
   noteHistory?: LeadNote[];
@@ -151,6 +153,8 @@ export interface Lead {
   threadId?: string; // References Thread.id
   from?: string;
   label?: LeadLabel;
+  contact?: any;
+  Deal?: any[];
 }
 
 export interface Thread {
@@ -205,6 +209,7 @@ export interface Task {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   assignedTo: string;
   leadId?: string;
+  leadName?: string;
   threadId?: string;
   dueDate: string;
   completedAt?: string;
@@ -353,6 +358,7 @@ export interface Analytics {
     leadsOverTime: ChartDataPoint[];
     conversionsByStage: ChartDataPoint[];
     responseTimesTrend: ChartDataPoint[];
+    leadsByLabel?: ChartDataPoint[];
   };
   performance: {
     topSources: SourcePerformance[];

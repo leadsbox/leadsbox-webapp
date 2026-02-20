@@ -131,10 +131,10 @@ const normaliseMember = (candidate: unknown): OrgMember | null => {
     typeof idRaw === 'string'
       ? idRaw
       : typeof idRaw === 'number'
-      ? String(idRaw)
-      : record['memberId'] && typeof record['memberId'] === 'string'
-      ? record['memberId']
-      : '';
+        ? String(idRaw)
+        : record['memberId'] && typeof record['memberId'] === 'string'
+          ? record['memberId']
+          : '';
   if (!id) return null;
 
   const userIdRaw = record.userId;
@@ -291,7 +291,7 @@ const TasksPage: React.FC = () => {
         });
       }
     },
-    [loadTasks]
+    [loadTasks],
   );
 
   const taskBuckets = useMemo(() => categoriseTasks(tasks), [tasks]);
@@ -545,8 +545,15 @@ const TasksPage: React.FC = () => {
                                     </span>
                                   </div>
 
+                                  {task.leadName && (
+                                    <div className='flex items-center space-x-1 text-primary/80 font-medium'>
+                                      <User className='h-3 w-3' />
+                                      <span>{task.leadName}</span>
+                                    </div>
+                                  )}
+
                                   <div className='flex items-center space-x-1'>
-                                    <User className='h-3 w-3' />
+                                    <Users className='h-3 w-3' />
                                     <span>{assigneeName}</span>
                                   </div>
                                 </div>

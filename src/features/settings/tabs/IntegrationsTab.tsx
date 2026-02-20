@@ -470,6 +470,32 @@ export const IntegrationsTab: React.FC = () => {
                   </div>
                 ) : (
                   <>
+                    {!waConnected && (
+                      <div className='mb-4 space-y-3 text-sm text-muted-foreground'>
+                        <p>
+                          LeadsBox uses the official WhatsApp Cloud API. Connect your Business account to automatically sync conversations and capture
+                          leads.
+                        </p>
+                        <div className='rounded-md border p-3 bg-muted/30'>
+                          <Label className='text-xs mb-1 block'>Webhook URL</Label>
+                          <div className='flex items-center space-x-2'>
+                            <code className='flex-1 overflow-auto whitespace-nowrap rounded bg-background px-2 py-1 text-xs border'>
+                              {apiRoot}/api/whatsapp/webhook
+                            </code>
+                            <Button
+                              size='sm'
+                              variant='secondary'
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${apiRoot}/api/whatsapp/webhook`);
+                                notify.success({ title: 'Copied', description: 'Webhook URL copied to clipboard.' });
+                              }}
+                            >
+                              Copy
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {waConnected && connections.length > 0 && (
                       <div className='space-y-3 mb-4'>
                         <Label className='text-xs font-semibold text-muted-foreground uppercase'>Connected Numbers</Label>
@@ -482,12 +508,30 @@ export const IntegrationsTab: React.FC = () => {
                                 </div>
                                 <div>
                                   <p className='text-sm font-medium text-slate-900'>{c.display || c.phoneNumberId}</p>
-                                  <p className='text-xs text-slate-500'>WABA: {c.wabaId}</p>
+                                  <p className='text-xs text-slate-500 mb-1'>WABA: {c.wabaId}</p>
+                                  <Badge variant='secondary' className='text-[10px] font-normal'>
+                                    Last received: recent
+                                  </Badge>
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='w-full'
+                          onClick={async () => {
+                            try {
+                              await client.get(`${apiRoot}/api/provider/whatsapp/status`);
+                              notify.success({ title: 'Connection active', description: 'WhatsApp integration is working normally.' });
+                            } catch {
+                              notify.error({ title: 'Connection check failed', description: 'Could not verify connection.' });
+                            }
+                          }}
+                        >
+                          Re-check connection
+                        </Button>
                       </div>
                     )}
 

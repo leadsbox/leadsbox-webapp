@@ -2,7 +2,25 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Save, X, Mail, Phone, Building, Tag, Calendar, DollarSign, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Edit,
+  Save,
+  X,
+  Mail,
+  Phone,
+  Building,
+  Tag,
+  Calendar,
+  DollarSign,
+  MessageCircle,
+  MoreHorizontal,
+  Trash2,
+  Sparkles,
+  CheckCircle2,
+  Clock,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -32,6 +50,8 @@ import { AxiosError } from 'axios';
 import { Skeleton } from '../../components/ui/skeleton';
 import { salesApi, Sale, SaleItem } from '@/api/sales';
 import SalesDetailModal from '../sales/SalesDetailModal';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import templateApi from '@/api/templates';
 
 // Safe date formatting helper to prevent Invalid time value errors
 const safeFormatDistance = (dateValue: string | Date | null | undefined): string => {
@@ -123,6 +143,170 @@ const LeadDetailPage: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+
+  // AI Suggestion State
+  const [aiSuggestedLabel, setAiSuggestedLabel] = useState<LeadLabel | null>(null);
+  const [isApplyingSuggestion, setIsApplyingSuggestion] = useState(false);
+
+  // Follow-up state
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
+  const [followUpScheduledAt, setFollowUpScheduledAt] = useState('');
+  const [followUpMessage, setFollowUpMessage] = useState('');
+  const [followUpTemplateId, setFollowUpTemplateId] = useState('');
+  const [approvedTemplates, setApprovedTemplates] = useState<Array<{ id: string; name: string; body?: string }>>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [isSchedulingFollowUp, setIsSchedulingFollowUp] = useState(false);
+
+  // Helper for follow-ups
+  const getDefaultFollowUpTime = () => {
+    const d = new Date();
+    d.setHours(d.getHours() + 2);
+    d.setMinutes(0, 0, 0);
+    return d.toISOString().slice(0, 16);
+  };
+
+  const handleOpenFollowUpDialog = async () => {
+    if (!lead || isSchedulingFollowUp) return;
+
+    setFollowUpScheduledAt((prev) => prev || getDefaultFollowUpTime());
+    setFollowUpMessage((prev) => prev || `Hi ${lead.name || 'there'}, just checking in on your request.`);
+    setFollowUpDialogOpen(true);
+
+    if (approvedTemplates.length > 0 || loadingTemplates) {
+      return;
+    }
+
+    setLoadingTemplates(true);
+    try {
+      const templates = await templateApi.list({ status: 'APPROVED' });
+      const list = Array.isArray(templates)
+        ? (templates as Array<{ id: string; name: string; components?: Array<{ type: string; text?: string }> }>)
+        : [];
+      setApprovedTemplates(
+        list.map((template) => ({
+          id: template.id,
+          name: template.name,
+          body: template.components?.find((c: { type: string; text?: string }) => c.type === 'BODY')?.text || '',
+        })),
+      );
+    } catch {
+      notify.warning({
+        key: 'lead:followup:templates',
+        title: 'Templates unavailable',
+        description: 'You can still schedule a plain-text follow-up.',
+      });
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const handleScheduleFollowUp = async () => {
+    if (!lead || isSchedulingFollowUp) return;
+
+    const scheduledDate = new Date(followUpScheduledAt);
+    if (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      notify.warning({
+        key: 'lead:followup:invalid-time',
+        title: 'Choose a valid time',
+        description: 'Follow-up time must be in the future.',
+      });
+      return;
+    }
+
+    if (!followUpTemplateId && !followUpMessage.trim()) {
+      notify.warning({
+        key: 'lead:followup:missing-message',
+        title: 'Message required',
+        description: 'Enter a message or select an approved template.',
+      });
+      return;
+    }
+
+    setIsSchedulingFollowUp(true);
+    try {
+      const backendLead = lead as unknown as BackendLead;
+      const provider = backendLead.provider || (backendLead.thread?.channel?.type === 'ig' ? 'instagram' : 'whatsapp');
+
+      await client.post(endpoints.followups, {
+        conversationId: backendLead.thread?.id || backendLead.conversationId || undefined,
+        provider,
+        scheduledTime: scheduledDate.toISOString(),
+        message: followUpTemplateId ? undefined : followUpMessage.trim(),
+        userId: backendLead.userId,
+        organizationId: backendLead.organizationId,
+        leadId: lead.id,
+        templateId: followUpTemplateId || undefined,
+        metadata: {
+          source: 'lead_detail_quick_action',
+        },
+      });
+
+      await client.put(endpoints.updateLead(lead.id), {
+        label: 'FOLLOW_UP_REQUIRED',
+      });
+
+      setLead({ ...lead, stage: 'FOLLOW_UP_REQUIRED', tags: ['FOLLOW_UP_REQUIRED'] });
+
+      notify.success({
+        key: `lead:followup:${lead.id}`,
+        title: 'Follow-up scheduled',
+        description: 'Reminder saved and lead moved to Follow-up Required.',
+      });
+      setFollowUpDialogOpen(false);
+      setFollowUpTemplateId('');
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to schedule follow-up.';
+      notify.error({
+        key: `lead:followup:${lead.id}:error`,
+        title: 'Follow-up failed',
+        description: message,
+      });
+    } finally {
+      setIsSchedulingFollowUp(false);
+    }
+  };
+
+  useEffect(() => {
+    // Mock an AI suggestion based on lead stage/activity
+    if (lead && lead.stage === 'NEW_LEAD' && lead.lastActivity) {
+      setAiSuggestedLabel('FOLLOW_UP_REQUIRED');
+    } else if (lead && lead.stage === 'ENGAGED' && lead.value && lead.value > 0) {
+      setAiSuggestedLabel('PAYMENT_PENDING');
+    } else {
+      setAiSuggestedLabel(null);
+    }
+  }, [lead]);
+
+  const handleApplySuggestedLabel = async () => {
+    if (!lead || !aiSuggestedLabel) return;
+
+    setIsApplyingSuggestion(true);
+    try {
+      await client.put(endpoints.lead(lead.id), {
+        label: aiSuggestedLabel,
+      });
+
+      setLead({
+        ...lead,
+        stage: aiSuggestedLabel as Stage,
+        tags: [aiSuggestedLabel],
+      });
+      setAiSuggestedLabel(null);
+      notify.success({
+        key: `lead:${lead.id}:ai-label-applied`,
+        title: 'Label applied',
+        description: `Lead labeled as ${leadLabelUtils.getDisplayName(aiSuggestedLabel)} by AI.`,
+      });
+    } catch (error) {
+      notify.error({
+        key: `lead:${lead.id}:ai-label-error`,
+        title: 'Failed to apply label',
+        description: 'Please try again.',
+      });
+    } finally {
+      setIsApplyingSuggestion(false);
+    }
+  };
 
   const labelToStage = (label?: string): Stage => {
     if (!label) {
@@ -788,6 +972,42 @@ const LeadDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* AI Suggestion Alert */}
+      {aiSuggestedLabel && !isEditing && (
+        <div className='bg-purple-50 border border-purple-200 shadow-sm rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4'>
+          <div className='flex items-start sm:items-center gap-3'>
+            <div className='bg-purple-100 p-2 rounded-full shrink-0'>
+              <Sparkles className='h-5 w-5 text-purple-600' />
+            </div>
+            <div>
+              <p className='text-sm font-medium text-purple-900'>
+                AI suggests labeling this lead as <span className='font-bold'>{leadLabelUtils.getDisplayName(aiSuggestedLabel)}</span>
+              </p>
+              <p className='text-xs text-purple-700 mt-0.5'>Based on the recent conversation history.</p>
+            </div>
+          </div>
+          <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
+            <Button
+              variant='ghost'
+              size='sm'
+              className='text-purple-700 bg-white hover:bg-purple-100 w-full sm:w-auto shadow-sm border border-purple-200'
+              onClick={() => setAiSuggestedLabel(null)}
+              disabled={isApplyingSuggestion}
+            >
+              Dismiss
+            </Button>
+            <Button
+              size='sm'
+              className='bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto'
+              onClick={handleApplySuggestedLabel}
+              disabled={isApplyingSuggestion}
+            >
+              {isApplyingSuggestion ? 'Applying...' : 'Apply Suggestion'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Lead Profile Header - Contact Information (syncs with Inbox) */}
       <Card>
         <CardContent className='p-4 sm:p-6 lg:p-8'>
@@ -897,20 +1117,36 @@ const LeadDetailPage: React.FC = () => {
                   </Select>
                 </>
               ) : (
-                <>
-                  <Badge variant='outline' className={getStageColor(lead.stage)}>
-                    {lead.stage}
-                  </Badge>
+                <div className='flex flex-wrap items-center justify-center sm:justify-start gap-2 max-w-[full]'>
+                  <Select
+                    value={lead.tags?.[0] || lead.stage}
+                    onValueChange={async (value: LeadLabel) => {
+                      try {
+                        await client.put(endpoints.lead(lead.id), { label: value });
+                        setLead({ ...lead, stage: value as Stage, tags: [value] });
+                        notify.success({ key: 'lead:label-update', title: 'Label updated', description: 'Lead label updated successfully.' });
+                      } catch (e) {
+                        notify.error({ key: 'lead:label-error', title: 'Failed to update label' });
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      className={`h-8 font-medium border-dashed ${leadLabelUtils.getLabelStyling((lead.tags?.[0] || lead.stage) as LeadLabel)}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leadLabelUtils.getAllLabelOptions().map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Badge variant='outline' className={getPriorityColor(lead.priority)}>
                     {lead.priority}
                   </Badge>
-                  {lead.tags.length > 0 && (
-                    <Badge variant='outline' className={leadLabelUtils.getLabelStyling(lead.tags[0] as LeadLabel)}>
-                      <Tag className='h-3 w-3 mr-1' />
-                      {leadLabelUtils.isValidLabel(lead.tags[0]) ? leadLabelUtils.getDisplayName(lead.tags[0] as LeadLabel) : lead.tags[0]}
-                    </Badge>
-                  )}
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -934,6 +1170,14 @@ const LeadDetailPage: React.FC = () => {
               <Button variant='outline' className='w-full sm:w-auto'>
                 <Mail className='h-4 w-4 mr-2' />
                 Send Email
+              </Button>
+              <Button
+                variant='default'
+                className='w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90'
+                onClick={handleOpenFollowUpDialog}
+              >
+                <Clock className='h-4 w-4 mr-2' />
+                Schedule Follow-up
               </Button>
               <Button variant='outline' className='w-full sm:w-auto'>
                 <Phone className='h-4 w-4 mr-2' />
@@ -1304,6 +1548,66 @@ const LeadDetailPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Follow-up Dialog */}
+      <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader>
+            <DialogTitle>Schedule follow-up</DialogTitle>
+            <DialogDescription>Plan the next message for {lead?.name || 'this contact'} and keep the pipeline moving.</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Send at</label>
+              <Input type='datetime-local' value={followUpScheduledAt} onChange={(event) => setFollowUpScheduledAt(event.target.value)} />
+            </div>
+
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Approved template (optional)</label>
+              <div className='rounded-md border bg-background px-3 py-2'>
+                <select
+                  value={followUpTemplateId}
+                  onChange={(event) => setFollowUpTemplateId(event.target.value)}
+                  className='w-full bg-transparent text-sm outline-none'
+                >
+                  <option value=''>Use plain text message</option>
+                  {approvedTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {loadingTemplates && (
+                <p className='flex items-center text-xs text-muted-foreground'>
+                  <Loader2 className='mr-1 h-3.5 w-3.5 animate-spin' />
+                  Loading approved templates...
+                </p>
+              )}
+            </div>
+
+            {!followUpTemplateId && (
+              <div className='space-y-2'>
+                <label className='text-sm font-medium'>Message</label>
+                <Textarea
+                  rows={4}
+                  value={followUpMessage}
+                  onChange={(event) => setFollowUpMessage(event.target.value)}
+                  placeholder='Type your follow-up message'
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setFollowUpDialogOpen(false)} disabled={isSchedulingFollowUp}>
+              Cancel
+            </Button>
+            <Button onClick={handleScheduleFollowUp} disabled={isSchedulingFollowUp}>
+              {isSchedulingFollowUp ? 'Scheduling...' : 'Schedule follow-up'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
