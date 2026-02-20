@@ -40,6 +40,7 @@ import { categoriseTasks, mapFollowUpsToTasks } from '@/features/tasks/taskUtils
 import OnboardingChecklist, { OnboardingStep } from './components/OnboardingChecklist';
 import { getApiMonitoringSnapshot, subscribeApiMonitoringAlerts } from '@/lib/apiMonitoring';
 import { trackAppEvent } from '@/lib/productTelemetry';
+import FeedbackModal from '@/components/FeedbackModal';
 
 // Custom WhatsApp Icon Component
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -186,6 +187,7 @@ export default function DashboardHomePage() {
   const [pmfReportLoading, setPmfReportLoading] = useState(false);
   const [activationFunnel, setActivationFunnel] = useState<ActivationFunnelSnapshot | null>(null);
   const [activationFunnelLoading, setActivationFunnelLoading] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   // Beta banner state
   const [showBetaBanner, setShowBetaBanner] = useState(() => {
@@ -790,12 +792,7 @@ export default function DashboardHomePage() {
             </div>
           </div>
           <div className='flex items-center gap-2 w-full sm:w-auto shrink-0'>
-            <Button
-              size='sm'
-              variant='outline'
-              onClick={() => window.open('mailto:support@leadsbox.co', '_blank')}
-              className='w-full sm:w-auto bg-background'
-            >
+            <Button size='sm' variant='outline' onClick={() => setIsFeedbackModalOpen(true)} className='w-full sm:w-auto bg-background'>
               Give Feedback
             </Button>
             <Button size='sm' variant='ghost' onClick={dismissBetaBanner} className='w-full sm:w-auto text-muted-foreground hover:bg-primary/10'>
@@ -1218,6 +1215,8 @@ export default function DashboardHomePage() {
           </CardContent>
         </Card>
       </div>
+
+      <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} />
     </div>
   );
 }

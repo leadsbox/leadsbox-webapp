@@ -272,18 +272,19 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
         <div className='flex items-center space-x-2 lg:space-x-3'>
           {/* WhatsApp Status Pill */}
           {!setupLoading && (
-            <Link to='/dashboard/settings?tab=integrations' className='hidden sm:flex transition-opacity hover:opacity-80'>
-              <Badge
-                variant='outline'
-                className={
-                  metrics.channelConnected
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 gap-1.5'
-                    : 'bg-destructive/10 text-destructive border-destructive/20 gap-1.5'
-                }
-              >
-                <div className={`h-1.5 w-1.5 rounded-full ${metrics.channelConnected ? 'bg-emerald-500' : 'bg-destructive'}`} />
-                {metrics.channelConnected ? 'WA Connected' : 'WA Disconnected'}
-              </Badge>
+            <Link
+              to='/dashboard/settings?tab=integrations'
+              className='hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-full hover:bg-muted transition-colors mr-1'
+            >
+              <div className='relative flex h-2 w-2 items-center justify-center'>
+                {metrics.channelConnected && (
+                  <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75'></span>
+                )}
+                <span
+                  className={`relative inline-flex h-2 w-2 rounded-full ${metrics.channelConnected ? 'bg-emerald-500' : 'bg-destructive'}`}
+                ></span>
+              </div>
+              <span className='text-xs font-medium text-muted-foreground'>{metrics.channelConnected ? 'WhatsApp' : 'Disconnected'}</span>
             </Link>
           )}
 

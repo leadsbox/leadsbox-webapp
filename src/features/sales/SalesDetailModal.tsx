@@ -252,7 +252,7 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-5xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='sm:max-w-2xl md:max-w-3xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             Sale Details
@@ -385,7 +385,7 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
           </div>
         </div>
 
-        <DialogFooter className='flex gap-2'>
+        <DialogFooter className='flex flex-wrap gap-2 sm:space-x-0 pt-4 mt-2 justify-end'>
           {!isEditing ? (
             <>
               <Button variant='outline' onClick={onClose}>
