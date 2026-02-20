@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import client from '@/api/client';
 import { endpoints } from '@/api/config';
 import { formatDistanceToNow } from 'date-fns';
+import { CreateContactModal } from './CreateContactModal';
 
 interface Contact {
   id: string;
@@ -27,6 +28,7 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchContacts();
@@ -81,6 +83,7 @@ export default function ContactsPage() {
             <h1 className='text-3xl font-bold tracking-tight text-foreground'>Contacts</h1>
             <p className='text-muted-foreground mt-1'>View and manage all your customer conversations.</p>
           </div>
+          <Button onClick={() => setIsModalOpen(true)}>New Contact</Button>
         </div>
 
         <div className='relative'>
@@ -174,6 +177,7 @@ export default function ContactsPage() {
           </div>
         </Card>
       </div>
+      <CreateContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchContacts} />
     </div>
   );
 }

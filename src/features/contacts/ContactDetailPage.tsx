@@ -77,7 +77,7 @@ const ContactDetailPage: React.FC = () => {
             title: 'Contact not found',
             description: 'We could not locate that contact record.',
           });
-          navigate('/contacts');
+          navigate('/dashboard/contacts');
         }
       } catch (error) {
         console.error('Error loading contact:', error);
