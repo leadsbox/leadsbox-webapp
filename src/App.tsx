@@ -174,7 +174,7 @@ const App = () => {
                   {/* <Route path='automations' element={<AutomationsPage />} /> */}
                   {/* Billing was here, moved up */}
                   {/* <Route path='notifications' element={<NotificationsPage />} /> */}
-                  {/* <Route path='referrals' element={<ReferralsPage />} /> */}
+                  <Route path='referrals' element={<ReferralsPage />} />
                   {/* <Route path='carousel' element={<CarouselGeneratorPage />} /> */}
                   <Route path='products' element={<ProductsPage />} />
                   <Route path='catalogs' element={<CatalogsPage />} />
