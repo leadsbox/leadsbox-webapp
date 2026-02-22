@@ -22,6 +22,7 @@ const NotificationDropdown: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasNewUnread, setHasNewUnread] = useState(false);
   const [reviewInvoiceCode, setReviewInvoiceCode] = useState<string | null>(null);
   const [reviewNotificationId, setReviewNotificationId] = useState<string | null>(null);
 
@@ -32,7 +33,11 @@ const NotificationDropdown: React.FC = () => {
     try {
       const data = await notificationApi.list(1, 10);
       setNotifications(data?.notifications ?? []);
-      setUnreadCount(data?.unreadCount ?? 0);
+      const newUnreadCount = data?.unreadCount ?? 0;
+      if (newUnreadCount > unreadCount && !isOpen) {
+        setHasNewUnread(true);
+      }
+      setUnreadCount(newUnreadCount);
     } catch (error) {
       console.error('Failed to fetch notifications', error);
       setNotifications([]);
@@ -47,7 +52,7 @@ const NotificationDropdown: React.FC = () => {
     // Poll every minute
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchNotifications]);
 
   // Listen for new draft invoices via Socket.IO
   useEffect(() => {
@@ -134,12 +139,35 @@ const NotificationDropdown: React.FC = () => {
 
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={async (open) => {
+          setIsOpen(open);
+          if (open) {
+            setHasNewUnread(false);
+          } else {
+            // When closing the dropdown, clear the unread count immediately in UI
+            if (unreadCount > 0) {
+              setUnreadCount(0);
+              // Trigger backend update in the background without affecting UI responsiveness
+              try {
+                await notificationApi.markAllAsRead();
+                setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+              } catch (e) {
+                console.error('Failed to mark notifications as read on close', e);
+              }
+            }
+          }
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button variant='ghost' size='icon' className='relative'>
-            <Bell className='h-5 w-5' />
+            <Bell className={`h-5 w-5 ${hasNewUnread ? 'animate-[wiggle_1s_ease-in-out_infinite] text-primary' : ''}`} />
             {unreadCount > 0 && (
-              <Badge variant='destructive' className='absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0'>
+              <Badge
+                variant='destructive'
+                className={`absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 ${hasNewUnread ? 'animate-bounce' : ''}`}
+              >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </Badge>
             )}

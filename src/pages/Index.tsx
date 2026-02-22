@@ -22,6 +22,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+import { API_BASE } from '@/api/config';
 import { WhatsAppIcon, TelegramIcon, InstagramIcon, FacebookIcon } from '@/components/brand-icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -154,8 +155,33 @@ const Index = () => {
   const logoSrc = '/leadsboxlogo.svg';
   const LogoImage = ({ className }: { className?: string }) => <img src={logoSrc} alt='LeadsBox Logo' className={className} />;
 
+  useEffect(() => {
+    // Inject Google One Tap script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
   return (
     <div className='min-h-screen w-full bg-background text-foreground overflow-x-hidden font-sans selection:bg-primary/20 selection:text-primary'>
+      {/* Google One Tap container */}
+      <div
+        id='g_id_onload'
+        data-client_id='883488913706-e402jksa26uhn293rrnkibe2u5jq61ab.apps.googleusercontent.com'
+        data-context='signin'
+        data-ux_mode='redirect'
+        data-login_uri={`${API_BASE}/auth/google/onetap`}
+        data-itp_support='true'
+      />
+
       {waitlistOpen && (
         <Suspense fallback={null}>
           <WaitlistDialog

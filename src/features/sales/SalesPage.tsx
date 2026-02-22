@@ -346,7 +346,7 @@ const SalesPage: React.FC = () => {
           pendingCount: 0,
           highRiskCount: 0,
           averageConfidence: 0,
-        }
+        },
       );
     } catch (error) {
       console.error('Failed to load sales review inbox:', error);
@@ -729,10 +729,7 @@ const SalesPage: React.FC = () => {
   }, [leads]);
 
   const quickCaptureLeadOptions = useMemo(
-    () =>
-      [...leads].sort(
-        (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime(),
-      ),
+    () => [...leads].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()),
     [leads],
   );
 
@@ -871,9 +868,7 @@ const SalesPage: React.FC = () => {
       return (
         <TableRow>
           <TableCell colSpan={6} className='text-center py-6 text-muted-foreground'>
-            {leads.length === 0
-              ? 'No leads yet. Add your first lead to populate sales views.'
-              : 'No records found in this view.'}
+            {leads.length === 0 ? 'No leads yet. Add your first lead to populate sales views.' : 'No records found in this view.'}
           </TableCell>
         </TableRow>
       );
@@ -881,9 +876,7 @@ const SalesPage: React.FC = () => {
 
     return filteredLeads.map((lead) => {
       const assigned = resolveAssignedUser(lead.assignedTo);
-      const totalsForLead =
-        (lead.threadId ? threadSalesTotals.get(lead.threadId) : undefined) ||
-        leadSalesTotals.get(lead.id);
+      const totalsForLead = (lead.threadId ? threadSalesTotals.get(lead.threadId) : undefined) || leadSalesTotals.get(lead.id);
       return (
         <TableRow
           key={lead.id}
@@ -923,9 +916,7 @@ const SalesPage: React.FC = () => {
           <TableCell className='hidden lg:table-cell text-sm text-muted-foreground'>
             {lead.source === 'manual' ? 'Manual entry' : lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
           </TableCell>
-          <TableCell className='hidden md:table-cell text-sm'>
-            {formatSalesTotalByCurrency(totalsForLead)}
-          </TableCell>
+          <TableCell className='hidden md:table-cell text-sm'>{formatSalesTotalByCurrency(totalsForLead)}</TableCell>
           <TableCell className='text-sm text-muted-foreground whitespace-nowrap'>
             {formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}
           </TableCell>
@@ -989,9 +980,7 @@ const SalesPage: React.FC = () => {
           <CardContent className='flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between'>
             <div>
               <p className='font-medium'>No leads yet</p>
-              <p className='text-sm text-muted-foreground'>
-                Add your first lead to unlock quick capture, AI review, and payment tracking.
-              </p>
+              <p className='text-sm text-muted-foreground'>Add your first lead to unlock quick capture, AI review, and payment tracking.</p>
             </div>
             <Button onClick={() => navigate('/dashboard/leads')}>Add first lead</Button>
           </CardContent>
@@ -1041,19 +1030,16 @@ const SalesPage: React.FC = () => {
                 className={cn(
                   reviewSummary.highRiskCount > 0
                     ? 'border-amber-200 bg-amber-50 text-amber-700'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700',
                 )}
               >
                 {reviewSummary.highRiskCount} high-risk
               </Badge>
-              <Badge variant='outline'>
-                Avg confidence {(reviewSummary.averageConfidence * 100).toFixed(0)}%
-              </Badge>
+              <Badge variant='outline'>Avg confidence {(reviewSummary.averageConfidence * 100).toFixed(0)}%</Badge>
             </div>
           </div>
           <div className='rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs text-muted-foreground'>
-            Confidence guide: `LOW` is below 65%, `MEDIUM` is 65%-84%, and `HIGH` is 85%+.
-            Treat AI reasoning as evidence to review, not final truth.
+            Confidence guide: `LOW` is below 65%, `MEDIUM` is 65%-84%, and `HIGH` is 85%+. Treat AI reasoning as evidence to review, not final truth.
           </div>
         </CardHeader>
         <CardContent className='space-y-3'>
@@ -1073,9 +1059,7 @@ const SalesPage: React.FC = () => {
           ) : reviewInboxSales.length === 0 ? (
             <div className='rounded-lg border bg-card p-4'>
               <p className='font-medium'>No pending AI decisions</p>
-              <p className='text-sm text-muted-foreground'>
-                When AI detects a possible sale from chats, it will appear here for approval.
-              </p>
+              <p className='text-sm text-muted-foreground'>When AI detects a possible sale from chats, it will appear here for approval.</p>
               <Button variant='outline' size='sm' className='mt-3' onClick={() => navigate('/dashboard/inbox')}>
                 Open inbox
               </Button>
@@ -1083,18 +1067,23 @@ const SalesPage: React.FC = () => {
           ) : (
             reviewInboxSales.map((sale) => {
               const leadContact = sale.lead?.contact;
-              const displayName =
-                leadContact?.displayName || leadContact?.phone || 'Unknown';
-              const confidence = sale.detectionConfidence
-                ? Math.round(sale.detectionConfidence * 100)
-                : 0;
+              const displayName = leadContact?.displayName || leadContact?.phone || 'Unknown';
+              const confidence = sale.detectionConfidence ? Math.round(sale.detectionConfidence * 100) : 0;
               const risk = getConfidenceRisk(sale.detectionConfidence);
               const reasoning = sale.detectionReasoning?.trim();
 
               return (
                 <div
                   key={sale.id}
-                  className='flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50 lg:flex-row lg:items-center lg:justify-between'
+                  onClick={() => setSelectedSale(sale)}
+                  className='flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50 lg:flex-row lg:items-center lg:justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedSale(sale);
+                    }
+                  }}
                 >
                   <div className='flex items-start gap-3 min-w-0'>
                     <Avatar className='h-10 w-10 shrink-0'>
@@ -1113,10 +1102,7 @@ const SalesPage: React.FC = () => {
                         <Badge variant='outline' className='text-xs'>
                           {confidence}% confidence
                         </Badge>
-                        <Badge
-                          variant='outline'
-                          className={cn('text-xs', getRiskBadgeClass(risk))}
-                        >
+                        <Badge variant='outline' className={cn('text-xs', getRiskBadgeClass(risk))}>
                           {risk} risk
                         </Badge>
                       </div>
@@ -1132,20 +1118,14 @@ const SalesPage: React.FC = () => {
                         {sale.detectionMetadata?.deliveryAddress && (
                           <>
                             <span>•</span>
-                            <span className='truncate text-xs'>
-                              {sale.detectionMetadata.deliveryAddress}
-                            </span>
+                            <span className='truncate text-xs'>{sale.detectionMetadata.deliveryAddress}</span>
                           </>
                         )}
                       </div>
                       {reasoning ? (
-                        <p className='line-clamp-2 text-xs text-muted-foreground'>
-                          AI reason: {reasoning}
-                        </p>
+                        <p className='line-clamp-2 text-xs text-muted-foreground'>AI reason: {reasoning}</p>
                       ) : (
-                        <p className='line-clamp-2 text-xs text-muted-foreground'>
-                          AI reason unavailable. Review messages before approval.
-                        </p>
+                        <p className='line-clamp-2 text-xs text-muted-foreground'>AI reason unavailable. Review messages before approval.</p>
                       )}
                     </div>
                   </div>
@@ -1153,7 +1133,10 @@ const SalesPage: React.FC = () => {
                     <Button
                       size='sm'
                       variant='outline'
-                      onClick={() => setSelectedSale(sale)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedSale(sale);
+                      }}
                     >
                       View Details
                     </Button>
@@ -1161,7 +1144,10 @@ const SalesPage: React.FC = () => {
                       <Button
                         size='sm'
                         variant='outline'
-                        onClick={() => handleMarkSalePaid(sale.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkSalePaid(sale.id);
+                        }}
                       >
                         Mark Paid
                       </Button>
@@ -1169,13 +1155,19 @@ const SalesPage: React.FC = () => {
                     <Button
                       size='sm'
                       variant='outline'
-                      onClick={() => handleRejectSale(sale.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRejectSale(sale.id);
+                      }}
                     >
                       Reject
                     </Button>
                     <Button
                       size='sm'
-                      onClick={() => handleApproveSale(sale.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleApproveSale(sale.id);
+                      }}
                       className='bg-primary hover:bg-primary/90'
                     >
                       Approve
@@ -1193,8 +1185,7 @@ const SalesPage: React.FC = () => {
           <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0' />
           <p>
             {reviewSummary.highRiskCount} AI-detected sale
-            {reviewSummary.highRiskCount === 1 ? '' : 's'} have low confidence.
-            Prioritize manual review before approving.
+            {reviewSummary.highRiskCount === 1 ? '' : 's'} have low confidence. Prioritize manual review before approving.
           </p>
         </div>
       )}
@@ -1266,10 +1257,7 @@ const SalesPage: React.FC = () => {
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
             <DialogTitle>Quick capture sale</DialogTitle>
-            <DialogDescription>
-              Record a payment fast when a customer pays via chat and no invoice
-              was created.
-            </DialogDescription>
+            <DialogDescription>Record a payment fast when a customer pays via chat and no invoice was created.</DialogDescription>
           </DialogHeader>
 
           <div className='space-y-4'>
@@ -1299,9 +1287,7 @@ const SalesPage: React.FC = () => {
                       )}
                     >
                       <p className='text-sm font-medium'>{lead.name || 'Lead'}</p>
-                      <p className='text-xs text-muted-foreground'>
-                        {lead.email || lead.phone || lead.providerId || lead.conversationId || lead.id}
-                      </p>
+                      <p className='text-xs text-muted-foreground'>{lead.email || lead.phone || lead.providerId || lead.conversationId || lead.id}</p>
                     </button>
                   ))
                 ) : (
@@ -1361,11 +1347,7 @@ const SalesPage: React.FC = () => {
           </div>
 
           <DialogFooter>
-            <Button
-              variant='outline'
-              onClick={() => handleQuickCaptureDialogOpenChange(false)}
-              disabled={isQuickCapturing}
-            >
+            <Button variant='outline' onClick={() => handleQuickCaptureDialogOpenChange(false)} disabled={isQuickCapturing}>
               Cancel
             </Button>
             <Button onClick={handleQuickCaptureSale} disabled={isQuickCapturing || !selectedQuickCaptureLead}>

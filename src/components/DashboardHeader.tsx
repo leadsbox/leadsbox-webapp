@@ -294,7 +294,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           </Button>
 
           <Link
-            to='/referral-program'
+            to='/dashboard/settings?tab=billing'
             className='hidden sm:flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors mr-2'
           >
             <Gift className='h-3.5 w-3.5' />
@@ -331,7 +331,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
               </DropdownMenuItem>
               <DropdownMenuSeparator className='md:hidden' />
               <DropdownMenuItem asChild>
-                <Link to='/dashboard/settings' className='cursor-pointer'>
+                <Link to='/dashboard/settings?tab=profile' className='cursor-pointer'>
                   <User className='mr-2 h-4 w-4' />
                   <span>Profile</span>
                 </Link>

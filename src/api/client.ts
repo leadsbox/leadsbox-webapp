@@ -102,7 +102,7 @@ const showBanner = (
     actionHref?: string;
     actionOnClick?: () => void;
     autoHideMs?: number;
-  }
+  },
 ) => {
   publishNetworkBanner({
     type: 'show',
@@ -233,17 +233,18 @@ client.interceptors.response.use(
     }
 
     if (status === 429) {
-      showBanner(RATE_LIMIT_BANNER_ID, {
-        title: 'You’re sending too many requests. Please wait a moment.',
-        variant: 'warning',
-        autoHideMs: 12_000,
-      });
-    // } else if (status && status >= 500) {
-    //   showBanner(SERVER_ERROR_BANNER_ID, {
-    //     title: 'We’re having trouble on our side. Your data is safe.',
-    //     description: 'We track these automatically—most recover quickly.',
-    //     variant: 'error',
-    //   });
+      // Opt to silently fail or let local components handle rate limits
+      // showBanner(RATE_LIMIT_BANNER_ID, {
+      //   title: 'You’re sending too many requests. Please wait a moment.',
+      //   variant: 'warning',
+      //   autoHideMs: 12_000,
+      // });
+      // } else if (status && status >= 500) {
+      //   showBanner(SERVER_ERROR_BANNER_ID, {
+      //     title: 'We’re having trouble on our side. Your data is safe.',
+      //     description: 'We track these automatically—most recover quickly.',
+      //     variant: 'error',
+      //   });
     } else if (status === 401) {
       showBanner(AUTH_BANNER_ID, {
         title: 'Session needs attention',
@@ -259,10 +260,7 @@ client.interceptors.response.use(
       const errorMessage = errorData?.message || '';
 
       // Handle invalid organization access by clearing the stale ID
-      if (
-        errorMessage.includes('no access to organization') ||
-        errorMessage.includes('Organization not found')
-      ) {
+      if (errorMessage.includes('no access to organization') || errorMessage.includes('Organization not found')) {
         setOrgId('');
         // Force a reload to trigger the org selection flow
         window.location.href = '/';
@@ -283,7 +281,7 @@ client.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default client;

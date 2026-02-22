@@ -20,6 +20,7 @@ import { invoiceApi, Invoice } from '@/api/invoices';
 import { salesApi, Sale, SaleItem } from '@/api/sales';
 import { AddManualSaleModal } from './AddManualSaleModal';
 import { ImportCSVModal } from './ImportCSVModal';
+import SalesDetailModal from './SalesDetailModal';
 
 interface BackendLead {
   id: string;
@@ -143,6 +144,7 @@ const SaleDetailPage: React.FC = () => {
   const [salesLoading, setSalesLoading] = useState(false);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   const loadSale = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -352,7 +354,6 @@ const SaleDetailPage: React.FC = () => {
         </Button>
       </div>
 
-
       {isLoading ? (
         renderSkeleton()
       ) : !sale ? (
@@ -363,17 +364,17 @@ const SaleDetailPage: React.FC = () => {
           {(salesLoading || sales.length > 0) && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <DollarSign className='h-5 w-5' />
                     <CardTitle>Sales History</CardTitle>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowImportCSVModal(true)}>
+                  <div className='flex gap-2'>
+                    <Button variant='outline' size='sm' onClick={() => setShowImportCSVModal(true)}>
                       Import CSV
                     </Button>
-                    <Button size="sm" onClick={() => setShowAddSaleModal(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button size='sm' onClick={() => setShowAddSaleModal(true)}>
+                      <Plus className='h-4 w-4 mr-2' />
                       Add Sale
                     </Button>
                   </div>
@@ -382,12 +383,12 @@ const SaleDetailPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {salesLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-32 w-full" />
-                    <Skeleton className="h-32 w-full" />
+                  <div className='space-y-3'>
+                    <Skeleton className='h-32 w-full' />
+                    <Skeleton className='h-32 w-full' />
                   </div>
                 ) : sales.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className='space-y-4'>
                     {sales.map((saleRecord) => {
                       const totalItems = (saleRecord.items as SaleItem[])?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
                       const statusColor =
@@ -398,32 +399,43 @@ const SaleDetailPage: React.FC = () => {
                             : 'bg-gray-500/10 text-gray-600 border-gray-500/20';
 
                       return (
-                        <div key={saleRecord.id} className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
+                        <div
+                          key={saleRecord.id}
+                          className='p-4 border rounded-lg bg-muted/10 hover:bg-accent/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
+                          onClick={() => setSelectedSale(saleRecord)}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedSale(saleRecord);
+                            }
+                          }}
+                        >
                           {/* Sale Header */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span className="font-bold text-xl">
+                          <div className='flex items-start justify-between mb-3'>
+                            <div className='flex-1'>
+                              <div className='flex items-center gap-2 mb-1 flex-wrap'>
+                                <span className='font-bold text-xl'>
                                   {saleRecord.currency} {saleRecord.amount.toLocaleString()}
                                 </span>
                                 <Badge className={statusColor}>{saleRecord.status}</Badge>
                                 {saleRecord.isAutoDetected && (
-                                  <Badge variant="outline" className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
+                                  <Badge variant='outline' className='text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300'>
                                     🤖 AI-Detected
                                   </Badge>
                                 )}
                                 {saleRecord.isManual && (
-                                  <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                                  <Badge variant='outline' className='text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'>
                                     ✍️ Manual
                                   </Badge>
                                 )}
                                 {saleRecord.isImported && (
-                                  <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                                  <Badge variant='outline' className='text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'>
                                     📥 Imported
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground">
+                              <p className='text-xs text-muted-foreground'>
                                 {new Date(saleRecord.createdAt).toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
@@ -434,34 +446,34 @@ const SaleDetailPage: React.FC = () => {
                               </p>
                             </div>
                             <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                // TODO: Open edit modal
-                                console.log('Edit sale:', saleRecord.id);
+                              variant='ghost'
+                              size='sm'
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSale(saleRecord);
                               }}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className='h-4 w-4' />
                             </Button>
                           </div>
 
                           {/* Items List */}
-                          <div className="space-y-2 mt-3 pt-3 border-t">
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Items:</p>
+                          <div className='space-y-2 mt-3 pt-3 border-t'>
+                            <p className='text-sm font-medium text-muted-foreground mb-2'>Items:</p>
                             {(saleRecord.items as SaleItem[]).map((item, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-sm bg-background p-2 rounded">
-                                <div className="flex-1">
-                                  <span className="font-medium">{item.name}</span>
-                                  <span className="text-muted-foreground ml-2">× {item.quantity}</span>
+                              <div key={idx} className='flex items-center justify-between text-sm bg-background p-2 rounded'>
+                                <div className='flex-1'>
+                                  <span className='font-medium'>{item.name}</span>
+                                  <span className='text-muted-foreground ml-2'>× {item.quantity}</span>
                                 </div>
-                                <span className="font-medium">
+                                <span className='font-medium'>
                                   {saleRecord.currency} {(item.unitPrice * item.quantity).toLocaleString()}
                                 </span>
                               </div>
                             ))}
 
                             {/* Total Summary */}
-                            <div className="flex items-center justify-between text-sm font-semibold pt-2 border-t">
+                            <div className='flex items-center justify-between text-sm font-semibold pt-2 border-t'>
                               <span>
                                 Total ({totalItems} item{totalItems !== 1 ? 's' : ''})
                               </span>
@@ -473,13 +485,11 @@ const SaleDetailPage: React.FC = () => {
 
                           {/* AI Detection Info */}
                           {saleRecord.isAutoDetected && saleRecord.detectionReasoning && (
-                            <div className="mt-3 pt-3 border-t">
-                              <p className="text-xs font-medium text-muted-foreground mb-1">AI Detection Reasoning:</p>
-                              <p className="text-xs text-muted-foreground italic">{saleRecord.detectionReasoning}</p>
+                            <div className='mt-3 pt-3 border-t'>
+                              <p className='text-xs font-medium text-muted-foreground mb-1'>AI Detection Reasoning:</p>
+                              <p className='text-xs text-muted-foreground italic'>{saleRecord.detectionReasoning}</p>
                               {saleRecord.detectionConfidence && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Confidence: {(saleRecord.detectionConfidence * 100).toFixed(0)}%
-                                </p>
+                                <p className='text-xs text-muted-foreground mt-1'>Confidence: {(saleRecord.detectionConfidence * 100).toFixed(0)}%</p>
                               )}
                             </div>
                           )}
@@ -488,18 +498,16 @@ const SaleDetailPage: React.FC = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <DollarSign className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                    <h3 className="text-lg font-semibold mb-2">No Sales Yet</h3>
-                    <p className="text-sm mb-4">
-                      AI-detected sales, manual entries, and imported records will appear here
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <Button variant="outline" size="sm" onClick={() => setShowImportCSVModal(true)}>
+                  <div className='text-center py-12 text-muted-foreground'>
+                    <DollarSign className='h-16 w-16 mx-auto mb-4 opacity-20' />
+                    <h3 className='text-lg font-semibold mb-2'>No Sales Yet</h3>
+                    <p className='text-sm mb-4'>AI-detected sales, manual entries, and imported records will appear here</p>
+                    <div className='flex gap-2 justify-center'>
+                      <Button variant='outline' size='sm' onClick={() => setShowImportCSVModal(true)}>
                         Import from CSV
                       </Button>
-                      <Button size="sm" onClick={() => setShowAddSaleModal(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
+                      <Button size='sm' onClick={() => setShowAddSaleModal(true)}>
+                        <Plus className='h-4 w-4 mr-2' />
                         Add Manual Sale
                       </Button>
                     </div>
@@ -528,6 +536,23 @@ const SaleDetailPage: React.FC = () => {
         onSuccess={() => {
           fetchSales();
           loadSale({ silent: true });
+        }}
+      />
+      <SalesDetailModal
+        sale={selectedSale}
+        isOpen={selectedSale !== null}
+        onClose={() => setSelectedSale(null)}
+        onApprove={async () => {
+          await fetchSales();
+        }}
+        onReject={async () => {
+          await fetchSales();
+        }}
+        onUpdate={async () => {
+          await fetchSales();
+        }}
+        onDelete={async () => {
+          await fetchSales();
         }}
       />
     </div>

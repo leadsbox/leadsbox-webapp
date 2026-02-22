@@ -191,6 +191,17 @@ export const DashboardLayout: React.FC = () => {
       return false;
     }
   });
+
+  const [sidebarCustomWidth, setSidebarCustomWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('lb_sidebar_width');
+      return saved ? Number(saved) : 256;
+    } catch {
+      return 256;
+    }
+  });
+  const isResizingRef = useRef(false);
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile();
   const [inboxCount, setInboxCount] = useState<number>(0);
@@ -618,11 +629,43 @@ export const DashboardLayout: React.FC = () => {
     if (isMobile) {
       setMobileOpen((v) => !v);
     } else {
-      setSidebarCollapsed((v) => !v);
+      setSidebarCollapsed((v) => {
+        const next = !v;
+        localStorage.setItem('lb_sidebar_collapsed', JSON.stringify(next));
+        return next;
+      });
     }
   };
 
-  const sidebarWidth = useMemo(() => (sidebarCollapsed ? 'w-16' : 'w-64'), [sidebarCollapsed]);
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (sidebarCollapsed || isMobile) return;
+    isResizingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isResizingRef.current) return;
+    const newWidth = Math.min(Math.max(e.clientX, 200), 480);
+    setSidebarCustomWidth(newWidth);
+  }, []);
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        document.body.style.cursor = 'default';
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        localStorage.setItem('lb_sidebar_width', sidebarCustomWidth.toString());
+      }
+    },
+    [sidebarCustomWidth],
+  );
+
+  const sidebarWidthStyle = useMemo(() => {
+    if (sidebarCollapsed) return { width: '64px' };
+    return { width: `${sidebarCustomWidth}px` };
+  }, [sidebarCollapsed, sidebarCustomWidth]);
   const getSidebarDynamicCount = useCallback(
     (title: string): number => {
       if (title !== 'Inbox' && title !== 'Sales' && title !== 'Products' && title !== 'Catalogs') {
@@ -666,9 +709,23 @@ export const DashboardLayout: React.FC = () => {
       <ConnectionStatus />
       {/* Desktop Sidebar */}
       <aside
-        className={cn('dashboard-sidebar hidden md:flex flex-col transition-[width] duration-300 ease-in-out', sidebarWidth)}
+        className={cn('dashboard-sidebar hidden md:flex flex-col transition-[width] duration-300 ease-in-out relative z-20 shrink-0')}
+        style={sidebarWidthStyle}
         aria-label='Sidebar'
       >
+        {/* Resizer Handle */}
+        {!sidebarCollapsed && (
+          <div
+            className='absolute right-[-4px] top-0 z-50 h-full w-[8px] cursor-col-resize hover:bg-primary/50 group flex items-center justify-center transition-colors'
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
+            <div className='h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors' />
+          </div>
+        )}
+
         {/* Sidebar header */}
         <div className='flex h-16 items-center justify-between px-4 border-b border-border'>
           {!sidebarCollapsed && (
