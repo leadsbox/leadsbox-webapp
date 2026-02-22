@@ -86,6 +86,12 @@ const InboxPage: React.FC = () => {
   // Ref for auto-scrolling to bottom of messages
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Ref to hold the latest selected thread to avoid stale closures in socket events
+  const selectedThreadRef = useRef<Thread | null>(selectedThread);
+  useEffect(() => {
+    selectedThreadRef.current = selectedThread;
+  }, [selectedThread]);
+
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -448,15 +454,18 @@ const InboxPage: React.FC = () => {
         const existingIndex = prev.findIndex((t) => t.id === thread.id);
         if (existingIndex >= 0) {
           const updated = [...prev];
-          updated[existingIndex] = thread;
+          updated[existingIndex] = { ...updated[existingIndex], ...thread, lead: thread.lead || updated[existingIndex].lead };
           return updated;
         }
         return prev;
       });
 
       // Update selected thread if it's the same
-      if (selectedThread?.id === thread.id) {
-        setSelectedThread(thread);
+      if (selectedThreadRef.current?.id === thread.id) {
+        setSelectedThread((prev) => {
+          if (!prev) return null;
+          return { ...prev, ...thread, lead: thread.lead || prev.lead };
+        });
       }
     });
 
@@ -483,7 +492,7 @@ const InboxPage: React.FC = () => {
     const unsubscribeTypingStart = socketOn('typing:start', (data) => {
       const { threadId, userId, userName } = data;
 
-      if (selectedThread?.id === threadId) {
+      if (selectedThreadRef.current?.id === threadId) {
         setTypingUsers((prev) => {
           const updated = new Map(prev);
           updated.set(userId, userName);
@@ -495,7 +504,7 @@ const InboxPage: React.FC = () => {
     const unsubscribeTypingStop = socketOn('typing:stop', (data) => {
       const { threadId, userId } = data;
 
-      if (selectedThread?.id === threadId) {
+      if (selectedThreadRef.current?.id === threadId) {
         setTypingUsers((prev) => {
           const updated = new Map(prev);
           updated.delete(userId);
@@ -528,16 +537,19 @@ const InboxPage: React.FC = () => {
         });
       });
 
-      if (selectedThread && (selectedThread.leadId === leadId || selectedThread.lead.id === leadId)) {
-        const newStage = lead.label || selectedThread.lead.stage;
+      if (selectedThreadRef.current && (selectedThreadRef.current.leadId === leadId || selectedThreadRef.current.lead.id === leadId)) {
+        const newStage = lead.label || selectedThreadRef.current.lead.stage;
         setSelectedThread((prev) => {
           if (!prev) return null;
+          const currentTags = prev.lead.tags || [];
+          const updatedTags = Array.from(new Set([newStage, ...currentTags]));
           return {
             ...prev,
             lead: {
               ...prev.lead,
               stage: newStage,
-              tags: [newStage],
+              tags: updatedTags,
+              source: lead.provider || prev.lead.source,
             },
           };
         });
@@ -804,13 +816,13 @@ const InboxPage: React.FC = () => {
   const getStatusColor = (status: Thread['status']) => {
     switch (status) {
       case 'OPEN':
-        return 'bg-green-500/10 text-green-400 border-green-500/20';
+        return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30 font-medium px-2 py-0.5';
       case 'PENDING':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30 font-medium px-2 py-0.5';
       case 'CLOSED':
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+        return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30 font-medium px-2 py-0.5';
       default:
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30 font-medium px-2 py-0.5';
     }
   };
 
