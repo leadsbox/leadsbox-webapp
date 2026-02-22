@@ -1330,14 +1330,36 @@ const InboxPage: React.FC = () => {
             </div>
 
             {/* Filters */}
-            <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
-              <TabsList className='grid w-full grid-cols-4'>
-                <TabsTrigger value='all'>All</TabsTrigger>
-                <TabsTrigger value='unread'>Unread</TabsTrigger>
-                <TabsTrigger value='mine'>Mine</TabsTrigger>
-                <TabsTrigger value='hot'>Hot</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+              <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
+                <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2'>
+                  <TabsTrigger
+                    value='all'
+                    className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                  >
+                    All
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value='unread'
+                    className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                  >
+                    Unread
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value='mine'
+                    className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                  >
+                    Mine
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value='hot'
+                    className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                  >
+                    Hot
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           {/* Thread List */}
@@ -2042,14 +2064,36 @@ const InboxPage: React.FC = () => {
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
                 <Input placeholder='Search conversations...' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className='pl-10' />
               </div>
-              <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
-                <TabsList className='grid w-full grid-cols-4'>
-                  <TabsTrigger value='all'>All</TabsTrigger>
-                  <TabsTrigger value='unread'>Unread</TabsTrigger>
-                  <TabsTrigger value='mine'>Mine</TabsTrigger>
-                  <TabsTrigger value='hot'>Hot</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+                <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as undefined)}>
+                  <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2'>
+                    <TabsTrigger
+                      value='all'
+                      className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                      All
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value='unread'
+                      className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                      Unread
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value='mine'
+                      className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                      Mine
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value='hot'
+                      className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                      Hot
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
             <div className='flex-1 overflow-auto'>
               {filteredThreads.length === 0 ? (

@@ -296,12 +296,34 @@ const ContactDetailPage: React.FC = () => {
 
       {/* Activity Tabs */}
       <Tabs defaultValue='overview' className='w-full'>
-        <TabsList className='grid w-full grid-cols-4'>
-          <TabsTrigger value='overview'>Overview</TabsTrigger>
-          <TabsTrigger value='leads'>Leads ({contact.Lead.length})</TabsTrigger>
-          <TabsTrigger value='conversations'>Conversations ({contact.Thread.length})</TabsTrigger>
-          <TabsTrigger value='activity'>Activity</TabsTrigger>
-        </TabsList>
+        <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+          <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2'>
+            <TabsTrigger
+              value='overview'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value='leads'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Leads ({contact.Lead.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value='conversations'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Conversations ({contact.Thread.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value='activity'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Activity
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value='overview' className='space-y-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>

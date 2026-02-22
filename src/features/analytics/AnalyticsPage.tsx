@@ -238,11 +238,28 @@ const AnalyticsPage: React.FC = () => {
 
       {/* Charts Tabs */}
       <Tabs defaultValue='trends' className='space-y-6'>
-        <TabsList>
-          <TabsTrigger value='trends'>Trends</TabsTrigger>
-          <TabsTrigger value='performance'>Performance</TabsTrigger>
-          <TabsTrigger value='channels'>Channels</TabsTrigger>
-        </TabsList>
+        <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+          <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2'>
+            <TabsTrigger
+              value='trends'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Trends
+            </TabsTrigger>
+            <TabsTrigger
+              value='performance'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Performance
+            </TabsTrigger>
+            <TabsTrigger
+              value='channels'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Channels
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value='trends' className='space-y-6'>
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6'>

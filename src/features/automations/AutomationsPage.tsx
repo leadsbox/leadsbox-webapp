@@ -542,10 +542,22 @@ const AutomationsPage: React.FC = () => {
       )}
 
       <Tabs defaultValue='followups' className='w-full'>
-        <TabsList className='grid w-full grid-cols-2 sm:w-auto'>
-          <TabsTrigger value='followups'>Follow-ups</TabsTrigger>
-          <TabsTrigger value='flows'>Flows</TabsTrigger>
-        </TabsList>
+        <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+          <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2'>
+            <TabsTrigger
+              value='followups'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Follow-ups
+            </TabsTrigger>
+            <TabsTrigger
+              value='flows'
+              className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+            >
+              Flows
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value='followups' className='space-y-6 pt-4'>
           {hasOrgContext && followUpModalOpen && (

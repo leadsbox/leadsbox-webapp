@@ -21,12 +21,14 @@ import {
   BookOpen,
   BellRing,
   Download,
+  X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import DashboardHeader from './DashboardHeader';
 import SupportWidget from './SupportWidget';
 import { FeedbackDialog } from './FeedbackDialog';
@@ -220,8 +222,19 @@ export const DashboardLayout: React.FC = () => {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
   );
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('lb_app_banner_dismissed') === 'true';
+  });
   const { subscription, loading: subscriptionLoading, trialDaysRemaining, trialEndsAt } = useSubscription();
   const { socket } = useSocketIO();
+
+  const handleDismissBanner = () => {
+    setBannerDismissed(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lb_app_banner_dismissed', 'true');
+    }
+  };
 
   const getRawSidebarCount = useCallback(
     (title: SidebarCounterKey): number => {
@@ -675,16 +688,23 @@ export const DashboardLayout: React.FC = () => {
             </div>
           )}
 
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={toggleSidebar}
-            className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-pressed={sidebarCollapsed}
-          >
-            <ChevronLeft className={cn('h-4 w-4 transition-transform', sidebarCollapsed && 'rotate-180')} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={toggleSidebar}
+                className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-pressed={sidebarCollapsed}
+              >
+                <ChevronLeft className={cn('h-4 w-4 transition-transform', sidebarCollapsed && 'rotate-180')} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side='right'>
+              <p>{sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Navigation */}
@@ -692,6 +712,44 @@ export const DashboardLayout: React.FC = () => {
           <div className='space-y-1'>
             {(sidebarItems || []).map((item) => {
               const isActive = location.pathname.startsWith(item.href);
+
+              const content = (
+                <motion.div
+                  className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'w-full')}
+                  whileHover={{ x: isActive || sidebarCollapsed ? 0 : 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                >
+                  <item.icon className={cn('h-5 w-5 flex-shrink-0 transition-colors', isActive ? 'text-primary' : 'text-sidebar-foreground/60')} />
+
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className='ml-3 flex-1'>{item.title}</span>
+                      {getSidebarDynamicCount(item.title) > 0 && !isActive && (
+                        <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
+                          {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
+                        </Badge>
+                      )}
+                      {item.title === 'Tasks' && item.badge && !isActive && (
+                        <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </>
+                  )}
+
+                  {sidebarCollapsed && getSidebarDynamicCount(item.title) > 0 && (
+                    <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
+                      {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
+                    </Badge>
+                  )}
+                  {sidebarCollapsed && item.title === 'Tasks' && item.badge && (
+                    <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
+                      {item.badge}
+                    </Badge>
+                  )}
+                </motion.div>
+              );
 
               return (
                 <NavLink
@@ -703,43 +761,17 @@ export const DashboardLayout: React.FC = () => {
                     isActive ? 'sidebar-item-active' : 'sidebar-item-inactive',
                   )}
                   aria-current={isActive ? 'page' : undefined}
-                  title={sidebarCollapsed ? item.title : undefined}
                 >
-                  <motion.div
-                    className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'w-full')}
-                    whileHover={{ x: isActive || sidebarCollapsed ? 0 : 4 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                  >
-                    <item.icon className={cn('h-5 w-5 flex-shrink-0 transition-colors', isActive ? 'text-primary' : 'text-sidebar-foreground/60')} />
-
-                    {!sidebarCollapsed && (
-                      <>
-                        <span className='ml-3 flex-1'>{item.title}</span>
-                        {getSidebarDynamicCount(item.title) > 0 && !isActive && (
-                          <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
-                            {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
-                          </Badge>
-                        )}
-                        {item.title === 'Tasks' && item.badge && !isActive && (
-                          <Badge variant='destructive' className='ml-auto h-5 w-5 flex items-center justify-center text-xs p-0'>
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-
-                    {sidebarCollapsed && getSidebarDynamicCount(item.title) > 0 && (
-                      <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
-                        {item.title === 'Inbox' && inboxLoading ? '...' : getSidebarDynamicCount(item.title)}
-                      </Badge>
-                    )}
-                    {sidebarCollapsed && item.title === 'Tasks' && item.badge && (
-                      <Badge variant='destructive' className='absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-xs p-0'>
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </motion.div>
+                  {sidebarCollapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>{content}</TooltipTrigger>
+                      <TooltipContent side='right'>
+                        <p>{item.title}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    content
+                  )}
                 </NavLink>
               );
             })}
@@ -751,16 +783,22 @@ export const DashboardLayout: React.FC = () => {
           {sidebarCollapsed ? (
             <motion.div whileHover={{ scale: 1.05 }} className='flex flex-col items-center gap-2 text-xs text-sidebar-foreground/70'>
               {/* Show only an icon button when collapsed to avoid any text */}
-              <Button
-                variant='ghost'
-                size='icon'
-                onClick={handleGoToBilling}
-                className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
-                aria-label={billingButtonText}
-                title={billingButtonText}
-              >
-                <CreditCard className='h-5 w-5 text-primary' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={handleGoToBilling}
+                    className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
+                    aria-label={billingButtonText}
+                  >
+                    <CreditCard className='h-5 w-5 text-primary' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side='right'>
+                  <p>{billingButtonText}</p>
+                </TooltipContent>
+              </Tooltip>
             </motion.div>
           ) : (
             <div className='rounded-lg bg-primary/10 p-4 text-xs text-sidebar-foreground'>
@@ -817,15 +855,22 @@ export const DashboardLayout: React.FC = () => {
               </div>
               <span className='font-semibold text-sidebar-foreground'>LeadsBox</span>
             </div>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={() => setMobileOpen(false)}
-              className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
-              aria-label='Close menu'
-            >
-              <ChevronLeft className='h-4 w-4 rotate-180' />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => setMobileOpen(false)}
+                  className='h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent'
+                  aria-label='Close menu'
+                >
+                  <ChevronLeft className='h-4 w-4 rotate-180' />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side='bottom'>
+                <p>Close menu</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
           {/* Navigation */}
           <nav className='flex-1 overflow-auto py-4'>
@@ -884,9 +929,9 @@ export const DashboardLayout: React.FC = () => {
 
       {/* Main content area */}
       <div className='flex-1 flex flex-col overflow-hidden'>
-        {(deferredInstallPrompt || notificationPermission !== 'granted') && (
-          <div className='border-b bg-muted/40 px-4 py-2'>
-            <div className='mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-sm'>
+        {!bannerDismissed && (deferredInstallPrompt || notificationPermission !== 'granted') && (
+          <div className='border-b bg-muted/40 px-4 py-2 relative'>
+            <div className='mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-sm pr-8'>
               <p className='text-muted-foreground'>Install LeadsBox and enable alerts for faster mobile response.</p>
               <div className='flex flex-wrap gap-2'>
                 {deferredInstallPrompt && (
@@ -903,6 +948,22 @@ export const DashboardLayout: React.FC = () => {
                 )}
               </div>
             </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:bg-muted'
+                  onClick={handleDismissBanner}
+                  aria-label='Dismiss banner'
+                >
+                  <X className='h-4 w-4' />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side='bottom'>
+                <p>Dismiss banner</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         )}
         {/* Header */}

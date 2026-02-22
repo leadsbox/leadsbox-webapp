@@ -203,7 +203,7 @@ const WizardStepIndicator = ({ step }: { step: number }) => (
           className={cn(
             'flex items-center gap-3 rounded-lg border px-3 py-2 text-sm transition',
             active && 'border-primary text-primary shadow-sm',
-            complete && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+            complete && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
           )}
         >
           <div
@@ -212,8 +212,8 @@ const WizardStepIndicator = ({ step }: { step: number }) => (
               complete
                 ? 'border-emerald-500 bg-emerald-500 text-white'
                 : active
-                ? 'border-primary text-primary'
-                : 'border-muted text-muted-foreground'
+                  ? 'border-primary text-primary'
+                  : 'border-muted text-muted-foreground',
             )}
           >
             {complete ? <CheckCircle2 className='h-4 w-4' /> : index + 1}
@@ -279,7 +279,7 @@ const CreateTemplateWizardPage: React.FC = () => {
 
   const detectedKeys = useMemo(
     () => Array.from(new Set([...detectPlaceholders(body), ...detectPlaceholders(header || ''), ...detectPlaceholders(footer || '')])),
-    [body, header, footer]
+    [body, header, footer],
   );
 
   useEffect(() => {
@@ -365,14 +365,14 @@ const CreateTemplateWizardPage: React.FC = () => {
 
     // Get all placeholders that are actually used in the template content
     const actuallyUsedKeys = Array.from(
-      new Set([...detectPlaceholders(body), ...detectPlaceholders(header || ''), ...detectPlaceholders(footer || '')])
+      new Set([...detectPlaceholders(body), ...detectPlaceholders(header || ''), ...detectPlaceholders(footer || '')]),
     );
 
     // Create placeholder definitions for all used keys, ensuring we have definitions for every key
     const existingPlaceholdersMap = new Map(
       (Array.isArray(placeholders) ? placeholders : [])
         .filter((item): item is TemplatePlaceholder => Boolean(item && typeof item === 'object' && item.key))
-        .map((item) => [item.key.trim(), item])
+        .map((item) => [item.key.trim(), item]),
     );
 
     const normalizedPlaceholders = actuallyUsedKeys.map((key, idx) => {
@@ -461,10 +461,7 @@ const CreateTemplateWizardPage: React.FC = () => {
           const errorData = JSON.parse(jsonMatch[0]);
 
           const userTitle = errorData?.error?.error_user_title;
-          const userMessage =
-            errorData?.error?.error_user_msg ||
-            errorData?.error?.message ||
-            message;
+          const userMessage = errorData?.error?.error_user_msg || errorData?.error?.message || message;
 
           if (typeof userTitle === 'string' && userTitle.trim()) {
             toastTitle = userTitle.trim();
@@ -531,7 +528,11 @@ const CreateTemplateWizardPage: React.FC = () => {
 
       <WizardStepIndicator step={step} />
 
-      <Tabs value={step.toString()} className='hidden' />
+      <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+        <Tabs value={step.toString()} className='hidden'>
+          <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2' />
+        </Tabs>
+      </div>
 
       {step === 0 ? (
         <section className='space-y-6'>
@@ -549,7 +550,7 @@ const CreateTemplateWizardPage: React.FC = () => {
                     key={option}
                     className={cn(
                       'group relative h-full cursor-pointer border border-border border-solid transition-all duration-300 hover:-translate-y-0.5 hover:border-dashed hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                      active ? 'border-primary bg-primary/5 shadow-lg' : ''
+                      active ? 'border-primary bg-primary/5 shadow-lg' : '',
                     )}
                     onClick={() => setCategory(option)}
                     onKeyDown={(event) => {

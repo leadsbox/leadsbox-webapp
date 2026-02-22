@@ -19,10 +19,10 @@ import { notify } from '@/lib/toast';
 const SettingsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
-    // Initialize tab from URL parameter, default to 'profile'
+    // Initialize tab from URL parameter, default to 'integrations'
     const tabParam = searchParams.get('tab');
-    const validTabs = ['profile', 'integrations', 'organization', 'members', 'notifications', 'appearance'];
-    return validTabs.includes(tabParam || '') ? tabParam! : 'profile';
+    const validTabs = ['integrations', 'profile', 'organization', 'members', 'notifications', 'appearance'];
+    return validTabs.includes(tabParam || '') ? tabParam! : 'integrations';
   });
   const [organization, setOrganization] = useState<Organization>({
     ...mockOrganization,
@@ -49,8 +49,8 @@ const SettingsPage: React.FC = () => {
   // Watch for URL parameter changes and update active tab
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs = ['profile', 'integrations', 'organization', 'members', 'notifications', 'appearance'];
-    const newTab = validTabs.includes(tabParam || '') ? tabParam! : 'profile';
+    const validTabs = ['integrations', 'profile', 'organization', 'members', 'notifications', 'appearance'];
+    const newTab = validTabs.includes(tabParam || '') ? tabParam! : 'integrations';
 
     // Update active tab based on URL parameter
     setActiveTab(newTab);
@@ -136,15 +136,27 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Settings Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className='w-full overflow-x-auto flex gap-2 sm:grid sm:grid-cols-6'>
-          <TabsTrigger value='profile'>Profile</TabsTrigger>
-          <TabsTrigger value='integrations'>Integrations</TabsTrigger>
-          <TabsTrigger value='organization'>Organization</TabsTrigger>
-          <TabsTrigger value='members'>Members</TabsTrigger>
-          <TabsTrigger value='notifications'>Notifications</TabsTrigger>
-          <TabsTrigger value='appearance'>Appearance</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
+        <div className='w-full overflow-x-auto pb-2 scrollbar-hide'>
+          <TabsList className='bg-transparent p-0 flex h-auto items-center justify-start gap-2'>
+            {[
+              { id: 'integrations', label: 'Integrations' },
+              { id: 'profile', label: 'Profile' },
+              { id: 'organization', label: 'Organization' },
+              { id: 'members', label: 'Members' },
+              { id: 'notifications', label: 'Notifications' },
+              { id: 'appearance', label: 'Appearance' },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className='rounded-full px-4 py-1.5 text-sm font-medium transition-colors border shadow-sm shrink-0 whitespace-nowrap data-[state=inactive]:border-input data-[state=inactive]:bg-background data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-muted/60 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* Profile Settings */}
         <TabsContent value='profile' className='space-y-6'>
