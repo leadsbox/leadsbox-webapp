@@ -33,7 +33,7 @@
 
     <!-- Facebook Domain Verification -->
     <meta name="facebook-domain-verification" content="1bly2gkonn5v1njvaw6i85fhbwdhtt" />
-    
+
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://leadsboxapp.com/" />
@@ -76,6 +76,16 @@
 
   <body>
     <div id="root"></div>
+    <!-- Anti-flash: apply saved theme before React mounts -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('lb_theme') || 'system';
+          var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

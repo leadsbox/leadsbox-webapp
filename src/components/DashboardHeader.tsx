@@ -18,6 +18,9 @@ import {
   PlusCircle,
   Home,
   Gift,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -27,6 +30,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { CustomAvatar } from './ui/custom-avatar';
@@ -37,6 +43,7 @@ import client, { getOrgId } from '../api/client';
 import { endpoints } from '../api/config';
 import { notify } from '@/lib/toast';
 import { useSetupProgress } from '@/features/setup/useSetupProgress';
+import { useTheme, type Theme } from '@/hooks/useTheme';
 
 interface DashboardHeaderProps {
   onSidebarToggle?: () => void;
@@ -46,6 +53,7 @@ interface DashboardHeaderProps {
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggle, sidebarOpen = true }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
   // Get the profile image URL
   const userAvatar = user?.profileImage || user?.avatar || undefined;
   const [orgId, setOrgIdState] = React.useState<string>(() => getOrgId());
@@ -342,6 +350,30 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
+              {/* Theme submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className='cursor-pointer'>
+                  {theme === 'dark' ? (
+                    <Moon className='mr-2 h-4 w-4' />
+                  ) : theme === 'light' ? (
+                    <Sun className='mr-2 h-4 w-4' />
+                  ) : (
+                    <Monitor className='mr-2 h-4 w-4' />
+                  )}
+                  <span>Theme</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className='w-36'>
+                  {(['light', 'dark', 'system'] as Theme[]).map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => setTheme(t)} className='flex items-center gap-2 cursor-pointer'>
+                      {t === 'light' && <Sun className='h-4 w-4' />}
+                      {t === 'dark' && <Moon className='h-4 w-4' />}
+                      {t === 'system' && <Monitor className='h-4 w-4' />}
+                      <span className='flex-1 capitalize'>{t}</span>
+                      {theme === t && <Check className='h-3.5 w-3.5 text-primary' />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className='cursor-pointer'>
                 <LogOut className='mr-2 h-4 w-4' />

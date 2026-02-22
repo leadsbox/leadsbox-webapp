@@ -401,7 +401,7 @@ const SaleDetailPage: React.FC = () => {
                       return (
                         <div
                           key={saleRecord.id}
-                          className='p-4 border rounded-lg bg-muted/10 hover:bg-accent/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
+                          className='group relative p-4 border border-border rounded-lg bg-card transition-all duration-300 shadow-sm hover:-translate-y-0.5 hover:border-dashed hover:border-primary/50 hover:shadow-lg hover:bg-primary/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
                           onClick={() => setSelectedSale(saleRecord)}
                           tabIndex={0}
                           onKeyDown={(e) => {
