@@ -9,9 +9,9 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
   _startedAt?: number;
 }
 
-// Token and organization management
-const tokenKey = 'lb_access_token';
+// ── Organization ID (still stored client-side — not a secret, only a scope hint) ──
 const orgKey = 'lb_org_id';
+
 const buildRequestId = () => {
   try {
     return crypto.randomUUID();
@@ -20,18 +20,19 @@ const buildRequestId = () => {
   }
 };
 
-export const getAccessToken = () => localStorage.getItem(tokenKey) || '';
-
-export const setAccessToken = (token?: string) => {
-  if (!token) {
-    localStorage.removeItem(tokenKey);
-  } else {
-    localStorage.setItem(tokenKey, token);
-  }
+/**
+ * Token is now stored exclusively in an httpOnly cookie set by the server.
+ * These stubs are retained so call sites that set the token after login
+ * (e.g. auth context) don't break — they become intentional no-ops.
+ * @deprecated The server owns the auth cookie. Do not pass tokens client-side.
+ */
+export const getAccessToken = () => '';
+export const setAccessToken = (_token?: string) => {
+  // No-op: auth cookie is set server-side via Set-Cookie (httpOnly).
+  // Storing JWTs in localStorage is an XSS vector — never do this.
 };
 
 export const getOrgId = () => localStorage.getItem(orgKey) || '';
-
 export const setOrgId = (id?: string) => {
   if (!id) {
     localStorage.removeItem(orgKey);
@@ -50,7 +51,7 @@ const client = axios.create({
   },
 });
 
-// Ensure credentials are sent with all requests
+// ── Request interceptor: credentials, CSRF header, org ID, tracing ────────────
 client.interceptors.request.use((config) => {
   config.withCredentials = true;
   (config as InternalAxiosRequestConfig & { _startedAt?: number })._startedAt = Date.now();
@@ -61,21 +62,19 @@ client.interceptors.request.use((config) => {
     config.headers['x-correlation-id'] = requestId;
   }
 
-  return config;
-});
+  // Anti-CSRF: custom header that simple cross-origin requests cannot set
+  // without a CORS preflight (which our server will reject for unlisted origins).
+  // The backend auth middleware checks for this on all state-changing methods
+  // when the request carries a cookie-based session.
+  config.headers['x-csrf-protection'] = '1';
 
-// Request interceptor for auth token and org ID
-client.interceptors.request.use((config) => {
-  const token = getAccessToken();
-
-  if (token && !config.headers['Authorization']) {
-    config.headers['Authorization'] = `Bearer ${token}`;
-  }
-
+  // Attach org scope hint (not a secret)
   const orgId = getOrgId();
   if (orgId) {
     config.headers['x-org-id'] = orgId;
   }
+
+  // NOTE: No Authorization header — auth flows exclusively through httpOnly cookies.
 
   return config;
 });
@@ -188,13 +187,9 @@ client.interceptors.response.use(
         // Attempt to refresh the token
         await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
 
-        // Get fresh user data with new token from /auth/me
-        const userResponse = await axios.get(`${API_BASE}/auth/me`, { withCredentials: true });
-
-        const newToken = userResponse?.data?.accessToken;
-        if (newToken) {
-          setAccessToken(newToken);
-        }
+        // Refresh succeeded — cookies are updated server-side automatically
+        // (via Set-Cookie on the /auth/refresh response). No client-side token
+        // storage needed.
 
         // Process pending requests
         pendingRequests.forEach((callback) => callback());
