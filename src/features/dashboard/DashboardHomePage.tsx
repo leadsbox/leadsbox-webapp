@@ -1000,14 +1000,11 @@ export default function DashboardHomePage() {
       {/* Recent Activities and Tasks */}
       <div className='grid gap-4 sm:gap-6 lg:grid-cols-3'>
         {/* Recent Leads */}
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0'>
+        <Card className='transition-all duration-200 hover:shadow-md flex flex-col h-[440px]'>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 shrink-0'>
             <CardTitle className='text-lg'>Recent Leads</CardTitle>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/dashboard/leads'>View All</Link>
-            </Button>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className='flex-1 overflow-y-auto space-y-4 pb-2'>
             {analyticsLoading ? (
               recentLeadsSkeleton
             ) : recentLeadsData.length === 0 ? (
@@ -1053,17 +1050,19 @@ export default function DashboardHomePage() {
               })
             )}
           </CardContent>
+          <div className='shrink-0 px-6 py-3 border-t'>
+            <Button asChild variant='ghost' size='sm' className='w-full text-muted-foreground hover:text-foreground'>
+              <Link to='/dashboard/leads'>View More Leads →</Link>
+            </Button>
+          </div>
         </Card>
 
         {/* Today's Tasks */}
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0'>
+        <Card className='transition-all duration-200 hover:shadow-md flex flex-col h-[440px]'>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 shrink-0'>
             <CardTitle className='text-lg'>Today's Tasks</CardTitle>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/dashboard/tasks'>View All</Link>
-            </Button>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className='flex-1 overflow-y-auto space-y-4 pb-2'>
             {tasksLoading ? (
               <div className='space-y-3'>
                 {Array.from({ length: 3 }).map((_, index) => (
@@ -1078,7 +1077,7 @@ export default function DashboardHomePage() {
             ) : todayTasks.length === 0 ? (
               <p className='text-sm text-muted-foreground text-center py-4'>No tasks scheduled for today</p>
             ) : (
-              todayTasks.slice(0, 3).map((task) => (
+              todayTasks.map((task) => (
                 <div key={task.id} className='flex items-center justify-between'>
                   <div className='space-y-1'>
                     <div className='font-medium'>{task.title}</div>
@@ -1091,14 +1090,19 @@ export default function DashboardHomePage() {
               ))
             )}
           </CardContent>
+          <div className='shrink-0 px-6 py-3 border-t'>
+            <Button asChild variant='ghost' size='sm' className='w-full text-muted-foreground hover:text-foreground'>
+              <Link to='/dashboard/tasks'>View More Tasks →</Link>
+            </Button>
+          </div>
         </Card>
 
         {/* Quick Stats */}
-        <Card className='transition-all duration-200 hover:shadow-md'>
-          <CardHeader>
+        <Card className='transition-all duration-200 hover:shadow-md flex flex-col h-[440px]'>
+          <CardHeader className='shrink-0'>
             <CardTitle className='text-lg'>Quick Stats</CardTitle>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className='flex-1 overflow-y-auto space-y-4 pb-2'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-2'>
                 <CheckSquare className='h-4 w-4 text-muted-foreground' />
@@ -1202,17 +1206,19 @@ export default function DashboardHomePage() {
             </div>
 
             <div className='pt-2'>
-              <Button asChild className='w-full' variant='outline'>
-                <Link to='/dashboard/analytics'>
-                  <TrendingUp className='h-4 w-4 mr-2' />
-                  View Detailed Analytics
-                </Link>
-              </Button>
               <Button className='w-full mt-2' variant='secondary' onClick={() => downloadPmfReport(7)} disabled={pmfReportLoading}>
                 {pmfReportLoading ? 'Preparing report...' : 'Download PMF Weekly Report'}
               </Button>
             </div>
           </CardContent>
+          <div className='shrink-0 px-6 py-3 border-t'>
+            <Button asChild variant='ghost' size='sm' className='w-full text-muted-foreground hover:text-foreground'>
+              <Link to='/dashboard/analytics'>
+                <TrendingUp className='h-4 w-4 mr-2' />
+                View Detailed Analytics →
+              </Link>
+            </Button>
+          </div>
         </Card>
       </div>
 

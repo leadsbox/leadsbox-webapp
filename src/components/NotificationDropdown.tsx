@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Check, Info, AlertTriangle, XCircle, FileText } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,6 +17,11 @@ import InvoiceReviewModal from './InvoiceReviewModal';
 import { useSocketIO } from '@/lib/socket';
 import { toast } from 'sonner';
 
+const MAX_RETRY_FAILURES = 3;
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 60000;
+const POLL_INTERVAL_MS = 60000;
+
 const NotificationDropdown: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -26,41 +31,77 @@ const NotificationDropdown: React.FC = () => {
   const [reviewInvoiceCode, setReviewInvoiceCode] = useState<string | null>(null);
   const [reviewNotificationId, setReviewNotificationId] = useState<string | null>(null);
 
+  // Backoff state stored in refs to avoid stale closures
+  const isFetchingRef = useRef(false);
+  const consecutiveFailuresRef = useRef(0);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const { on: socketOn } = useSocketIO();
 
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const data = await notificationApi.list(1, 10);
-      setNotifications(data?.notifications ?? []);
-      const newUnreadCount = data?.unreadCount ?? 0;
-      if (newUnreadCount > unreadCount && !isOpen) {
-        setHasNewUnread(true);
+  const fetchNotifications = useCallback(
+    async (isManual = false) => {
+      // Skip if another fetch is already in progress
+      if (isFetchingRef.current) return;
+      // Stop polling after too many consecutive failures (unless user manually opens dropdown)
+      if (!isManual && consecutiveFailuresRef.current >= MAX_RETRY_FAILURES) return;
+
+      isFetchingRef.current = true;
+      setLoading(true);
+      try {
+        const data = await notificationApi.list(1, 10);
+        // Success – reset failure counter
+        consecutiveFailuresRef.current = 0;
+        setNotifications(data?.notifications ?? []);
+        const newUnreadCount = data?.unreadCount ?? 0;
+        if (newUnreadCount > unreadCount && !isOpen) {
+          setHasNewUnread(true);
+        }
+        setUnreadCount(newUnreadCount);
+      } catch (error) {
+        consecutiveFailuresRef.current += 1;
+        const failures = consecutiveFailuresRef.current;
+        if (failures >= MAX_RETRY_FAILURES) {
+          console.warn(`Notification fetch paused after ${failures} consecutive failures. Will retry when dropdown is opened.`);
+        } else {
+          // Exponential backoff retry
+          const backoffMs = Math.min(BASE_BACKOFF_MS * Math.pow(2, failures - 1), MAX_BACKOFF_MS);
+          console.warn(`Notification fetch failed (attempt ${failures}). Retrying in ${backoffMs}ms.`, error);
+          if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+          retryTimeoutRef.current = setTimeout(() => {
+            isFetchingRef.current = false;
+            fetchNotifications();
+          }, backoffMs);
+          return; // Don't release isFetchingRef yet – retry will handle it
+        }
+      } finally {
+        isFetchingRef.current = false;
+        setLoading(false);
       }
-      setUnreadCount(newUnreadCount);
-    } catch (error) {
-      console.error('Failed to fetch notifications', error);
-      setNotifications([]);
-      setUnreadCount(0);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [isOpen, unreadCount],
+  );
 
   useEffect(() => {
     fetchNotifications();
-    // Poll every minute
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+    // Clear any existing interval before starting a new one
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(() => fetchNotifications(), POLL_INTERVAL_MS);
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Listen for new draft invoices via Socket.IO
   useEffect(() => {
     const unsubscribe = socketOn('nlp:small', (data: { invoiceId?: string; invoiceCode?: string }) => {
       // Check if a draft invoice was created
       if (data.invoiceId) {
-        // Refresh notifications
-        fetchNotifications();
+        // Reset failure counter on socket event so we can fetch again
+        consecutiveFailuresRef.current = 0;
+        fetchNotifications(true);
 
         // Show toast notification
         toast.info('New draft invoice needs review', {
@@ -78,7 +119,7 @@ const NotificationDropdown: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [socketOn]);
+  }, [socketOn, fetchNotifications]);
 
   const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -117,7 +158,8 @@ const NotificationDropdown: React.FC = () => {
     if (!open) {
       setReviewInvoiceCode(null);
       setReviewNotificationId(null);
-      fetchNotifications(); // Refresh notifications
+      consecutiveFailuresRef.current = 0; // Reset so we can fetch after modal close
+      fetchNotifications(true); // Refresh notifications
     }
   };
 
@@ -145,6 +187,9 @@ const NotificationDropdown: React.FC = () => {
           setIsOpen(open);
           if (open) {
             setHasNewUnread(false);
+            // Reset failure count so user-triggered open always fetches fresh data
+            consecutiveFailuresRef.current = 0;
+            fetchNotifications(true);
           } else {
             // When closing the dropdown, clear the unread count immediately in UI
             if (unreadCount > 0) {

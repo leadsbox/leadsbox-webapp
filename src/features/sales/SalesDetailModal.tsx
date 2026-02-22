@@ -16,8 +16,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Sale, SaleItem, salesApi, UpdateSaleInput } from '@/api/sales';
 import { notify } from '@/lib/toast';
-import { CheckCircle2, Trash2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Trash2, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+
+const GENERIC_PRODUCT_NAMES = ['conversation payment', 'payment', 'sale', 'order', 'transaction'];
+const isGenericName = (name: string) => GENERIC_PRODUCT_NAMES.includes(name.toLowerCase().trim());
 
 interface SalesDetailModalProps {
   sale: Sale | null;
@@ -287,6 +290,12 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
                     <p className='text-sm'>{sale.detectionReasoning}</p>
                   </div>
                 )}
+                {isEditing && (
+                  <p className='text-xs text-blue-700 dark:text-blue-300 mt-1 flex items-center gap-1'>
+                    <AlertCircle className='h-3 w-3 shrink-0' />
+                    The product name was detected from the conversation. You can edit it in the items below.
+                  </p>
+                )}
               </div>
             </Card>
           )}
@@ -334,8 +343,20 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
                   {isEditing ? (
                     <div className='grid grid-cols-12 gap-2 items-end'>
                       <div className='col-span-5'>
-                        <Label className='text-xs'>Name</Label>
-                        <Input value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)} placeholder='Item name' />
+                        <Label className='text-xs flex items-center gap-1'>
+                          Product Name
+                          {isGenericName(item.name) && (
+                            <span className='ml-1 inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400'>
+                              <AlertCircle className='h-3 w-3' /> Edit suggested
+                            </span>
+                          )}
+                        </Label>
+                        <Input
+                          value={item.name}
+                          onChange={(e) => updateItem(index, 'name', e.target.value)}
+                          placeholder='e.g. iPhone 15 Pro, Consultation'
+                          className={isGenericName(item.name) ? 'border-amber-400 focus-visible:ring-amber-400' : ''}
+                        />
                       </div>
                       <div className='col-span-2'>
                         <Label className='text-xs'>Qty</Label>
@@ -361,7 +382,14 @@ const SalesDetailModal: React.FC<SalesDetailModalProps> = ({ sale, isOpen, onClo
                   ) : (
                     <div className='flex justify-between items-center'>
                       <div>
-                        <p className='font-medium'>{item.name}</p>
+                        <div className='flex items-center gap-2'>
+                          <p className='font-medium'>{item.name}</p>
+                          {sale.isAutoDetected && isGenericName(item.name) && (
+                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 border-amber-400 text-amber-600 dark:text-amber-400'>
+                              AI detected – tap Edit to update
+                            </Badge>
+                          )}
+                        </div>
                         <p className='text-xs text-muted-foreground'>
                           {item.quantity} × {item.unitPrice.toLocaleString()} {sale.currency}
                         </p>
