@@ -22,10 +22,6 @@ import {
   BellRing,
   Download,
   X,
-  Briefcase,
-  MonitorPlay,
-  Megaphone,
-  GraduationCap,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -149,30 +145,6 @@ const allSidebarItems: SidebarItem[] = [
         },
       ]
     : []),
-  {
-    title: 'HR',
-    href: '/dashboard/hr',
-    icon: Briefcase,
-    description: 'Leave & Appraisals',
-  },
-  {
-    title: 'IT Helpdesk',
-    href: '/dashboard/it',
-    icon: MonitorPlay,
-    description: 'Corporate Support',
-  },
-  {
-    title: 'Marketing',
-    href: '/dashboard/marketing',
-    icon: Megaphone,
-    description: 'Blog submissions',
-  },
-  {
-    title: 'Training Hub',
-    href: '/dashboard/training',
-    icon: GraduationCap,
-    description: 'Learning paths',
-  },
   {
     title: 'Home',
     href: '/dashboard/home',

@@ -55,12 +55,6 @@ const ProductsPage = lazy(() => import('./features/products/ProductsPage'));
 const CatalogsPage = lazy(() => import('./features/catalogs/CatalogsPage'));
 const QuotesPage = lazy(() => import('./features/quotes/QuotesPage'));
 
-// Phase 3 Features
-const HRDashboard = lazy(() => import('./features/hr/HRDashboard'));
-const ITDashboard = lazy(() => import('./features/it/ITDashboard'));
-const MarketingDashboard = lazy(() => import('./features/marketing/MarketingDashboard'));
-const TrainingHub = lazy(() => import('./features/training/TrainingHub'));
-
 const RouteLoader = () => <div className='flex min-h-screen items-center justify-center text-sm text-muted-foreground'>Loading…</div>;
 
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -185,13 +179,6 @@ const App = () => {
                   <Route path='products' element={<ProductsPage />} />
                   <Route path='catalogs' element={<CatalogsPage />} />
                   {/* <Route path='quotes' element={<QuotesPage />} /> */}
-
-                  {/* Phase 3 Employee Workflows */}
-                  <Route path='hr/*' element={<HRDashboard />} />
-                  <Route path='it/*' element={<ITDashboard />} />
-                  <Route path='marketing/*' element={<MarketingDashboard />} />
-                  <Route path='training/*' element={<TrainingHub />} />
-
                   <Route path='settings' element={<SettingsPage />} />
                 </Route>
               </Route>
