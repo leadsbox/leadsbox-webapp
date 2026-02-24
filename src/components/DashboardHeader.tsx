@@ -302,7 +302,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSidebarToggl
           </Button>
 
           <Link
-            to='/dashboard/settings?tab=billing'
+            to='/dashboard/referrals'
             className='hidden sm:flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors mr-2'
           >
             <Gift className='h-3.5 w-3.5' />
